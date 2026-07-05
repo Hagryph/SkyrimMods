@@ -270,6 +270,21 @@ inline constexpr std::size_t CrosshairPickData_TargetActor = 0x08;
 }  // namespace crosshair
 
 // ============================================================================
+// Cell / world transition.
+// ============================================================================
+namespace cell {
+
+// Loaded-cell batch transition:
+//   FUN_140370f30 parses a destination, then calls FUN_14019ec20(DAT_1431872c8, flags).
+//   FUN_14019ec20 sets the cell-loading flag, loads/centers the affected cells, calls
+//   FUN_14019ed60 for each moved cell (logs "Moving to interior/exterior cell ..."),
+//   then clears the loading flag. Hook after the original for one event-driven cleanup
+//   per loaded-cell batch, not a heartbeat.
+inline constexpr std::uintptr_t LoadedCellBatch = 0x19EC20;  // FUN_14019ec20
+
+}  // namespace cell
+
+// ============================================================================
 // Papyrus VM.
 // ============================================================================
 namespace papyrus {

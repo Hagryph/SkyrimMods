@@ -1,6 +1,7 @@
 #include "PCH.h"
 #include "SaveStorage.h"
 
+#include "GameOffsets.h"
 #include "Log.h"
 
 #include <algorithm>
@@ -19,6 +20,7 @@ constexpr std::uint32_t kValueRecordType = 0x48434647;    // HCFG - Hag config v
 constexpr std::uint32_t kRecordVersion = 1;
 constexpr std::uint32_t kMaxNameBytes = 128;
 constexpr std::uint32_t kMaxValueBytes = 4096;
+constexpr std::uint32_t kFormFlagDeleted = 1u << 5;
 
 skse::SerializationInterface* g_serialization = nullptr;
 std::uint32_t g_pluginHandle = 0;
@@ -70,6 +72,10 @@ struct ValueKeyHash {
 
 std::unordered_map<ValueKey, std::string, ValueKeyHash> g_values;
 
+std::uintptr_t SkyrimBase() {
+    return reinterpret_cast<std::uintptr_t>(::GetModuleHandleW(nullptr));
+}
+
 std::string SafeName(std::string value) {
     for (char& c : value) {
         const bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
@@ -110,6 +116,30 @@ ValueKey MakeValueKey(HMODULE module, const char* configName, const char* key) {
 
 bool ReadExact(skse::SerializationInterface* serialization, void* data, std::uint32_t length) {
     return serialization && serialization->ReadRecordData(data, length) == length;
+}
+
+enum class RuntimeFormState {
+    Valid,
+    Stale,
+    Unknown,
+};
+
+RuntimeFormState RuntimeFormStateFor(std::uint32_t formID) noexcept {
+    if (formID == 0) return RuntimeFormState::Stale;
+
+    __try {
+        using LookupByIDFn = void* (*)(std::uint32_t);
+        auto lookup = reinterpret_cast<LookupByIDFn>(SkyrimBase() + game::form::LookupByID);
+        void* form = lookup ? lookup(formID) : nullptr;
+        if (!form) return RuntimeFormState::Stale;
+
+        const auto* bytes = static_cast<const std::uint8_t*>(form);
+        const auto flags = *reinterpret_cast<const std::uint32_t*>(bytes + 0x10);
+        if ((flags & kFormFlagDeleted) != 0) return RuntimeFormState::Stale;
+        return RuntimeFormState::Valid;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return RuntimeFormState::Unknown;
+    }
 }
 
 void SkipBytes(skse::SerializationInterface* serialization, std::uint32_t length) {
@@ -253,6 +283,7 @@ void OnLoad(skse::SerializationInterface* serialization) {
 
     std::uint32_t loadedSets = 0;
     std::uint32_t loadedIDs = 0;
+    std::uint32_t droppedIDs = 0;
     std::uint32_t loadedValues = 0;
     std::uint32_t type = 0;
     std::uint32_t version = 0;
@@ -313,6 +344,7 @@ void OnLoad(skse::SerializationInterface* serialization) {
                 if (serialization->ResolveFormId && serialization->ResolveFormId(oldID, &resolvedID)) {
                     if (resolvedID != 0) values.insert(resolvedID);
                 } else {
+                    ++droppedIDs;
                     HAG_WARN("save storage dropped unresolved form ID {:#x} for owner='{}' name='{}'",
                              oldID, key.owner, key.name);
                 }
@@ -377,8 +409,8 @@ void OnLoad(skse::SerializationInterface* serialization) {
         ++loadedValues;
     }
 
-    HAG_INFO("save storage loaded {} form-ID set(s), {} id(s), {} config value(s)",
-             loadedSets, loadedIDs, loadedValues);
+    HAG_INFO("save storage loaded {} form-ID set(s), {} id(s), dropped {} unresolved id(s), {} config value(s)",
+             loadedSets, loadedIDs, droppedIDs, loadedValues);
 }
 
 void OnFormDelete(std::uint64_t handle) {
@@ -426,6 +458,42 @@ void SetSerializationInterface(skse::SerializationInterface* serialization, std:
 
 bool Available() {
     return g_available;
+}
+
+std::uint32_t PruneRuntimeFormIDSets(const char* reason) {
+    if (!g_available) return 0;
+
+    std::uint32_t removed = 0;
+    std::uint32_t kept = 0;
+    std::uint32_t unknown = 0;
+    {
+        std::lock_guard lock(g_mutex);
+        for (auto& [key, values] : g_sets) {
+            for (auto it = values.begin(); it != values.end();) {
+                const std::uint32_t formID = *it;
+                const RuntimeFormState state = RuntimeFormStateFor(formID);
+                if (state == RuntimeFormState::Stale) {
+                    HAG_INFO("save storage runtime-pruned stale form {:#x} owner='{}' name='{}' ({})",
+                             formID, key.owner, key.name, reason ? reason : "unspecified");
+                    it = values.erase(it);
+                    ++removed;
+                    continue;
+                }
+                if (state == RuntimeFormState::Unknown) {
+                    ++unknown;
+                } else {
+                    ++kept;
+                }
+                ++it;
+            }
+        }
+    }
+
+    if (removed != 0 || unknown != 0) {
+        HAG_INFO("save storage runtime prune complete: removed={} kept={} unknown={} ({})",
+                 removed, kept, unknown, reason ? reason : "unspecified");
+    }
+    return removed;
 }
 
 bool ContainsFormIDForModule(HMODULE module, const char* setName, std::uint32_t formID) {

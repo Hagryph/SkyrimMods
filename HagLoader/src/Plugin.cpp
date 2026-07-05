@@ -1,5 +1,6 @@
 #include "PCH.h"
 #include "Plugin.h"
+#include "CellChangeHook.h"
 #include "SKSE_Min.h"
 #include "Log.h"
 #include "Hooking.h"
@@ -66,6 +67,7 @@ bool Plugin::OnLoad(const skse::Interface* skse) {
     }
 
     game_state::InstallHooks();
+    cell_change::InstallHooks();
     ui::HagMenu::InstallTrigger();  // (debug) click Credits -> open HagUIMenu
 
     if (kRegisterTestPage) {
