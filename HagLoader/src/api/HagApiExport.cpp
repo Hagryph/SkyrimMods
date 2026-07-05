@@ -79,6 +79,16 @@ void C_SetToggleState(HagUI_PageHandle* page, const char* id, bool value, bool e
     HagUI::Get().SetOptionState(AsPage(page), id ? id : "", Value(value), enabled, note ? note : "");
 }
 
+void C_SetIntState(HagUI_PageHandle* page, const char* id, std::int64_t value, bool enabled, const char* note) {
+    if (!page) return;
+    HagUI::Get().SetOptionState(AsPage(page), id ? id : "", Value(value), enabled, note ? note : "");
+}
+
+void C_SetDoubleState(HagUI_PageHandle* page, const char* id, double value, bool enabled, const char* note) {
+    if (!page) return;
+    HagUI::Get().SetOptionState(AsPage(page), id ? id : "", Value(value), enabled, note ? note : "");
+}
+
 void C_Refresh() { HagUI::Get().MarkDirty(); }
 
 // v3: wrap the C bar-sample callback into the internal SampleFn (copies the transient text each poll).
@@ -132,6 +142,8 @@ const HagUIAPI g_api = {
     &C_AddProgressBar,   // v3
     &C_AddModel3D,       // v3
     &C_AddDynamicButton,  // v4
+    &C_SetIntState,       // v5
+    &C_SetDoubleState,    // v5
 };
 
 }  // namespace

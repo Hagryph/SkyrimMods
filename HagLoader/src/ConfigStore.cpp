@@ -1,6 +1,7 @@
 #include "PCH.h"
 #include "ConfigStore.h"
 #include "Log.h"
+#include "SaveStorage.h"
 
 #include <cctype>
 #include <fstream>
@@ -46,8 +47,7 @@ std::filesystem::path ConfigPathFromRoot(const std::filesystem::path& root, Scop
     if (scope == Scope::Global) {
         return root / (safeConfig + ".ini");
     }
-    // TODO: replace Current with a real save identifier once save-name RE is added.
-    return root / "PerSave" / (safeConfig + ".Current.ini");
+    return {};
 }
 
 std::filesystem::path ConfigPath(Scope scope, const std::string& modName) {
@@ -111,6 +111,13 @@ bool SaveFile(const std::filesystem::path& path, const std::map<std::string, std
 
 bool GetBool(Scope scope, const std::string& modName, const std::string& key, bool defaultValue) {
     if (modName.empty() || key.empty()) return defaultValue;
+    if (scope == Scope::PerSave) {
+        const std::string safeMod = SafeName(modName);
+        const std::string raw = save_storage::GetValueForOwner(
+            safeMod, safeMod, key, defaultValue ? "true" : "false");
+        return ParseBool(raw, defaultValue);
+    }
+
     const auto path = ConfigPath(scope, modName);
     if (path.empty()) return defaultValue;
     auto values = LoadFile(path);
@@ -130,6 +137,11 @@ bool GetBool(Scope scope, const std::string& modName, const std::string& key, bo
 
 bool SetBool(Scope scope, const std::string& modName, const std::string& key, bool value) {
     if (modName.empty() || key.empty()) return false;
+    if (scope == Scope::PerSave) {
+        return save_storage::SetValueForOwner(
+            SafeName(modName), SafeName(modName), key, value ? "true" : "false");
+    }
+
     const auto path = ConfigPath(scope, modName);
     if (path.empty()) return false;
     auto values = LoadFile(path);
@@ -144,6 +156,13 @@ bool SetBool(Scope scope, const std::string& modName, const std::string& key, bo
 
 std::int64_t GetInt(Scope scope, const std::string& modName, const std::string& key, std::int64_t defaultValue) {
     if (modName.empty() || key.empty()) return defaultValue;
+    if (scope == Scope::PerSave) {
+        const std::string safeMod = SafeName(modName);
+        const std::string raw = save_storage::GetValueForOwner(
+            safeMod, safeMod, key, std::to_string(defaultValue));
+        return ParseInt(raw, defaultValue);
+    }
+
     const auto path = ConfigPath(scope, modName);
     if (path.empty()) return defaultValue;
     auto values = LoadFile(path);
@@ -163,6 +182,11 @@ std::int64_t GetInt(Scope scope, const std::string& modName, const std::string& 
 
 bool SetInt(Scope scope, const std::string& modName, const std::string& key, std::int64_t value) {
     if (modName.empty() || key.empty()) return false;
+    if (scope == Scope::PerSave) {
+        return save_storage::SetValueForOwner(
+            SafeName(modName), SafeName(modName), key, std::to_string(value));
+    }
+
     const auto path = ConfigPath(scope, modName);
     if (path.empty()) return false;
     auto values = LoadFile(path);
@@ -177,6 +201,12 @@ bool SetInt(Scope scope, const std::string& modName, const std::string& key, std
 
 bool GetBoolForModule(HMODULE module, Scope scope, const std::string& configName, const std::string& key, bool defaultValue) {
     if (!module || configName.empty() || key.empty()) return defaultValue;
+    if (scope == Scope::PerSave) {
+        const std::string raw = save_storage::GetValueForModule(
+            module, configName.c_str(), key.c_str(), defaultValue ? "true" : "false");
+        return ParseBool(raw, defaultValue);
+    }
+
     const auto path = ConfigPathFromRoot(ModuleRootFromHandle(module), scope, configName);
     if (path.empty()) return defaultValue;
     auto values = LoadFile(path);
@@ -196,6 +226,11 @@ bool GetBoolForModule(HMODULE module, Scope scope, const std::string& configName
 
 bool SetBoolForModule(HMODULE module, Scope scope, const std::string& configName, const std::string& key, bool value) {
     if (!module || configName.empty() || key.empty()) return false;
+    if (scope == Scope::PerSave) {
+        return save_storage::SetValueForModule(
+            module, configName.c_str(), key.c_str(), value ? "true" : "false");
+    }
+
     const auto path = ConfigPathFromRoot(ModuleRootFromHandle(module), scope, configName);
     if (path.empty()) return false;
     auto values = LoadFile(path);
@@ -210,6 +245,13 @@ bool SetBoolForModule(HMODULE module, Scope scope, const std::string& configName
 
 std::int64_t GetIntForModule(HMODULE module, Scope scope, const std::string& configName, const std::string& key, std::int64_t defaultValue) {
     if (!module || configName.empty() || key.empty()) return defaultValue;
+    if (scope == Scope::PerSave) {
+        const std::string fallback = std::to_string(defaultValue);
+        const std::string raw = save_storage::GetValueForModule(
+            module, configName.c_str(), key.c_str(), fallback.c_str());
+        return ParseInt(raw, defaultValue);
+    }
+
     const auto path = ConfigPathFromRoot(ModuleRootFromHandle(module), scope, configName);
     if (path.empty()) return defaultValue;
     auto values = LoadFile(path);
@@ -229,6 +271,11 @@ std::int64_t GetIntForModule(HMODULE module, Scope scope, const std::string& con
 
 bool SetIntForModule(HMODULE module, Scope scope, const std::string& configName, const std::string& key, std::int64_t value) {
     if (!module || configName.empty() || key.empty()) return false;
+    if (scope == Scope::PerSave) {
+        const std::string raw = std::to_string(value);
+        return save_storage::SetValueForModule(module, configName.c_str(), key.c_str(), raw.c_str());
+    }
+
     const auto path = ConfigPathFromRoot(ModuleRootFromHandle(module), scope, configName);
     if (path.empty()) return false;
     auto values = LoadFile(path);

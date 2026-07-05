@@ -85,7 +85,8 @@ void ModManager::LoadAll() {
         auto nameFn = reinterpret_cast<SkyrimMod_Name_t>(::GetProcAddress(mod, "SkyrimMod_Name"));
         auto scopeFn = reinterpret_cast<SkyrimMod_Scope_t>(::GetProcAddress(mod, "SkyrimMod_Scope"));
         auto onDataLoaded = reinterpret_cast<SkyrimMod_OnDataLoaded_t>(::GetProcAddress(mod, "SkyrimMod_OnDataLoaded"));
-        if (!init && !nameFn && !scopeFn && !onDataLoaded) {
+        auto onSaveLoaded = reinterpret_cast<SkyrimMod_OnSaveLoaded_t>(::GetProcAddress(mod, "SkyrimMod_OnSaveLoaded"));
+        if (!init && !nameFn && !scopeFn && !onDataLoaded && !onSaveLoaded) {
             ::FreeLibrary(mod);
             continue;
         }
@@ -116,7 +117,7 @@ void ModManager::LoadAll() {
         if (init) {
             init(reinterpret_cast<void*>(&page));
         }
-        mods_.push_back(LoadedMod{ mod, onDataLoaded });
+        mods_.push_back(LoadedMod{ mod, onDataLoaded, onSaveLoaded });
     }
 
     if (idx == 0) {
@@ -128,6 +129,14 @@ void ModManager::OnDataLoaded() {
     for (const LoadedMod& mod : mods_) {
         if (mod.onDataLoaded) {
             mod.onDataLoaded();
+        }
+    }
+}
+
+void ModManager::OnSaveLoaded() {
+    for (const LoadedMod& mod : mods_) {
+        if (mod.onSaveLoaded) {
+            mod.onSaveLoaded();
         }
     }
 }

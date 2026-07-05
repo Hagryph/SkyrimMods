@@ -100,6 +100,43 @@ void LoadConfig() {
              g_corpseFeedingEnabled.load(), g_nativeFeedDebug.load(), g_animationMode.load());
 }
 
+void PushConfigToUI() {
+    if (!g_uiApi || !g_page) return;
+    if (g_uiApi->SetToggleState) {
+        g_uiApi->SetToggleState(g_page,
+                                "enable_corpse_feeding",
+                                g_corpseFeedingEnabled.load(),
+                                true,
+                                "");
+        g_uiApi->SetToggleState(g_page,
+                                "native_feed_debug",
+                                g_nativeFeedDebug.load(),
+                                true,
+                                "");
+        g_uiApi->SetToggleState(g_page,
+                                "debug_feed_crosshair_corpse",
+                                false,
+                                g_nativeFeedDebug.load(),
+                                g_nativeFeedDebug.load() ? "" : "debug disabled");
+    }
+    if (g_uiApi->SetIntState) {
+        g_uiApi->SetIntState(g_page,
+                             "animation_mode",
+                             g_animationMode.load(),
+                             true,
+                             "");
+    }
+    if (g_uiApi->Refresh) {
+        g_uiApi->Refresh();
+    }
+}
+
+void ReloadSaveConfig(const char* reason) {
+    LoadConfig();
+    PushConfigToUI();
+    HAG_INFO("save config refreshed ({})", reason ? reason : "unspecified");
+}
+
 void* GetPlayerActorGuarded() noexcept {
     __try {
         return *reinterpret_cast<void**>(SkyrimBase() + game::actor::PlayerSingletonPtr);
@@ -420,8 +457,8 @@ void Init(HagUI_PageHandle* page) {
         throw std::runtime_error("HagVampire requires HagLoader HagUI API/page");
     }
 
-    if (!g_uiApi->AddDynamicButton) {
-        throw std::runtime_error("HagVampire requires HagUI dynamic button API");
+    if (!g_uiApi->AddDynamicButton || !g_uiApi->SetIntState) {
+        throw std::runtime_error("HagVampire requires HagUI dynamic button/state API");
     }
 
     g_uiApi->AddDynamicButton(page,
@@ -458,9 +495,14 @@ void Init(HagUI_PageHandle* page) {
                            &OnNativeFeedDebugClicked,
                            nullptr);
     }
+    PushConfigToUI();
     g_uiApi->Refresh();
 
     HAG_INFO("HagVampire page registered");
+}
+
+void OnSaveLoaded() {
+    ReloadSaveConfig("SKSE save context ready");
 }
 
 }  // namespace hag
@@ -475,6 +517,10 @@ extern "C" __declspec(dllexport) int SkyrimMod_Scope() {
 
 extern "C" __declspec(dllexport) void SkyrimMod_Init(void* page) {
     hag::Init(reinterpret_cast<HagUI_PageHandle*>(page));
+}
+
+extern "C" __declspec(dllexport) void SkyrimMod_OnSaveLoaded() {
+    hag::OnSaveLoaded();
 }
 
 extern "C" __declspec(dllexport) constinit skse::PluginVersionData SKSEPlugin_Version = {

@@ -13,6 +13,7 @@ public:
 
     void LoadAll();
     void OnDataLoaded();
+    void OnSaveLoaded();
 
     ModManager(const ModManager&) = delete;
     ModManager& operator=(const ModManager&) = delete;
@@ -23,6 +24,7 @@ private:
     struct LoadedMod {
         HMODULE module = nullptr;
         void (*onDataLoaded)() = nullptr;
+        void (*onSaveLoaded)() = nullptr;
     };
 
     bool loaded_ = false;

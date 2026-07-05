@@ -21,5 +21,6 @@ typedef const char* (*SkyrimMod_Name_t)();
 typedef int (*SkyrimMod_Scope_t)();
 typedef void (*SkyrimMod_Init_t)(void* page);
 typedef void (*SkyrimMod_OnDataLoaded_t)();
+typedef void (*SkyrimMod_OnSaveLoaded_t)();
 
 }  // extern "C"

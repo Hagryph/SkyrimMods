@@ -31,7 +31,8 @@ extern "C" {
 // v2: added SetToggleState + Refresh (per-control enabled/greyed state + note text).
 // v3: added AddProgressBar (live, read-only bar) + AddModel3D (Route-A 3D character widget).
 // v4: added AddDynamicButton (label callback sampled whenever HagUI rebuilds the page model).
-#define HAGUI_ABI_VERSION 4u
+// v5: added SetIntState + SetDoubleState for refreshing non-toggle controls after save-load.
+#define HAGUI_ABI_VERSION 5u
 
 // Scope: Global  = shown in the Main Menu AND in-game; persists outside any save.
 //        PerSave = in-game only; belongs to the loaded save.
@@ -119,6 +120,12 @@ typedef struct HagUIAPI {
     // only needs to stay valid for the callback; the host copies it.
     void (*AddDynamicButton)(HagUI_PageHandle* page, const char* id, const char* fallbackLabel,
                              HagUI_LabelCb label, HagUI_ClickCb onClick, void* user);
+
+    // --- v5 ---
+    // Update existing numeric controls without firing their onChange callback. Use after save-load when
+    // a mod reloads per-save values from HagLoader config storage.
+    void (*SetIntState)(HagUI_PageHandle* page, const char* id, int64_t value, bool enabled, const char* note);
+    void (*SetDoubleState)(HagUI_PageHandle* page, const char* id, double value, bool enabled, const char* note);
 } HagUIAPI;
 
 // Signature of the exported resolver, for reinterpret_cast<> on the consumer side.

@@ -31,6 +31,12 @@ void OnSKSEMessage(skse::Message* msg) {
         HAG_INFO("kDataLoaded -> registering HagUIMenu");
         ui::HagMenu::Register();
         ModManager::Get().OnDataLoaded();
+        return;
+    }
+    if (msg->type == skse::kMessage_PostLoadGame || msg->type == skse::kMessage_NewGame) {
+        HAG_INFO("save context ready -> notifying HagLoader mods (message type {})", msg->type);
+        ModManager::Get().OnSaveLoaded();
+        api::HagUI::Get().MarkDirty();
     }
 }
 
@@ -66,8 +72,6 @@ bool Plugin::OnLoad(const skse::Interface* skse) {
         RegisterTestPage();
     }
 
-    ModManager::Get().LoadAll();
-
     if (skse) {
         auto* task = reinterpret_cast<skse::TaskInterface*>(
             skse->QueryInterface(skse::kInterface_Task));
@@ -87,6 +91,8 @@ bool Plugin::OnLoad(const skse::Interface* skse) {
             HAG_ERR("no SKSE messaging interface");
         }
     }
+
+    ModManager::Get().LoadAll();
 
     if (!Hooking::Commit()) {
         return false;
