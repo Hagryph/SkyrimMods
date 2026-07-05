@@ -1,0 +1,80 @@
+
+=== STR @ 141766fd0 : "Vampire Lord"
+   (no refs)
+
+=== STR @ 14178f520 : "Days as a Vampire"
+   <- ref from 140015dc4  in FUN_140015dc0 @ 140015dc0
+
+=== STR @ 14178fbb8 : "NumVampirePerks"
+   <- ref from 140015704  in FUN_140015700 @ 140015700
+
+=== STR @ 1417b5e28 : "Player Is Vampire Variable"
+   (no refs)
+
+=== STR @ 1417b5e98 : "Keyword: Vampire"
+   (no refs)
+
+=== STR @ 1417b69a0 : "Vampire Available Perks"
+   (no refs)
+
+=== STR @ 1417b6bf0 : "Vampire Race"
+   (no refs)
+
+=== STR @ 1417b6c00 : "Vampire Spells"
+   (no refs)
+
+=== STR @ 1417b6cf8 : "Vampire Feed No Crime Faction"
+   (no refs)
+
+=== STR @ 1417be550 : "Player is in Vampire Feed action >> %0.2f"
+   <- ref from 14032a91f  in FUN_14032a8c0 @ 14032a8c0
+
+=== STR @ 1417d4130 : "GetVampireFeed"
+   <- ref from 141fe00b0  (no func)
+
+=== STR @ 1417e2d88 : "VampireMorph"
+   <- ref from 141ff9458  (no func)
+
+=== STR @ 1418495c8 : "VampirePerks"
+   <- ref from 14043ddff  in FUN_14043c1e0 @ 14043c1e0
+
+=== STR @ 14187d098 : "e:\_skyrimhd\code\gamesln\game\magic\vampirelordeffect.cpp"
+   (no refs)
+
+=== STR @ 1418bcdc0 : "VampireFeedEndHandler"
+   <- ref from 1407b4443  in FUN_1407b3ee0 @ 1407b3ee0
+
+=== STR @ 141901698 : "DLC01/Interface/INTVampirePerkSkydome.nif"
+   <- ref from 14095f107  in FUN_14095ed20 @ 14095ed20
+
+=== STR @ 141913230 : "OnVampireFeed"
+   <- ref from 1409c9aaf  in FUN_1409c9930 @ 1409c9930
+
+=== STR @ 141916d58 : "Actor is dead, cannot start Vampire Feed on the actor"
+   <- ref from 1409eb1e4  in FUN_1409eb0f0 @ 1409eb0f0
+
+=== STR @ 141916dc8 : "Cannot start vampire feed with a None actor"
+   <- ref from 1409eb22a  in FUN_1409eb0f0 @ 1409eb0f0
+
+=== STR @ 14191a5b8 : "StartVampireFeed"
+   <- ref from 1409f0957  in FUN_1409eb9d0 @ 1409eb9d0
+
+=== STR @ 141ac9d28 : "data.server.vampire"
+   <- ref from 1401090e0  in FUN_140108450 @ 140108450
+
+=== STR @ 142060550 : ".?AVVampireLordEffect@@"
+   (no refs)
+
+=== STR @ 14206e930 : ".?AVVampireFeedEndHandler@@"
+   (no refs)
+
+=== STR @ 14207adb0 : ".?AU?$AutoRegisterCreator@VVampireFeedEndHandler@@V?$BSTCreateFactoryManager@VBSFixedStringCI@@V?$IHandlerFunctor@VActor@@VBSFixedStringCI@@@@$0BAA@@@@@"
+   (no refs)
+
+=== STR @ 14207ae60 : ".?AV?$AutoRegisterFactory@U?$BSTDerivedCreator@VVampireFeedEndHandler@@V?$IHandlerFunctor@VActor@@VBSFixedStringCI@@@@@@V?$BSTCreateFactoryManager@VBSFixedStringCI@@V?$IHandlerFunctor@VActor@@VBSFixedStringCI@@@@$0BAA@@@@@"
+   (no refs)
+
+=== STR @ 14207af50 : ".?AU?$BSTDerivedCreator@VVampireFeedEndHandler@@V?$IHandlerFunctor@VActor@@VBSFixedStringCI@@@@@@"
+   (no refs)
+
+// total string hits: 26

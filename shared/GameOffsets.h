@@ -222,22 +222,36 @@ inline constexpr std::size_t    ActorValueOwnerOffset = 0xB8;       // Actor -> 
 inline constexpr int AVOwner_GetActorValue          = 1;  // +0x08 current value (base+permanent+temporary+damage)
 inline constexpr int AVOwner_GetPermanentActorValue = 2;  // +0x10 max (base+permanent modifiers, excludes damage)
 inline constexpr int AVOwner_GetBaseActorValue      = 3;  // +0x18 base
+inline constexpr int AVOwner_SetActorValue          = 7;  // +0x38
 
 // ActorValue indices
 inline constexpr std::uint32_t AV_Health  = 0x18;
 inline constexpr std::uint32_t AV_Magicka = 0x19;
 inline constexpr std::uint32_t AV_Stamina = 0x1A;
+inline constexpr std::uint32_t AV_Variable08 = 75;
+
+// Actor layout / process helpers.
+inline constexpr std::size_t ActorProcessOffset = 0xF8;          // Actor -> AIProcess*
+inline constexpr std::uintptr_t AIProcess_SetupSpecialIdle = 0x6DDE70;  // Address Library 1.6.1170 id 39256
+inline constexpr std::uint32_t DefaultObject_ActionIdle = 64;    // DEFAULT_OBJECT::kActionIdle
 
 // Actor virtual slots from CommonLibSSE-NG headers, verified against Skyrim SE 1.6.1170 layout.
 inline constexpr int VSlot_IsDead = 0x099;                       // bool Actor::IsDead(bool notEssential)
 inline constexpr int VSlot_SetVampireFeed = 0x0BF;               // void Actor::SetVampireFeed(bool)
-inline constexpr int VSlot_InitiateVampireFeedPackage = 0x0C0;   // void Actor::InitiateVampireFeedPackage(Actor*, TESObjectREFR*)
+inline constexpr int VSlot_InitiateVampireFeedPackage = 0x0C0;   // live-victim package; Papyrus StartVampireFeed rejects dead targets before this
 
 }  // namespace actor
 
 namespace refr {
 
 inline constexpr int VSlot_GetCurrent3D = 0x08D;  // TESObjectREFR::GetCurrent3D()
+inline constexpr std::uintptr_t MoveToImpl = 0xA447F0;  // Address Library 1.6.1170 id 56626
+inline constexpr std::size_t DataAngle = 0x48;          // TESObjectREFR::data.angle
+inline constexpr std::size_t DataLocation = 0x54;       // TESObjectREFR::data.location
+inline constexpr std::size_t ParentCell = 0x60;         // TESObjectREFR::parentCell
+inline constexpr std::size_t CellFlags = 0x40;          // TESObjectCELL::cellFlags
+inline constexpr std::uint16_t CellFlag_IsInterior = 1u << 0;
+inline constexpr std::size_t CellWorldSpace = 0x128;    // TESObjectCELL::GetRuntimeData().worldSpace on 1.6.1170
 
 }  // namespace refr
 

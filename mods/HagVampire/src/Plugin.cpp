@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <stdexcept>
 
 namespace hag {
@@ -33,7 +34,7 @@ std::atomic_int g_animationMode{0};
 std::atomic_int g_feedHotkey{'V'};
 
 constexpr const char* kConfigName = "HagVampire";
-constexpr const char* kFedCorpseSet = "fed_corpses";
+constexpr const char* kFedCorpseSet = "fed_corpses_v2";
 constexpr const char* kFeedHotkeyName = "feed_corpse";
 constexpr std::int32_t kConfigScope = HAGLOADER_CONFIG_PERSAVE;
 constexpr std::uint32_t kMaxFedCorpseEntries = 65536;
@@ -41,6 +42,16 @@ constexpr std::uint32_t kFormFlagDeleted = 1u << 5;
 constexpr std::uint32_t kFormFlagDisabled = 1u << 11;
 constexpr std::uint8_t kFormTypeActorCharacter = 0x3E;
 constexpr std::uint32_t kPlayerRefID = 0x14;
+constexpr std::uint32_t kIdleCannibalFeedCrouching = 0x000FE09F;
+constexpr std::uint32_t kIdleVampireFeedingBedrollLeft = 0x00023622;
+constexpr float kCorpseFeedDistance = 40.0f;
+constexpr float kPi = 3.14159265358979323846f;
+
+struct NiPoint3 {
+    float x = 0.0f;
+    float y = 0.0f;
+    float z = 0.0f;
+};
 
 struct TargetInfo {
     void* actor = nullptr;
@@ -157,6 +168,35 @@ std::uint8_t ReadU8Guarded(void* ptr, std::size_t offset, std::uint8_t fallback 
     }
 }
 
+void* ReadPtrGuarded(void* ptr, std::size_t offset) noexcept {
+    __try {
+        return *reinterpret_cast<void**>(static_cast<std::uint8_t*>(ptr) + offset);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return nullptr;
+    }
+}
+
+bool ReadPoint3Guarded(void* ptr, std::size_t offset, NiPoint3* out) noexcept {
+    if (!ptr || !out) return false;
+    __try {
+        *out = *reinterpret_cast<NiPoint3*>(static_cast<std::uint8_t*>(ptr) + offset);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+void* LookupFormByIDGuarded(std::uint32_t formID) noexcept {
+    if (formID == 0) return nullptr;
+    __try {
+        using LookupByIdFn = void* (*)(std::uint32_t);
+        auto lookup = reinterpret_cast<LookupByIdFn>(SkyrimBase() + game::form::LookupByID);
+        return lookup ? lookup(formID) : nullptr;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return nullptr;
+    }
+}
+
 void* ResolveRefHandleRawGuarded(std::uint32_t handle) noexcept {
     if (handle == 0) return nullptr;
     __try {
@@ -222,24 +262,6 @@ bool IsDeadGuarded(void* actor, bool* dead) noexcept {
     }
 }
 
-bool CallNativeVampireFeedGuarded(void* player, void* target) noexcept {
-    if (!player || !target) return false;
-    __try {
-        auto** vtbl = *reinterpret_cast<void***>(player);
-        using SetVampireFeedFn = void (*)(void*, bool);
-        using InitiateFeedFn = void (*)(void*, void*, void*);
-        auto setVampireFeed = reinterpret_cast<SetVampireFeedFn>(
-            vtbl[game::actor::VSlot_SetVampireFeed]);
-        auto initiateFeed = reinterpret_cast<InitiateFeedFn>(
-            vtbl[game::actor::VSlot_InitiateVampireFeedPackage]);
-        setVampireFeed(player, true);
-        initiateFeed(player, target, nullptr);
-        return true;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;
-    }
-}
-
 const char* ValidateFeedTarget(const TargetInfo& target) {
     if (!target.actor) return "no crosshair actor target";
     if (target.formType != kFormTypeActorCharacter) return "crosshair target is not an actor";
@@ -260,6 +282,133 @@ const char* ValidateFeedTarget(const TargetInfo& target) {
     return nullptr;
 }
 
+bool GetActorValueGuarded(void* actor, std::uint32_t actorValue, float* out) noexcept {
+    if (out) *out = 0.0f;
+    if (!actor || !out) return false;
+    __try {
+        auto* avOwner = static_cast<std::uint8_t*>(actor) + game::actor::ActorValueOwnerOffset;
+        auto** vtbl = *reinterpret_cast<void***>(avOwner);
+        using GetActorValueFn = float (*)(void*, std::uint32_t);
+        auto getActorValue = reinterpret_cast<GetActorValueFn>(
+            vtbl[game::actor::AVOwner_GetActorValue]);
+        *out = getActorValue(avOwner, actorValue);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool SetActorValueGuarded(void* actor, std::uint32_t actorValue, float value) noexcept {
+    if (!actor) return false;
+    __try {
+        auto* avOwner = static_cast<std::uint8_t*>(actor) + game::actor::ActorValueOwnerOffset;
+        auto** vtbl = *reinterpret_cast<void***>(avOwner);
+        using SetActorValueFn = void (*)(void*, std::uint32_t, float);
+        auto setActorValue = reinterpret_cast<SetActorValueFn>(
+            vtbl[game::actor::AVOwner_SetActorValue]);
+        setActorValue(avOwner, actorValue, value);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool MovePlayerNearCorpseGuarded(void* player, void* target, NiPoint3* movedTo) noexcept {
+    if (!player || !target) return false;
+
+    NiPoint3 targetPosition{};
+    NiPoint3 targetAngle{};
+    if (!ReadPoint3Guarded(target, game::refr::DataLocation, &targetPosition)) return false;
+    if (!ReadPoint3Guarded(target, game::refr::DataAngle, &targetAngle)) return false;
+
+    void* targetCell = ReadPtrGuarded(target, game::refr::ParentCell);
+    if (!targetCell) return false;
+
+    const auto cellFlags = ReadU32Guarded(targetCell, game::refr::CellFlags);
+    const bool interior = (cellFlags & game::refr::CellFlag_IsInterior) != 0;
+    void* worldSpace = interior ? nullptr : ReadPtrGuarded(targetCell, game::refr::CellWorldSpace);
+    if (!interior && !worldSpace) return false;
+
+    const float feedAngle = targetAngle.z + kPi;
+    NiPoint3 position{
+        targetPosition.x + (std::sin(feedAngle) * kCorpseFeedDistance),
+        targetPosition.y + (std::cos(feedAngle) * kCorpseFeedDistance),
+        targetPosition.z,
+    };
+    NiPoint3 rotation = targetAngle;
+    rotation.z = feedAngle;
+
+    __try {
+        using MoveToImplFn = void (*)(void*, const std::uint32_t*, void*, void*, const NiPoint3*, const NiPoint3*);
+        auto moveTo = reinterpret_cast<MoveToImplFn>(SkyrimBase() + game::refr::MoveToImpl);
+        std::uint32_t noTargetHandle = 0;
+        moveTo(player, &noTargetHandle, targetCell, worldSpace, &position, &rotation);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+
+    if (movedTo) *movedTo = position;
+    return true;
+}
+
+bool PlayFeedIdleGuarded(void* player, void* target, std::uint32_t idleFormID) noexcept {
+    if (!player || !target) return false;
+
+    void* idle = LookupFormByIDGuarded(idleFormID);
+    if (!idle) return false;
+
+    void* process = ReadPtrGuarded(player, game::actor::ActorProcessOffset);
+    if (!process) return false;
+
+    __try {
+        using SetupSpecialIdleFn = bool (*)(void*, void*, std::uint32_t, void*, bool, bool, void*);
+        auto setupSpecialIdle = reinterpret_cast<SetupSpecialIdleFn>(
+            SkyrimBase() + game::actor::AIProcess_SetupSpecialIdle);
+        return setupSpecialIdle(process,
+                                player,
+                                game::actor::DefaultObject_ActionIdle,
+                                idle,
+                                true,
+                                false,
+                                target);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool RunNativeCorpseFeedGuarded(void* player, void* target, int animationMode, NiPoint3* movedTo) noexcept {
+    if (!player || !target) return false;
+
+    std::uint32_t idleFormID = kIdleCannibalFeedCrouching;
+    const char* idleName = "IdleCannibalFeedCrouching";
+    if (animationMode == 1) {
+        idleFormID = kIdleVampireFeedingBedrollLeft;
+        idleName = "VampireFeedingBedRollLeft_Loose";
+    } else if (animationMode == 2) {
+        HAG_INFO("native corpse-feed aborted: custom animation mode is not implemented yet");
+        return false;
+    }
+
+    if (!MovePlayerNearCorpseGuarded(player, target, movedTo)) {
+        HAG_ERR("native corpse-feed failed: could not move player into feed position");
+        return false;
+    }
+
+    if (!PlayFeedIdleGuarded(player, target, idleFormID)) {
+        HAG_ERR("native corpse-feed failed: PlayIdle {} ({:#x}) returned false/faulted",
+                idleName, idleFormID);
+        return false;
+    }
+
+    if (!SetActorValueGuarded(target, game::actor::AV_Variable08, 9.0f)) {
+        HAG_ERR("native corpse-feed failed: could not mark target Variable08");
+        return false;
+    }
+
+    HAG_INFO("native corpse-feed action started: idle={} ({:#x})", idleName, idleFormID);
+    return true;
+}
+
 void RunNativeFeedTask(void*) {
     HAG_INFO("native corpse-feed task started");
     if (!g_corpseFeedingEnabled.load()) {
@@ -268,9 +417,6 @@ void RunNativeFeedTask(void*) {
     }
 
     const int mode = g_animationMode.load();
-    if (mode != 0) {
-        HAG_INFO("native corpse-feed: animation_mode={} is reserved in v1; using native package", mode);
-    }
 
     void* player = GetPlayerActorGuarded();
     if (!player) {
@@ -302,6 +448,14 @@ void RunNativeFeedTask(void*) {
         return;
     }
 
+    float consumedMarker = 0.0f;
+    if (GetActorValueGuarded(target.actor, game::actor::AV_Variable08, &consumedMarker) &&
+        consumedMarker >= 8.5f) {
+        HAG_INFO("native corpse-feed rejected form={:#x}: actor Variable08 already marks vampire feeding ({})",
+                 target.formID, consumedMarker);
+        return;
+    }
+
     if (g_loaderApi->SaveFormIDSetContainsForModule(g_selfModule, kFedCorpseSet, target.formID)) {
         HAG_INFO("native corpse-feed rejected form={:#x}: corpse already fed in this save",
                  target.formID);
@@ -316,18 +470,20 @@ void RunNativeFeedTask(void*) {
         return;
     }
 
-    HAG_INFO("native corpse-feed invoking feed: target handle={:#x} form={:#x}",
-             target.handle, target.formID);
-    if (!CallNativeVampireFeedGuarded(player, target.actor)) {
-        HAG_ERR("native corpse-feed failed: native feed call faulted");
+    HAG_INFO("native corpse-feed invoking corpse action: target handle={:#x} form={:#x} mode={}",
+             target.handle, target.formID, mode);
+    NiPoint3 movedTo{};
+    if (!RunNativeCorpseFeedGuarded(player, target.actor, mode, &movedTo)) {
+        HAG_ERR("native corpse-feed failed: native corpse action did not start");
         return;
     }
     if (!g_loaderApi->SaveFormIDSetAddForModule(g_selfModule, kFedCorpseSet, target.formID, kMaxFedCorpseEntries)) {
-        HAG_ERR("native corpse-feed completed native call but failed to record fed corpse form={:#x}; refusing future unsafe repeats depends on save storage",
+        HAG_ERR("native corpse-feed action started but failed to record fed corpse form={:#x}; refusing future unsafe repeats depends on save storage",
                 target.formID);
         return;
     }
-    HAG_INFO("native corpse-feed native feed call completed");
+    HAG_INFO("native corpse-feed completed: form={:#x} playerMovedTo=({}, {}, {})",
+             target.formID, movedTo.x, movedTo.y, movedTo.z);
 }
 
 const char* VampireActionLabel(void*) {
@@ -502,7 +658,7 @@ void Init(HagUI_PageHandle* page) {
                        nullptr);
     g_uiApi->AddStepper(page,
                         "animation_mode",
-                        "Animation mode (0 Native / 1 Idle / 2 Custom)",
+                        "Animation mode (0 Crouch / 1 Bedroll / 2 Custom)",
                         0.0,
                         2.0,
                         1.0,
