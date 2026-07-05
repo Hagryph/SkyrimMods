@@ -73,7 +73,7 @@ void Init(HagUI_PageHandle* page) {
         throw std::runtime_error("HagVampire requires HagLoader HagUI API/page");
     }
 
-    api->AddButton(page, "transform_vampire", "Become Vampire", &OnTransformClicked, nullptr);
+    api->AddButton(page, "transform_vampire", "Transform into a Vampire", &OnTransformClicked, nullptr);
     api->Refresh();
 
     HAG_INFO("HagVampire page registered");

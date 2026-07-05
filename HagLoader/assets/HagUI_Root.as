@@ -257,6 +257,57 @@ function makeCheckbox(parent, name, depth, x, y, w, op)
    // disabled rows get NO handlers -> not clickable (greyed out)
    return row;
 }
+// ---- Action button widget (type 4): explicit command button for one-shot mod actions. ----
+function paintActionButton(b, hover, enabled)
+{
+   b.clear();
+   var a1 = 20;
+   var a2 = 7;
+   var ba = 44;
+   var tc = 0xE0B34A;
+   if (!enabled) { a1 = 6; a2 = 3; ba = 18; tc = 0x6B6456; }
+   else if (hover) { a1 = 38; a2 = 16; ba = 82; }
+   b.lineStyle(1, tc, ba, true, "none", "round", "round");
+   b.beginGradientFill("linear", [0xE0B34A, 0xB8862F], [a1, a2], [0, 255],
+      _root.boxM(0, 0, b._bw, b._bh, Math.PI / 2));
+   _root.rrPath(b, 0, 0, b._bw, b._bh, 7);
+   b.endFill();
+}
+function makeActionButton(parent, name, depth, x, y, w, op)
+{
+   var en = (op.enabled != 0);
+   var row = parent.createEmptyMovieClip(name, depth);
+   row._x = x; row._y = y;
+   row._op = op;
+
+   var bw = 260;
+   if (bw > w) { bw = w; }
+   var bh = 34;
+   var b = row.createEmptyMovieClip("btn", 2);
+   b._x = 0; b._y = 0; b._bw = bw; b._bh = bh; b._op = op;
+   _root.paintActionButton(b, false, en);
+   var col = en ? "#E0B34A" : "#6B6456";
+   var t = _root.mkText(b, "text", 1, 0, 0, bw, 24,
+      "<p align='center'><font face='$EverywhereBoldFont' size='15' color='" + col + "'>" + op.label + "</font></p>");
+   t._y = Math.round((bh - t.textHeight) / 2) - 2;
+
+   if (op.note != undefined && op.note != "" && op.note != "undefined")
+   {
+      _root.mkText(row, "note", 3, bw + 16, 7, w - bw - 16, 20,
+         "<font face='$EverywhereFont' size='12' color='#B8862F'><i>" + op.note + "</i></font>");
+   }
+   if (en)
+   {
+      b.onRollOver = function() { _root.paintActionButton(this, true, true); };
+      b.onRollOut = function() { _root.paintActionButton(this, false, true); };
+      b.onReleaseOutside = function() { _root.paintActionButton(this, false, true); };
+      b.onRelease = function()
+      {
+         if (_root.hagSetOption) { _root.hagSetOption(this._op.pageIdx, this._op.optIdx, 1); }
+      };
+   }
+   return row;
+}
 // ---- ProgressBar widget (type 5): read-only, live. C++ pushes _fill (0..1) + _bartext each tick and
 // calls HagUpdateBars(); we resize the fill pill in place (registered in _root.HAG_BARS). ----
 function paintBar(bar, frac, w, h, color)
@@ -406,6 +457,11 @@ function buildOptionPage(c, x, y, w, pageIdx)
       {
          _root.buildProgressBar(c, "bar" + i, depth, colX, rowY, colW, op);
          rowY = rowY + 52;
+      }
+      else if (op.type == 4)     // Button -> action button row
+      {
+         _root.makeActionButton(c, "btn" + i, depth, colX, rowY, colW, op);
+         rowY = rowY + 46;
       }
       // type 6 (Model3D) is already placed in the left column above
       depth = depth + 2;
