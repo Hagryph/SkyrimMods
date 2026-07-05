@@ -55,6 +55,12 @@ Page& Page::DynamicButton(std::string id, std::string fallbackLabel, LabelFn lab
     return *this;
 }
 
+Page& Page::Hotkey(std::string id, std::string label, std::int64_t initial, ChangeFn cb) {
+    m_options.push_back({std::move(id), std::move(label), Control::Hotkey, initial,
+                         0, 255, 1, std::move(cb), {}, 0});
+    return *this;
+}
+
 Page& Page::ProgressBar(std::string id, std::string label, std::uint32_t color, SampleFn sample) {
     Option o;
     o.id = std::move(id); o.label = std::move(label); o.control = Control::ProgressBar;

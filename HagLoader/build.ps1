@@ -24,6 +24,13 @@ if (-not $NoBuild) {
 $dll = Get-ChildItem "$root\build" -Recurse -Filter HagLoader.dll -ErrorAction SilentlyContinue | Select-Object -First 1
 if (-not $dll) { throw 'HagLoader.dll not found - build first (omit -NoBuild).' }
 
+$makeSwf = Join-Path $root 'tools\make_hagui_swf.ps1'
+if (Test-Path $makeSwf) {
+    Write-Host '== HagUI.swf =='
+    & $makeSwf | Select-Object -Last 2
+    if ($LASTEXITCODE -ne 0) { throw "HagUI.swf build failed (exit $LASTEXITCODE)" }
+}
+
 # --- create the MO2 mod folder architecture ---
 $mod     = Join-Path $Mo2Mods 'HagLoader'
 $plugins = Join-Path $mod 'SKSE\Plugins'

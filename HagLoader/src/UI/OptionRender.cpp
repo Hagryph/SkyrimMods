@@ -55,6 +55,7 @@ void DispatchSetOption(FnParams* params) {
     switch (opt.control) {
         case Control::Slider:
         case Control::Stepper: v = raw; break;
+        case Control::Hotkey:  v = static_cast<std::int64_t>(raw); break;
         case Control::Text:    return;                      // not driven by this path
         default:               v = (raw != 0.0); break;     // Toggle / Button
     }

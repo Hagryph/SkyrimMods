@@ -2,6 +2,7 @@
 #include "ConfigStore.h"
 #include "ConsoleQueue.h"
 #include "HagLoaderAPI.h"
+#include "HotkeyManager.h"
 #include "Log.h"
 #include "NativeTaskQueue.h"
 #include "PapyrusCall.h"
@@ -109,6 +110,20 @@ std::uint32_t C_SaveFormIDSetCountForModule(void* moduleHandle, const char* setN
         static_cast<HMODULE>(moduleHandle), setName ? setName : "");
 }
 
+bool C_RegisterHotkeyForModule(void* moduleHandle,
+                               const char* name,
+                               std::int32_t vkCode,
+                               HagLoader_HotkeyCb callback,
+                               void* user) {
+    return hag::hotkeys::RegisterForModule(
+        static_cast<HMODULE>(moduleHandle), name ? name : "", vkCode, callback, user);
+}
+
+bool C_SetHotkeyForModule(void* moduleHandle, const char* name, std::int32_t vkCode) {
+    return hag::hotkeys::SetForModule(
+        static_cast<HMODULE>(moduleHandle), name ? name : "", vkCode);
+}
+
 const HagLoaderAPI g_loaderApi = {
     HAGLOADER_ABI_VERSION,
     &C_QueueConsoleCommand,
@@ -128,6 +143,8 @@ const HagLoaderAPI g_loaderApi = {
     &C_SaveFormIDSetContainsForModule,
     &C_SaveFormIDSetAddForModule,
     &C_SaveFormIDSetCountForModule,
+    &C_RegisterHotkeyForModule,
+    &C_SetHotkeyForModule,
 };
 
 }  // namespace

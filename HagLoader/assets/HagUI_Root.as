@@ -313,6 +313,132 @@ function makeActionButton(parent, name, depth, x, y, w, op)
    }
    return row;
 }
+// ---- Hotkey widget (type 7): captures Win32 virtual-key codes for runtime keybinds. ----
+function keyName(code)
+{
+   var c = Number(code);
+   if (c >= 65 && c <= 90) { return String.fromCharCode(c); }
+   if (c >= 48 && c <= 57) { return String.fromCharCode(c); }
+   if (c >= 112 && c <= 123) { return "F" + (c - 111); }
+   if (c == 8) { return "BACKSPACE"; }
+   if (c == 9) { return "TAB"; }
+   if (c == 13) { return "ENTER"; }
+   if (c == 16) { return "SHIFT"; }
+   if (c == 17) { return "CTRL"; }
+   if (c == 18) { return "ALT"; }
+   if (c == 20) { return "CAPS"; }
+   if (c == 27) { return "ESC"; }
+   if (c == 32) { return "SPACE"; }
+   if (c == 33) { return "PAGE UP"; }
+   if (c == 34) { return "PAGE DOWN"; }
+   if (c == 35) { return "END"; }
+   if (c == 36) { return "HOME"; }
+   if (c == 37) { return "LEFT"; }
+   if (c == 38) { return "UP"; }
+   if (c == 39) { return "RIGHT"; }
+   if (c == 40) { return "DOWN"; }
+   if (c == 45) { return "INSERT"; }
+   if (c == 46) { return "DELETE"; }
+   if (c == 186) { return ";"; }
+   if (c == 187) { return "="; }
+   if (c == 188) { return ","; }
+   if (c == 189) { return "-"; }
+   if (c == 190) { return "."; }
+   if (c == 191) { return "/"; }
+   if (c == 192) { return "`"; }
+   if (c == 219) { return "["; }
+   if (c == 220) { return "\\"; }
+   if (c == 221) { return "]"; }
+   if (c == 222) { return "'"; }
+   if (c > 0) { return "VK " + c; }
+   return "UNBOUND";
+}
+function flashKeyToVk(code)
+{
+   var c = Number(code);
+   if (c >= 1 && c <= 255) { return c; }
+   return -1;
+}
+function hotkeyHtml(label, active, enabled)
+{
+   var col = "#E0B34A";
+   if (!enabled) { col = "#6B6456"; }
+   var text = _root.keyName(label);
+   if (active) { text = "PRESS A KEY"; }
+   return "<p align='center'><font face='$EverywhereBoldFont' size='14' color='" + col + "'>" + text + "</font></p>";
+}
+function finishHotkeyCapture(keyCode)
+{
+   var b = _root.hagHotkeyCapture;
+   if (!b) { return; }
+   _root.hagHotkeyCapture = null;
+   if (keyCode > 0)
+   {
+      b._op.value = keyCode;
+      b.text.htmlText = _root.hotkeyHtml(keyCode, false, true);
+      if (_root.hagSetOption) { _root.hagSetOption(b._op.pageIdx, b._op.optIdx, keyCode); }
+   }
+   else
+   {
+      b.text.htmlText = _root.hotkeyHtml(b._op.value, false, true);
+   }
+}
+function ensureHotkeyListener()
+{
+   if (_root.hagHotkeyListener) { return; }
+   var lis = new Object();
+   lis.onKeyDown = function()
+   {
+      if (!_root.hagHotkeyCapture) { return; }
+      var vk = _root.flashKeyToVk(Key.getCode());
+      if (vk == 27) { _root.finishHotkeyCapture(-1); return; }
+      if (vk > 0) { _root.finishHotkeyCapture(vk); }
+   };
+   Key.addListener(lis);
+   _root.hagHotkeyListener = lis;
+}
+function makeHotkey(parent, name, depth, x, y, w, op)
+{
+   _root.ensureHotkeyListener();
+   var en = (op.enabled != 0);
+   var row = parent.createEmptyMovieClip(name, depth);
+   row._x = x; row._y = y;
+   row._op = op;
+   row.beginFill(0xFFFFFF, 0); _root.rect(row, 0, 0, w, 38); row.endFill();
+
+   var lblCol = en ? "#ECE6DA" : "#6B6456";
+   _root.mkText(row, "lbl", 1, 0, 5, w - 190, 24,
+      "<font face='$EverywhereFont' size='17' color='" + lblCol + "'>" + op.label + "</font>");
+
+   var bw = 168;
+   var bh = 34;
+   var bx = w - bw;
+   var b = row.createEmptyMovieClip("btn", 2);
+   b._x = bx; b._y = 0; b._baseX = bx; b._bw = bw; b._bh = bh; b._op = op;
+   _root.paintActionButton(b, false, en, false);
+   var txt = _root.mkText(b, "text", 1, 0, 0, bw, 24, _root.hotkeyHtml(op.value, false, en));
+   txt._y = Math.round((bh - txt.textHeight) / 2) - 2;
+
+   if (op.note != undefined && op.note != "" && op.note != "undefined")
+   {
+      _root.mkText(row, "note", 3, 0, 27, w - 190, 18,
+         "<font face='$EverywhereFont' size='12' color='#B8862F'><i>" + op.note + "</i></font>");
+   }
+   if (en)
+   {
+      b.onRollOver = function() { _root.paintActionButton(this, true, true, false); };
+      b.onRollOut = function() { this._x = this._baseX; this._y = 0; _root.paintActionButton(this, false, true, false); };
+      b.onPress = function() { this._x = this._baseX + 1; this._y = 1; _root.paintActionButton(this, true, true, true); };
+      b.onReleaseOutside = function() { this._x = this._baseX; this._y = 0; _root.paintActionButton(this, false, true, false); };
+      b.onRelease = function()
+      {
+         this._x = this._baseX; this._y = 0; _root.paintActionButton(this, true, true, false);
+         _root.hagHotkeyCapture = this;
+         this.text.htmlText = _root.hotkeyHtml(this._op.value, true, true);
+      };
+   }
+   return row;
+}
 // ---- ProgressBar widget (type 5): read-only, live. C++ pushes _fill (0..1) + _bartext each tick and
 // calls HagUpdateBars(); we resize the fill pill in place (registered in _root.HAG_BARS). ----
 function paintBar(bar, frac, w, h, color)
@@ -466,6 +592,11 @@ function buildOptionPage(c, x, y, w, pageIdx)
       else if (op.type == 4)     // Button -> action button row
       {
          _root.makeActionButton(c, "btn" + i, depth, colX, rowY, colW, op);
+         rowY = rowY + 46;
+      }
+      else if (op.type == 7)     // Hotkey -> keybind capture row
+      {
+         _root.makeHotkey(c, "hotkey" + i, depth, colX, rowY, colW, op);
          rowY = rowY + 46;
       }
       // type 6 (Model3D) is already placed in the left column above

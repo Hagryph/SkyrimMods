@@ -29,11 +29,12 @@ enum class VampireAction {
 std::atomic_bool g_pageActionConsumed{false};
 VampireAction g_actionAtPageBuild = VampireAction::Transform;
 std::atomic_bool g_corpseFeedingEnabled{true};
-std::atomic_bool g_nativeFeedDebug{true};
 std::atomic_int g_animationMode{0};
+std::atomic_int g_feedHotkey{'V'};
 
 constexpr const char* kConfigName = "HagVampire";
 constexpr const char* kFedCorpseSet = "fed_corpses";
+constexpr const char* kFeedHotkeyName = "feed_corpse";
 constexpr std::int32_t kConfigScope = HAGLOADER_CONFIG_PERSAVE;
 constexpr std::uint32_t kMaxFedCorpseEntries = 65536;
 constexpr std::uint32_t kFormFlagDeleted = 1u << 5;
@@ -79,10 +80,10 @@ void ConfigSetBool(const char* key, bool value) {
     }
 }
 
-int ConfigGetInt(const char* key, int defaultValue) {
+int ConfigGetInt(const char* key, int defaultValue, int minValue, int maxValue) {
     if (!g_loaderApi || !g_loaderApi->GetConfigIntForModule) return defaultValue;
     const auto raw = g_loaderApi->GetConfigIntForModule(g_selfModule, kConfigScope, kConfigName, key, defaultValue);
-    return static_cast<int>(std::clamp<std::int64_t>(raw, 0, 2));
+    return static_cast<int>(std::clamp<std::int64_t>(raw, minValue, maxValue));
 }
 
 void ConfigSetInt(const char* key, int value) {
@@ -94,10 +95,10 @@ void ConfigSetInt(const char* key, int value) {
 
 void LoadConfig() {
     g_corpseFeedingEnabled.store(ConfigGetBool("enable_corpse_feeding", true));
-    g_nativeFeedDebug.store(ConfigGetBool("native_feed_debug", true));
-    g_animationMode.store(ConfigGetInt("animation_mode", 0));
-    HAG_INFO("config loaded: enable_corpse_feeding={} native_feed_debug={} animation_mode={}",
-             g_corpseFeedingEnabled.load(), g_nativeFeedDebug.load(), g_animationMode.load());
+    g_animationMode.store(ConfigGetInt("animation_mode", 0, 0, 2));
+    g_feedHotkey.store(ConfigGetInt("feed_hotkey", 'V', 1, 255));
+    HAG_INFO("config loaded: enable_corpse_feeding={} animation_mode={} feed_hotkey={:#x}",
+             g_corpseFeedingEnabled.load(), g_animationMode.load(), g_feedHotkey.load());
 }
 
 void PushConfigToUI() {
@@ -108,21 +109,16 @@ void PushConfigToUI() {
                                 g_corpseFeedingEnabled.load(),
                                 true,
                                 "");
-        g_uiApi->SetToggleState(g_page,
-                                "native_feed_debug",
-                                g_nativeFeedDebug.load(),
-                                true,
-                                "");
-        g_uiApi->SetToggleState(g_page,
-                                "debug_feed_crosshair_corpse",
-                                false,
-                                g_nativeFeedDebug.load(),
-                                g_nativeFeedDebug.load() ? "" : "debug disabled");
     }
     if (g_uiApi->SetIntState) {
         g_uiApi->SetIntState(g_page,
                              "animation_mode",
                              g_animationMode.load(),
+                             true,
+                             "");
+        g_uiApi->SetIntState(g_page,
+                             "feed_hotkey",
+                             g_feedHotkey.load(),
                              true,
                              "");
     }
@@ -265,53 +261,49 @@ const char* ValidateFeedTarget(const TargetInfo& target) {
 }
 
 void RunNativeFeedTask(void*) {
-    HAG_INFO("native corpse-feed debug task started");
+    HAG_INFO("native corpse-feed task started");
     if (!g_corpseFeedingEnabled.load()) {
-        HAG_INFO("native corpse-feed debug aborted: corpse feeding disabled");
-        return;
-    }
-    if (!g_nativeFeedDebug.load()) {
-        HAG_INFO("native corpse-feed debug aborted: debug disabled");
+        HAG_INFO("native corpse-feed aborted: corpse feeding disabled");
         return;
     }
 
     const int mode = g_animationMode.load();
     if (mode != 0) {
-        HAG_INFO("native corpse-feed debug: animation_mode={} is reserved in v1; using native package", mode);
+        HAG_INFO("native corpse-feed: animation_mode={} is reserved in v1; using native package", mode);
     }
 
     void* player = GetPlayerActorGuarded();
     if (!player) {
-        HAG_ERR("native corpse-feed debug aborted: player actor unavailable");
+        HAG_ERR("native corpse-feed aborted: player actor unavailable");
         return;
     }
 
     TargetInfo target{};
     if (!GetCrosshairTargetActorGuarded(&target)) {
-        HAG_INFO("native corpse-feed debug aborted: no resolvable crosshair target");
+        HAG_INFO("native corpse-feed aborted: no resolvable crosshair target");
         return;
     }
 
     const char* rejection = ValidateFeedTarget(target);
     if (rejection) {
-        HAG_INFO("native corpse-feed debug rejected handle={:#x} form={:#x} type={:#x}: {}",
+        HAG_INFO("native corpse-feed rejected handle={:#x} form={:#x} type={:#x}: {}",
                  target.handle, target.formID, target.formType, rejection);
         return;
     }
 
     if (!g_loaderApi->SaveStorageAvailable || !g_loaderApi->SaveStorageAvailable()) {
-        HAG_ERR("native corpse-feed debug aborted: HagLoader SKSE save storage unavailable");
+        HAG_ERR("native corpse-feed aborted: HagLoader SKSE save storage unavailable");
         return;
     }
 
     if (!g_loaderApi->SaveFormIDSetContainsForModule || !g_loaderApi->SaveFormIDSetAddForModule ||
         !g_loaderApi->SaveFormIDSetCountForModule) {
-        HAG_ERR("native corpse-feed debug aborted: HagLoader save form-ID set API unavailable");
+        HAG_ERR("native corpse-feed aborted: HagLoader save form-ID set API unavailable");
         return;
     }
 
     if (g_loaderApi->SaveFormIDSetContainsForModule(g_selfModule, kFedCorpseSet, target.formID)) {
-        HAG_INFO("native corpse-feed debug rejected form={:#x}: corpse already fed in this save",
+        HAG_INFO("native corpse-feed rejected form={:#x}: corpse already fed in this save",
                  target.formID);
         return;
     }
@@ -319,23 +311,23 @@ void RunNativeFeedTask(void*) {
     const std::uint32_t fedCount =
         g_loaderApi->SaveFormIDSetCountForModule(g_selfModule, kFedCorpseSet);
     if (fedCount >= kMaxFedCorpseEntries) {
-        HAG_ERR("native corpse-feed debug aborted: fed corpse ledger full ({} entries)",
+        HAG_ERR("native corpse-feed aborted: fed corpse ledger full ({} entries)",
                 fedCount);
         return;
     }
 
-    HAG_INFO("native corpse-feed debug invoking feed: target handle={:#x} form={:#x}",
+    HAG_INFO("native corpse-feed invoking feed: target handle={:#x} form={:#x}",
              target.handle, target.formID);
     if (!CallNativeVampireFeedGuarded(player, target.actor)) {
-        HAG_ERR("native corpse-feed debug failed: native feed call faulted");
+        HAG_ERR("native corpse-feed failed: native feed call faulted");
         return;
     }
     if (!g_loaderApi->SaveFormIDSetAddForModule(g_selfModule, kFedCorpseSet, target.formID, kMaxFedCorpseEntries)) {
-        HAG_ERR("native corpse-feed debug completed native call but failed to record fed corpse form={:#x}; refusing future unsafe repeats depends on save storage",
+        HAG_ERR("native corpse-feed completed native call but failed to record fed corpse form={:#x}; refusing future unsafe repeats depends on save storage",
                 target.formID);
         return;
     }
-    HAG_INFO("native corpse-feed debug native feed call completed");
+    HAG_INFO("native corpse-feed native feed call completed");
 }
 
 const char* VampireActionLabel(void*) {
@@ -349,13 +341,6 @@ void OnCorpseFeedingChanged(void*, HagUI_Value value) {
     g_corpseFeedingEnabled.store(value.b);
     ConfigSetBool("enable_corpse_feeding", value.b);
     HAG_INFO("enable_corpse_feeding -> {}", value.b);
-}
-
-void OnNativeFeedDebugChanged(void*, HagUI_Value value) {
-    if (value.type != HAGUI_VT_BOOL) return;
-    g_nativeFeedDebug.store(value.b);
-    ConfigSetBool("native_feed_debug", value.b);
-    HAG_INFO("native_feed_debug -> {} (debug button visibility updates on next load)", value.b);
 }
 
 void OnAnimationModeChanged(void*, HagUI_Value value) {
@@ -374,16 +359,50 @@ void OnAnimationModeChanged(void*, HagUI_Value value) {
     HAG_INFO("animation_mode -> {}", next);
 }
 
-void OnNativeFeedDebugClicked(void*) {
+void QueueNativeFeed(const char* reason) {
     if (!g_loaderApi || !g_loaderApi->QueueMainThreadTask) {
-        HAG_ERR("native corpse-feed debug failed: HagLoader main-thread task API unavailable");
+        HAG_ERR("native corpse-feed failed: HagLoader main-thread task API unavailable");
         return;
     }
     if (!g_loaderApi->QueueMainThreadTask(&RunNativeFeedTask, nullptr)) {
-        HAG_ERR("native corpse-feed debug failed: could not queue main-thread task");
+        HAG_ERR("native corpse-feed failed: could not queue main-thread task");
         return;
     }
-    HAG_INFO("native corpse-feed debug queued");
+    HAG_INFO("native corpse-feed queued ({})", reason ? reason : "unspecified");
+}
+
+void OnFeedHotkey(void*) {
+    QueueNativeFeed("hotkey");
+}
+
+void RegisterFeedHotkey() {
+    if (!g_loaderApi || !g_loaderApi->RegisterHotkeyForModule) {
+        HAG_ERR("feed hotkey registration failed: HagLoader hotkey API unavailable");
+        return;
+    }
+    const int hotkey = g_feedHotkey.load();
+    if (!g_loaderApi->RegisterHotkeyForModule(g_selfModule, kFeedHotkeyName, hotkey, &OnFeedHotkey, nullptr)) {
+        HAG_ERR("feed hotkey registration failed for VK {:#x}", hotkey);
+        return;
+    }
+    HAG_INFO("feed hotkey registered at VK {:#x}", hotkey);
+}
+
+void OnFeedHotkeyChanged(void*, HagUI_Value value) {
+    int next = 0;
+    if (value.type == HAGUI_VT_INT) {
+        next = static_cast<int>(value.i);
+    } else if (value.type == HAGUI_VT_DOUBLE) {
+        next = static_cast<int>(value.d);
+    } else {
+        return;
+    }
+
+    next = std::clamp(next, 1, 255);
+    g_feedHotkey.store(next);
+    ConfigSetInt("feed_hotkey", next);
+    RegisterFeedHotkey();
+    HAG_INFO("feed_hotkey -> {:#x}", next);
 }
 
 void OnActionResult(void*, const HagLoader_PapyrusResult* result) {
@@ -445,10 +464,12 @@ void Init(HagUI_PageHandle* page) {
     g_loaderApi = getLoaderApi ? getLoaderApi(HAGLOADER_ABI_VERSION) : nullptr;
     if (!g_loaderApi || !g_loaderApi->QueuePapyrusStaticCallWithCallback || !g_loaderApi->QueueMainThreadTask ||
         !g_loaderApi->SaveStorageAvailable || !g_loaderApi->SaveFormIDSetContainsForModule ||
-        !g_loaderApi->SaveFormIDSetAddForModule || !g_loaderApi->SaveFormIDSetCountForModule) {
+        !g_loaderApi->SaveFormIDSetAddForModule || !g_loaderApi->SaveFormIDSetCountForModule ||
+        !g_loaderApi->RegisterHotkeyForModule) {
         throw std::runtime_error("HagVampire requires HagLoader Papyrus API");
     }
     LoadConfig();
+    RegisterFeedHotkey();
 
     auto getApi = reinterpret_cast<HagUI_GetAPIFn>(h ? ::GetProcAddress(h, "HagUI_GetAPI") : nullptr);
     g_uiApi = getApi ? getApi(HAGUI_ABI_VERSION) : nullptr;
@@ -457,8 +478,8 @@ void Init(HagUI_PageHandle* page) {
         throw std::runtime_error("HagVampire requires HagLoader HagUI API/page");
     }
 
-    if (!g_uiApi->AddDynamicButton || !g_uiApi->SetIntState) {
-        throw std::runtime_error("HagVampire requires HagUI dynamic button/state API");
+    if (!g_uiApi->AddDynamicButton || !g_uiApi->SetIntState || !g_uiApi->AddHotkey) {
+        throw std::runtime_error("HagVampire requires HagUI dynamic button/state/hotkey API");
     }
 
     g_uiApi->AddDynamicButton(page,
@@ -473,11 +494,11 @@ void Init(HagUI_PageHandle* page) {
                        g_corpseFeedingEnabled.load(),
                        &OnCorpseFeedingChanged,
                        nullptr);
-    g_uiApi->AddToggle(page,
-                       "native_feed_debug",
-                       "Native feed debug",
-                       g_nativeFeedDebug.load(),
-                       &OnNativeFeedDebugChanged,
+    g_uiApi->AddHotkey(page,
+                       "feed_hotkey",
+                       "Feed corpse hotkey",
+                       g_feedHotkey.load(),
+                       &OnFeedHotkeyChanged,
                        nullptr);
     g_uiApi->AddStepper(page,
                         "animation_mode",
@@ -488,13 +509,6 @@ void Init(HagUI_PageHandle* page) {
                         static_cast<double>(g_animationMode.load()),
                         &OnAnimationModeChanged,
                         nullptr);
-    if (g_nativeFeedDebug.load()) {
-        g_uiApi->AddButton(page,
-                           "debug_feed_crosshair_corpse",
-                           "Debug: Feed crosshair corpse",
-                           &OnNativeFeedDebugClicked,
-                           nullptr);
-    }
     PushConfigToUI();
     g_uiApi->Refresh();
 
@@ -503,6 +517,7 @@ void Init(HagUI_PageHandle* page) {
 
 void OnSaveLoaded() {
     ReloadSaveConfig("SKSE save context ready");
+    RegisterFeedHotkey();
 }
 
 }  // namespace hag

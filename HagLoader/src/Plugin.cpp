@@ -4,6 +4,7 @@
 #include "SKSE_Min.h"
 #include "Log.h"
 #include "Hooking.h"
+#include "HotkeyManager.h"
 #include "Offsets.h"
 #include "UI/HagMenu.h"
 #include "api/HagApi.h"
@@ -28,14 +29,21 @@ namespace {
 // the UI registry may not exist yet at plugin-load time.
 void OnSKSEMessage(skse::Message* msg) {
     if (!msg) return;
+    if (msg->type == skse::kMessage_InputLoaded) {
+        HAG_INFO("kInputLoaded -> installing HagLoader hotkey window hook");
+        hotkeys::InstallWindowHook();
+        return;
+    }
     if (msg->type == skse::kMessage_DataLoaded) {
         HAG_INFO("kDataLoaded -> registering HagUIMenu");
+        hotkeys::InstallWindowHook();
         ui::HagMenu::Register();
         ModManager::Get().OnDataLoaded();
         return;
     }
     if (msg->type == skse::kMessage_PostLoadGame || msg->type == skse::kMessage_NewGame) {
         HAG_INFO("save context ready -> notifying HagLoader mods (message type {})", msg->type);
+        game_state::SetGameRunning(true, "SKSE save context ready");
         ModManager::Get().OnSaveLoaded();
         api::HagUI::Get().MarkDirty();
     }
@@ -95,6 +103,7 @@ bool Plugin::OnLoad(const skse::Interface* skse) {
     }
 
     ModManager::Get().LoadAll();
+    hotkeys::InstallWindowHook();
 
     if (!Hooking::Commit()) {
         return false;

@@ -13,6 +13,7 @@ add_library(HagLoader SHARED
     src/Hooking.cpp
     src/GameState.cpp
     src/CellChangeHook.cpp
+    src/HotkeyManager.cpp
     src/ConfigStore.cpp
     src/ConsoleExec.cpp
     src/ConsoleQueue.cpp

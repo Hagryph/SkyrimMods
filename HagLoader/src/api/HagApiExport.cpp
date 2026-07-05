@@ -74,6 +74,12 @@ void C_AddButton(HagUI_PageHandle* page, const char* id, const char* label,
     AsPage(page)->Button(id ? id : "", label ? label : "", std::move(fn));
 }
 
+void C_AddHotkey(HagUI_PageHandle* page, const char* id, const char* label,
+                 std::int64_t initialKey, HagUI_ChangeCb cb, void* user) {
+    if (!page) return;
+    AsPage(page)->Hotkey(id ? id : "", label ? label : "", initialKey, Wrap(cb, user));
+}
+
 void C_SetToggleState(HagUI_PageHandle* page, const char* id, bool value, bool enabled, const char* note) {
     if (!page) return;
     HagUI::Get().SetOptionState(AsPage(page), id ? id : "", Value(value), enabled, note ? note : "");
@@ -144,6 +150,7 @@ const HagUIAPI g_api = {
     &C_AddDynamicButton,  // v4
     &C_SetIntState,       // v5
     &C_SetDoubleState,    // v5
+    &C_AddHotkey,         // v6
 };
 
 }  // namespace

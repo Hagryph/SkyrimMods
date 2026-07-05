@@ -32,7 +32,8 @@ extern "C" {
 // v3: added AddProgressBar (live, read-only bar) + AddModel3D (Route-A 3D character widget).
 // v4: added AddDynamicButton (label callback sampled whenever HagUI rebuilds the page model).
 // v5: added SetIntState + SetDoubleState for refreshing non-toggle controls after save-load.
-#define HAGUI_ABI_VERSION 5u
+// v6: added AddHotkey (VK-code backed keybind widget).
+#define HAGUI_ABI_VERSION 6u
 
 // Scope: Global  = shown in the Main Menu AND in-game; persists outside any save.
 //        PerSave = in-game only; belongs to the loaded save.
@@ -126,6 +127,11 @@ typedef struct HagUIAPI {
     // a mod reloads per-save values from HagLoader config storage.
     void (*SetIntState)(HagUI_PageHandle* page, const char* id, int64_t value, bool enabled, const char* note);
     void (*SetDoubleState)(HagUI_PageHandle* page, const char* id, double value, bool enabled, const char* note);
+
+    // --- v6 ---
+    // Rebindable keyboard shortcut widget. `initialKey` is a Win32 virtual-key code (e.g. 'V' == 0x56).
+    void (*AddHotkey)(HagUI_PageHandle* page, const char* id, const char* label,
+                      int64_t initialKey, HagUI_ChangeCb onChange, void* user);
 } HagUIAPI;
 
 // Signature of the exported resolver, for reinterpret_cast<> on the consumer side.
