@@ -13,6 +13,8 @@
 namespace hag::ui {
 
 namespace {
+    bool g_open = false;
+
     using AllocFn     = void* (*)(void* self, std::size_t size, std::size_t align);
     using FreeFn      = void  (*)(void* self, void* ptr);
     using LoadMovieFn = bool  (*)(void* sfMgr, void* menu, void* viewOut, const char* name, int scaleMode, int unk);
@@ -56,6 +58,7 @@ namespace {
 
     void* HagDtor(void* self, unsigned int flags) {
         HAG_INFO("HagUIMenu::~ flags={:#x}", flags);
+        g_open = false;
         if (flags & 1) {
             void* a = Allocator();
             auto** avt = *reinterpret_cast<void***>(a);
@@ -75,6 +78,7 @@ namespace {
         const unsigned int type = *reinterpret_cast<unsigned int*>(reinterpret_cast<char*>(msg) + 8);
         if (type == offsets::kMsg_Show) {
             HAG_INFO("HagUIMenu::ProcessMessage kShow (SWF renders the Welcome)");
+            g_open = true;
             return 0;
         }
         // Delegate everything else to the base IMenu ProcessMessage. Critically, kUserEvent(6)
@@ -203,6 +207,10 @@ void HagMenu::Close() {
         queue, &name, offsets::kMsg_Hide, nullptr);
     reinterpret_cast<void (*)(void*)>(offsets::FromRVA(offsets::kBSFixedString_dtor))(&name);
     HAG_INFO("HagUIMenu::Close - posted kHide");
+}
+
+bool HagMenu::IsOpen() {
+    return g_open;
 }
 
 void HagMenu::Register() {

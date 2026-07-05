@@ -48,6 +48,7 @@ struct Interface {
 };
 
 // QueryInterface(id) ids
+constexpr std::uint32_t kInterface_Task      = 4;
 constexpr std::uint32_t kInterface_Messaging = 5;
 
 // SKSE -> plugin messages (sender == "SKSE")
@@ -76,6 +77,21 @@ struct MessagingInterface {
     bool  (*RegisterListener)(std::uint32_t listenerHandle, const char* sender, EventCallback handler);
     bool  (*Dispatch)(std::uint32_t senderHandle, std::uint32_t type, void* data, std::uint32_t dataLen, const char* receiver);
     void* (*GetEventDispatcher)(std::uint32_t dispatcherId);
+};
+
+// SKSE main-thread task queue. The ABI has no virtual destructor: slot 0 is Run, slot 1 is Dispose.
+struct TaskDelegate {
+    struct VTbl {
+        void (*Run)(TaskDelegate* self);
+        void (*Dispose)(TaskDelegate* self);
+    };
+    const VTbl* vtbl;
+};
+
+struct TaskInterface {
+    std::uint32_t interfaceVersion;
+    void (*AddTask)(TaskDelegate* task);
+    void (*AddUITask)(void* task);
 };
 
 }  // namespace skse

@@ -13,6 +13,7 @@ public:
     static void* Create();          // engine creator -> returns a new IMenu*
     static void  Open();            // UIMessageQueue::AddMessage("HagUIMenu", kShow)
     static void  Close();           // UIMessageQueue::AddMessage("HagUIMenu", kHide)
+    static bool  IsOpen();
     static void  InstallTrigger();  // trampoline-hook the Main Menu to add the "HagUI" entry
 };
 

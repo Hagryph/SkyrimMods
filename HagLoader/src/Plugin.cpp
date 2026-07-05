@@ -7,6 +7,7 @@
 #include "UI/HagMenu.h"
 #include "api/HagApi.h"
 #include "ModManager.h"
+#include "ConsoleQueue.h"
 
 #include <variant>
 
@@ -62,6 +63,10 @@ bool Plugin::OnLoad(const skse::Interface* skse) {
     ModManager::Get().LoadAll();
 
     if (skse) {
+        auto* task = reinterpret_cast<skse::TaskInterface*>(
+            skse->QueryInterface(skse::kInterface_Task));
+        console_queue::SetTaskInterface(task);
+
         auto* msg = reinterpret_cast<skse::MessagingInterface*>(
             skse->QueryInterface(skse::kInterface_Messaging));
         if (msg) {

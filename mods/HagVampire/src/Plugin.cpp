@@ -33,6 +33,10 @@ void RunVampireChange() {
         return;
     }
     if (!ok || !result.compiled) {
+        if (ok && result.output && std::strstr(result.output, "queued")) {
+            HAG_INFO("vampire change command queued: output='{}'", result.output);
+            return;
+        }
         HAG_ERR("vampire change command did not compile; output='{}'", result.output ? result.output : "");
         return;
     }
