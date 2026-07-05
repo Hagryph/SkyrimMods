@@ -17,19 +17,11 @@ std::queue<std::string> g_commands;
 std::atomic<bool> g_scheduled{false};
 
 struct DrainTask : skse::TaskDelegate {
-    std::uint32_t delayTicks = 0;
 };
 
-void ScheduleDrain(std::uint32_t delayTicks);
+void ScheduleDrain();
 
 void RunDrain(skse::TaskDelegate* self) {
-    const auto delayTicks = static_cast<DrainTask*>(self)->delayTicks;
-
-    if (ui::HagMenu::IsOpen() || delayTicks > 0) {
-        ScheduleDrain(delayTicks > 0 ? delayTicks - 1 : 2);
-        return;
-    }
-
     for (;;) {
         std::string command;
         {
@@ -43,9 +35,10 @@ void RunDrain(skse::TaskDelegate* self) {
             g_commands.pop();
         }
 
-        HAG_INFO("deferred console command running after HagUI close: '{}'", command);
+        HAG_INFO("queued console command running on SKSE task thread: haguiOpen={} command='{}'",
+                 ui::HagMenu::IsOpen(), command);
         console::Result result = console::Run(command);
-        HAG_INFO("deferred console command result: compiled={} faulted={} noCompiler={} bytes={} output='{}'",
+        HAG_INFO("queued console command result: compiled={} faulted={} noCompiler={} bytes={} output='{}'",
                  result.compiled, result.faulted, result.noCompiler, result.compiledSize, result.output);
     }
 }
@@ -56,16 +49,15 @@ void DisposeDrain(skse::TaskDelegate* self) {
 
 const skse::TaskDelegate::VTbl kDrainVtbl = { &RunDrain, &DisposeDrain };
 
-void ScheduleDrain(std::uint32_t delayTicks) {
+void ScheduleDrain() {
     if (!g_task) {
         g_scheduled.store(false);
-        HAG_WARN("cannot schedule deferred console command: SKSE task interface is unavailable");
+        HAG_WARN("cannot schedule queued console command: SKSE task interface is unavailable");
         return;
     }
 
     auto* task = new DrainTask();
     task->vtbl = &kDrainVtbl;
-    task->delayTicks = delayTicks;
     g_task->AddTask(task);
 }
 
@@ -80,10 +72,6 @@ bool Available() {
     return g_task != nullptr;
 }
 
-bool ShouldDeferConsoleCommands() {
-    return ui::HagMenu::IsOpen();
-}
-
 bool Queue(std::string command) {
     if (command.empty() || !g_task) return false;
     {
@@ -91,11 +79,10 @@ bool Queue(std::string command) {
         g_commands.push(std::move(command));
     }
 
-    HAG_INFO("queued console command until HagUI closes and gameplay resumes");
-    ui::HagMenu::Close();
+    HAG_INFO("queued console command onto SKSE task queue; haguiOpen={}", ui::HagMenu::IsOpen());
 
     if (!g_scheduled.exchange(true)) {
-        ScheduleDrain(2);
+        ScheduleDrain();
     }
     return true;
 }

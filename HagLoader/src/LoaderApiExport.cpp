@@ -11,9 +11,9 @@ thread_local std::string g_consoleOutput;
 bool C_RunConsoleCommand(const char* command, HagLoader_ConsoleResult* out) {
     if (!command || !*command) return false;
 
-    if (hag::console_queue::ShouldDeferConsoleCommands()) {
+    if (hag::console_queue::Available()) {
         const bool queued = hag::console_queue::Queue(command);
-        g_consoleOutput = queued ? "queued until HagUI closes and gameplay resumes" :
+        g_consoleOutput = queued ? "queued on SKSE main-thread task queue" :
                                    "failed to queue command";
         if (out) {
             out->faulted = false;
