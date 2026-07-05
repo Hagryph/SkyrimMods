@@ -18,7 +18,7 @@ add_library(HagIPC SHARED
     src/ipc/SaveLoad.cpp
 )
 
-target_include_directories(HagIPC PRIVATE src "${CMAKE_CURRENT_SOURCE_DIR}/../shared")
+target_include_directories(HagIPC PRIVATE src "${CMAKE_CURRENT_SOURCE_DIR}/../../shared")
 target_precompile_headers(HagIPC PRIVATE src/PCH.h)
 target_compile_definitions(HagIPC PRIVATE UNICODE _UNICODE)
 target_link_libraries(HagIPC PRIVATE spdlog::spdlog Ws2_32 Shell32 Ole32)

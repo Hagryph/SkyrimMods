@@ -45,7 +45,7 @@ if (-not (Test-Path $meta)) {
 Write-Host "`nMO2 mod ready: $mod"
 Get-ChildItem $mod -Recurse -File | ForEach-Object { '  ' + $_.FullName.Substring($mod.Length + 1) }
 
-$commit = Join-Path (Split-Path $root -Parent) 'scripts\auto-git-commit.cjs'
+$commit = Join-Path (Split-Path (Split-Path $root -Parent) -Parent) 'scripts\auto-git-commit.cjs'
 if (Test-Path $commit) {
     & node $commit
     if ($LASTEXITCODE -ne 0) { throw "auto commit/push failed (exit $LASTEXITCODE)" }

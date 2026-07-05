@@ -74,4 +74,4 @@ crashing the game.
 ## Build
 
 `./build.ps1` (CMake + vcpkg, MSVC x64) → `HagIPC.dll`, deployed into the MO2 mod
-`HagIPC/SKSE/Plugins/HagIPC.dll`.
+`mods/HagIPC/SKSE/Plugins/HagIPC.dll`.

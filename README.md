@@ -13,7 +13,7 @@ This follows the `SoWMods` layout, adapted for Skyrim and Mod Organizer 2:
 | `mods/HagGeneral/` | Ported General settings mod. HagUI creates its page and calls `SkyrimMod_Init`. |
 | `mods/HagVampire/` | Vampire page. Adds a button that calls vanilla `PlayerVampireQuest.VampireChange`. |
 | `shared/` | Cross-mod headers: offsets, HagUI ABI, Skyrim mod-loader ABI. |
-| `HagIPC/` | Dev/debug SKSE plugin and IPC tooling. |
+| `mods/HagIPC/` | Dev/debug SKSE plugin and IPC tooling. |
 | `tools/` | Reverse-engineering scripts and helpers. |
 | `.claude/` | Single-repo auto-commit hook. |
 
@@ -39,7 +39,7 @@ This follows the `SoWMods` layout, adapted for Skyrim and Mod Organizer 2:
 
 Build scripts deploy to Mod Organizer 2 by default and automatically commit + push the repo after a
 successful build or deploy. This applies to the loader (`HagLoader\build.ps1`), the dev IPC plugin
-(`HagIPC\build.ps1`), individual external mod scripts, and `mods\build_mods.ps1`.
+(`mods\HagIPC\build.ps1`), individual external mod scripts, and `mods\build_mods.ps1`.
 
 ## Conventions
 
