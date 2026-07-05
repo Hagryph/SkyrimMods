@@ -1,9 +1,37 @@
 Scriptname HagVampireBridge
 
 Function TransformPlayer() Global
-    Quest vampireQuestForm = Game.GetFormFromFile(0x000EAFD5, "Skyrim.esm") as Quest
-    PlayerVampireQuestScript vampireQuest = vampireQuestForm as PlayerVampireQuestScript
+    PlayerVampireQuestScript vampireQuest = ResolvePlayerVampireQuest()
     if vampireQuest
         vampireQuest.VampireChange(Game.GetPlayer())
     endif
+EndFunction
+
+PlayerVampireQuestScript Function ResolvePlayerVampireQuest() Global
+    PlayerVampireQuestScript vampireQuest = Game.GetForm(0x000EAFD5) as PlayerVampireQuestScript
+    if vampireQuest
+        return vampireQuest
+    endif
+
+    vampireQuest = Game.GetFormFromFile(0x000EAFD5, "Skyrim.esm") as PlayerVampireQuestScript
+    if vampireQuest
+        return vampireQuest
+    endif
+
+    vampireQuest = Game.GetFormFromFile(0x000EAFD5, "Update.esm") as PlayerVampireQuestScript
+    if vampireQuest
+        return vampireQuest
+    endif
+
+    vampireQuest = Game.GetFormFromFile(0x000EAFD5, "Dawnguard.esm") as PlayerVampireQuestScript
+    if vampireQuest
+        return vampireQuest
+    endif
+
+    vampireQuest = Game.GetFormFromFile(0x000EAFD5, "HearthFires.esm") as PlayerVampireQuestScript
+    if vampireQuest
+        return vampireQuest
+    endif
+
+    return Game.GetFormFromFile(0x000EAFD5, "Dragonborn.esm") as PlayerVampireQuestScript
 EndFunction
