@@ -8,12 +8,35 @@ $ErrorActionPreference = 'Stop'
 $root  = $PSScriptRoot
 $cmake = 'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe'
 $papyrusCompiler = 'C:\Program Files (x86)\Steam\steamapps\common\Skyrim Special Edition\Papyrus Compiler\PapyrusCompiler.exe'
+$scriptsZip = 'C:\Program Files (x86)\Steam\steamapps\common\Skyrim Special Edition\Data\Scripts.zip'
+$vanillaSource = Join-Path $root 'build\PapyrusSource'
 $papyrusImports  = @(
     (Join-Path $root 'papyrus\Source'),
     (Join-Path $root 'papyrus\Stubs'),
-    'C:\Program Files (x86)\Steam\steamapps\common\Skyrim Special Edition\Data\Scripts\Source'
+    $vanillaSource
 ) -join ';'
 $papyrusOut = Join-Path $root 'assets\Scripts'
+
+function Ensure-VanillaPapyrusSource {
+    if (Test-Path (Join-Path $vanillaSource 'Game.psc')) { return }
+    if (-not (Test-Path $scriptsZip)) { throw "Scripts.zip not found: $scriptsZip" }
+
+    New-Item -ItemType Directory -Force $vanillaSource | Out-Null
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($scriptsZip)
+    try {
+        foreach ($entry in $archive.Entries) {
+            if (-not $entry.FullName.StartsWith('Source/Scripts/')) { continue }
+            if (-not $entry.FullName.EndsWith('.psc')) { continue }
+            $name = [System.IO.Path]::GetFileName($entry.FullName)
+            if (-not $name) { continue }
+            [System.IO.Compression.ZipFileExtensions]::ExtractToFile(
+                $entry, (Join-Path $vanillaSource $name), $true)
+        }
+    } finally {
+        $archive.Dispose()
+    }
+}
 
 if (-not $NoBuild) {
     Set-Location $root
@@ -26,8 +49,9 @@ if (-not $NoBuild) {
 
     if (Test-Path $papyrusCompiler) {
         New-Item -ItemType Directory -Force $papyrusOut | Out-Null
+        Ensure-VanillaPapyrusSource
         Write-Host '== papyrus =='
-        & $papyrusCompiler (Join-Path $root 'papyrus\Source\HagVampireBridge.psc') "-import=$papyrusImports" "-output=$papyrusOut" -quiet
+        & $papyrusCompiler (Join-Path $root 'papyrus\Source\HagVampireBridge.psc') "-import=$papyrusImports" "-flags=$(Join-Path $root 'papyrus\TESV_Papyrus_Flags.flg')" "-output=$papyrusOut" -quiet
         if ($LASTEXITCODE -ne 0) { throw "papyrus compile failed (exit $LASTEXITCODE)" }
     } else {
         throw "Papyrus compiler not found: $papyrusCompiler"

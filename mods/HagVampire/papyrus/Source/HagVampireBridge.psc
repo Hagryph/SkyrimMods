@@ -1,7 +1,8 @@
-Scriptname HagVampireBridge Hidden
+Scriptname HagVampireBridge
 
 Function TransformPlayer() Global
-    PlayerVampireQuestScript vampireQuest = Game.GetFormFromFile(0x000EAFD5, "Dawnguard.esm") as PlayerVampireQuestScript
+    Quest vampireQuestForm = Game.GetFormFromFile(0x000EAFD5, "Dawnguard.esm") as Quest
+    PlayerVampireQuestScript vampireQuest = vampireQuestForm as PlayerVampireQuestScript
     if vampireQuest
         vampireQuest.VampireChange(Game.GetPlayer())
     endif
