@@ -11,6 +11,7 @@ This follows the `SoWMods` layout, adapted for Skyrim and Mod Organizer 2:
 | `HagUI/` | Main SKSE plugin: loader, shared UI host, HagUI panel, external mod discovery. |
 | `mods/` | External feature mods. Each folder is its own CMake project. |
 | `mods/HagGeneral/` | Ported General settings mod. HagUI creates its page and calls `SkyrimMod_Init`. |
+| `mods/HagVampire/` | Vampire page. Adds a button that calls vanilla `PlayerVampireQuest.VampireChange`. |
 | `shared/` | Cross-mod headers: offsets, HagUI ABI, Skyrim mod-loader ABI. |
 | `HagIPC/` | Dev/debug SKSE plugin and IPC tooling. |
 | `tools/` | Reverse-engineering scripts and helpers. |
@@ -44,3 +45,4 @@ successful build unless `-NoCommit` is passed.
 - Manual SKSE/Ghidra approach: no Address Library, no CommonLibSSE-NG.
 - One repo owns loader, shared ABI, tools, and feature mods.
 - `HagCharacter` has been removed; `HagGeneral` is the first external mod under `mods/`.
+- `HagVampire` uses the vanilla quest-script conversion path (`cqf PlayerVampireQuest VampireChange player`), not a raw race swap.
