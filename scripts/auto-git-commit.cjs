@@ -21,6 +21,24 @@ const fail = (result, action) => {
   process.exit(result.status || 1);
 };
 
+const pushCurrentBranch = () => {
+  const branch = run(['rev-parse', '--abbrev-ref', 'HEAD']);
+  fail(branch, 'read current git branch');
+  const name = branch.stdout.trim();
+  if (!name || name === 'HEAD') {
+    console.log('auto-git-commit: detached HEAD; skipping push');
+    return;
+  }
+
+  const upstream = run(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
+  const push = upstream.status === 0
+    ? run(['push'])
+    : run(['push', '-u', 'origin', name]);
+  fail(push, 'push committed changes');
+  const output = outputOf(push);
+  console.log(output || `auto-git-commit: pushed ${name}`);
+};
+
 const status = run(['status', '--short']);
 fail(status, 'read git status');
 
@@ -51,6 +69,7 @@ fail(run(['add', '-A']), 'stage changes');
 const diff = run(['diff', '--cached', '--quiet']);
 if (diff.status === 0) {
   console.log('auto-git-commit: no staged changes to commit');
+  pushCurrentBranch();
   process.exit(0);
 }
 if (diff.status !== 1) fail(diff, 'check staged changes');
@@ -58,12 +77,14 @@ if (diff.status !== 1) fail(diff, 'check staged changes');
 const commit = run(['commit', '-m', message]);
 if (commit.status === 0) {
   process.stdout.write(commit.stdout);
+  pushCurrentBranch();
   process.exit(0);
 }
 
 const output = outputOf(commit);
 if (/nothing to commit|no changes added to commit/i.test(output)) {
   console.log('auto-git-commit: no changes to commit');
+  pushCurrentBranch();
   process.exit(0);
 }
 
