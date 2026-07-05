@@ -9,7 +9,10 @@
 
 extern "C" {
 
-#define HAGLOADER_ABI_VERSION 2u
+#define HAGLOADER_ABI_VERSION 4u
+
+#define HAGLOADER_CONFIG_GLOBAL 0
+#define HAGLOADER_CONFIG_PERSAVE 1
 
 typedef struct HagLoader_ConsoleResult {
     bool faulted;
@@ -25,6 +28,10 @@ typedef struct HagLoaderAPI {
     uint32_t abiVersion;
     bool (*QueueConsoleCommand)(const char* command);
     bool (*QueueConsoleCommandWithCallback)(const char* command, HagLoader_ConsoleResultCb callback, void* user);
+    bool (*GetConfigBool)(int32_t scope, const char* modName, const char* key, bool defaultValue);
+    bool (*SetConfigBool)(int32_t scope, const char* modName, const char* key, bool value);
+    bool (*GetConfigBoolForModule)(void* moduleHandle, int32_t scope, const char* configName, const char* key, bool defaultValue);
+    bool (*SetConfigBoolForModule)(void* moduleHandle, int32_t scope, const char* configName, const char* key, bool value);
 } HagLoaderAPI;
 
 typedef const HagLoaderAPI* (*HagLoader_GetAPIFn)(uint32_t abiVersion);

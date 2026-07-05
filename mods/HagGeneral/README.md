@@ -10,7 +10,7 @@ normal Mod Organizer 2 mod:
 - SKSE accepts the DLL through harmless `SKSEPlugin_*` exports.
 - HagLoader scans `Data\SKSE\Plugins`, finds the `SkyrimMod_*` exports, creates the `General` page, then
   calls `SkyrimMod_Init(page)`.
-- `HagGeneral` fills that supplied page with its controls and applies settings from `HagGeneral.ini`.
+- `HagGeneral` fills that supplied page with its controls and reads/writes `HagGeneral.ini` in its own MO2 mod folder through HagLoader's config API.
 
 ## Settings
 
@@ -39,7 +39,7 @@ Successful builds/deploys always run the post-build auto-commit helper.
 | Path | What |
 |------|------|
 | `src/Plugin.cpp` | `SkyrimMod_*` contract exports and harmless SKSE compatibility exports |
-| `src/Config.*` | Flat INI next to the DLL |
+| `src/Config.*` | Adapter over HagLoader's global config API |
 | `src/Display.*` | D3D/window mode handling |
 | `src/SettingsHook.*` | Game setting flag patching |
 | `src/HagUIBridge.*` | Fills the HagUI page supplied by the loader |

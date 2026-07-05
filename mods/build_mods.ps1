@@ -38,6 +38,14 @@ foreach ($d in $dirs) {
     [System.IO.File]::Copy($dll.FullName, (Join-Path $pluginsOut $dll.Name), $true)
     Write-Host "deployed $($dll.Name) -> $pluginsOut"
 
+    if ($name -eq 'HagGeneral') {
+        $oldIni = Join-Path $pluginsOut 'HagGeneral.ini'
+        if (Test-Path $oldIni) {
+            Remove-Item -LiteralPath $oldIni -Force
+            Write-Host "removed old HagGeneral.ini from $pluginsOut"
+        }
+    }
+
     Get-ChildItem (Join-Path $d.FullName 'assets') -File -ErrorAction SilentlyContinue | ForEach-Object {
         [System.IO.File]::Copy($_.FullName, (Join-Path $pluginsOut $_.Name), $true)
         Write-Host "deployed $($_.Name) -> $pluginsOut"

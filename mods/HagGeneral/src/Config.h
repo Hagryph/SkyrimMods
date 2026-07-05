@@ -1,9 +1,8 @@
 #pragma once
 #include "PCH.h"
 
-// HagGeneral global (auto-global, NOT save-bound) settings: a flat INI next to the
-// DLL (Data\SKSE\Plugins\HagGeneral.ini under the MO2 VFS). Read on load; auto-saved
-// on every change so the checkbox state persists without any manual step.
+// HagGeneral global (not save-bound) settings. HagLoader owns the config framework
+// and stores this mod's values in HagGeneral.ini under the HagGeneral MO2 mod folder.
 namespace hag {
 
 class Config {

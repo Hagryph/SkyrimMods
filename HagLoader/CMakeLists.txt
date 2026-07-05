@@ -12,6 +12,7 @@ add_library(HagLoader SHARED
     src/Log.cpp
     src/Hooking.cpp
     src/GameState.cpp
+    src/ConfigStore.cpp
     src/ConsoleExec.cpp
     src/ConsoleQueue.cpp
     src/LoaderApiExport.cpp

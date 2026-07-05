@@ -1,5 +1,5 @@
 # build.ps1 - build HagGeneral.dll and deploy it as a Mod Organizer 2 mod.
-#   <mods>\HagGeneral\SKSE\Plugins\HagGeneral.dll  (+ HagGeneral.ini next to it)
+#   <mods>\HagGeneral\SKSE\Plugins\HagGeneral.dll
 [CmdletBinding()]
 param(
     [switch]$NoBuild,
@@ -28,12 +28,10 @@ New-Item -ItemType Directory -Force $plugins | Out-Null
 Copy-Item $dll.FullName (Join-Path $plugins 'HagGeneral.dll') -Force
 Write-Host "deployed HagGeneral.dll -> $plugins"
 
-# ship the default config NEXT TO the dll (the plugin reads Data\SKSE\Plugins\HagGeneral.ini)
-$ini = Join-Path $root 'assets\HagGeneral.ini'
-if (Test-Path $ini) {
-    $dst = Join-Path $plugins 'HagGeneral.ini'
-    if (-not (Test-Path $dst)) { Copy-Item $ini $dst -Force; Write-Host "deployed HagGeneral.ini -> $plugins" }
-    else { Write-Host "kept existing HagGeneral.ini (not overwriting user edits)" }
+$oldIni = Join-Path $plugins 'HagGeneral.ini'
+if (Test-Path $oldIni) {
+    Remove-Item -LiteralPath $oldIni -Force
+    Write-Host "removed old plugin-folder HagGeneral.ini from $plugins"
 }
 
 $meta = Join-Path $mod 'meta.ini'
