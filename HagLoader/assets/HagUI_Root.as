@@ -283,11 +283,13 @@ function makeActionButton(parent, name, depth, x, y, w, op)
    row._x = x; row._y = y;
    row._op = op;
 
-   var bw = 260;
+   var bw = op.label.length * 10 + 58;
+   if (bw < 196) { bw = 196; }
+   if (bw > 286) { bw = 286; }
    if (bw > w) { bw = w; }
-   var bh = 34;
+   var bh = 32;
    var b = row.createEmptyMovieClip("btn", 2);
-   b._x = 0; b._y = 0; b._bw = bw; b._bh = bh; b._op = op;
+   b._x = 36; b._y = 0; b._bw = bw; b._bh = bh; b._op = op;
    _root.paintActionButton(b, false, en, false);
    var col = en ? "#E0B34A" : "#6B6456";
    var t = _root.mkText(b, "text", 1, 0, 0, bw, 24,
@@ -296,18 +298,18 @@ function makeActionButton(parent, name, depth, x, y, w, op)
 
    if (op.note != undefined && op.note != "" && op.note != "undefined")
    {
-      _root.mkText(row, "note", 3, bw + 16, 7, w - bw - 16, 20,
+      _root.mkText(row, "note", 3, bw + 52, 7, w - bw - 52, 20,
          "<font face='$EverywhereFont' size='12' color='#B8862F'><i>" + op.note + "</i></font>");
    }
    if (en)
    {
       b.onRollOver = function() { _root.paintActionButton(this, true, true, false); };
-      b.onRollOut = function() { this._x = 0; this._y = 0; _root.paintActionButton(this, false, true, false); };
-      b.onPress = function() { this._x = 1; this._y = 1; _root.paintActionButton(this, true, true, true); };
-      b.onReleaseOutside = function() { this._x = 0; this._y = 0; _root.paintActionButton(this, false, true, false); };
+      b.onRollOut = function() { this._x = 36; this._y = 0; _root.paintActionButton(this, false, true, false); };
+      b.onPress = function() { this._x = 37; this._y = 1; _root.paintActionButton(this, true, true, true); };
+      b.onReleaseOutside = function() { this._x = 36; this._y = 0; _root.paintActionButton(this, false, true, false); };
       b.onRelease = function()
       {
-         this._x = 0; this._y = 0; _root.paintActionButton(this, true, true, false);
+         this._x = 36; this._y = 0; _root.paintActionButton(this, true, true, false);
          if (_root.hagSetOption) { _root.hagSetOption(this._op.pageIdx, this._op.optIdx, 1); }
       };
    }
@@ -407,12 +409,14 @@ function makeHotkey(parent, name, depth, x, y, w, op)
    row.beginFill(0xFFFFFF, 0); _root.rect(row, 0, 0, w, 38); row.endFill();
 
    var lblCol = en ? "#ECE6DA" : "#6B6456";
-   _root.mkText(row, "lbl", 1, 0, 5, w - 190, 24,
+   var lbl = _root.mkText(row, "lbl", 1, 0, 5, w - 154, 24,
       "<font face='$EverywhereFont' size='17' color='" + lblCol + "'>" + op.label + "</font>");
 
-   var bw = 168;
-   var bh = 34;
-   var bx = w - bw;
+   var bw = 116;
+   var bh = 32;
+   var bx = Math.round(lbl.textWidth + 42);
+   if (bx < 250) { bx = 250; }
+   if (bx > w - bw) { bx = w - bw; }
    var b = row.createEmptyMovieClip("btn", 2);
    b._x = bx; b._y = 0; b._baseX = bx; b._bw = bw; b._bh = bh; b._op = op;
    _root.paintActionButton(b, false, en, false);
