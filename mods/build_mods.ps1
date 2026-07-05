@@ -55,5 +55,8 @@ Write-Host "`nAll external mods built + deployed under $Mo2Mods"
 
 if (-not $NoCommit) {
     $commit = Join-Path $repoRoot 'scripts\auto-git-commit.cjs'
-    if (Test-Path $commit) { & node $commit }
+    if (Test-Path $commit) {
+        & node $commit
+        if ($LASTEXITCODE -ne 0) { throw "auto commit/push failed (exit $LASTEXITCODE)" }
+    }
 }

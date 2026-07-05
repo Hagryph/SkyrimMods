@@ -13,11 +13,25 @@ const run = (args) =>
 
 const outputOf = (result) => [result.stdout, result.stderr].filter(Boolean).join('\n').trim();
 
+const requestInput = (title, details, options = []) => {
+  console.error('');
+  console.error(`auto-git-commit: ${title}`);
+  if (details) console.error(details);
+  if (options.length) {
+    console.error('');
+    console.error('Input required. Choose what to do:');
+    for (const option of options) console.error(`- ${option}`);
+  }
+  console.error('');
+};
+
 const fail = (result, action) => {
-  if (result.status === 0) return;
+  if (result.status === 0) return false;
+  const stderr = result.stderr.trim();
+  const stdout = result.stdout.trim();
   console.error(`auto-git-commit: failed to ${action}`);
-  const output = outputOf(result);
-  if (output) console.error(output);
+  if (stderr) console.error(stderr);
+  if (stdout) console.error(stdout);
   process.exit(result.status || 1);
 };
 
@@ -26,17 +40,15 @@ const pushCurrentBranch = () => {
   fail(branch, 'read current git branch');
   const name = branch.stdout.trim();
   if (!name || name === 'HEAD') {
-    console.log('auto-git-commit: detached HEAD; skipping push');
+    console.log('auto-git-commit: detached HEAD; skipped push');
     return;
   }
 
   const upstream = run(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
-  const push = upstream.status === 0
-    ? run(['push'])
-    : run(['push', '-u', 'origin', name]);
-  fail(push, 'push committed changes');
+  const push = upstream.status === 0 ? run(['push']) : run(['push', '-u', 'origin', name]);
+  fail(push, 'push build commit');
   const output = outputOf(push);
-  console.log(output || `auto-git-commit: pushed ${name}`);
+  if (output) process.stdout.write(`${output}\n`);
 };
 
 const status = run(['status', '--short']);
@@ -57,19 +69,22 @@ const conflictedFiles = conflicts.stdout
   .filter(Boolean);
 
 if (conflictedFiles.length) {
-  console.error('');
-  console.error('auto-git-commit: unresolved merge conflicts found; no build commit was made');
-  console.error(`Conflicted files:\n${conflictedFiles.map((file) => `- ${file}`).join('\n')}`);
-  console.error('');
+  requestInput(
+    'unresolved merge conflicts found; no build commit was made',
+    `Conflicted files:\n${conflictedFiles.map((file) => `- ${file}`).join('\n')}\n\nCurrent git status:\n${status.stdout.trim() || '(clean)'}`,
+    [
+      'Resolve the conflicts, then rerun the build script.',
+      'Commit manually if the automatic build commit should be skipped.',
+    ],
+  );
   process.exit(1);
 }
 
-fail(run(['add', '-A']), 'stage changes');
+fail(run(['add', '-A']), 'stage project changes');
 
 const diff = run(['diff', '--cached', '--quiet']);
 if (diff.status === 0) {
   console.log('auto-git-commit: no staged changes to commit');
-  pushCurrentBranch();
   process.exit(0);
 }
 if (diff.status !== 1) fail(diff, 'check staged changes');
@@ -81,17 +96,21 @@ if (commit.status === 0) {
   process.exit(0);
 }
 
-const output = outputOf(commit);
+const output = `${commit.stdout}\n${commit.stderr}`;
 if (/nothing to commit|no changes added to commit/i.test(output)) {
   console.log('auto-git-commit: no changes to commit');
-  pushCurrentBranch();
   process.exit(0);
 }
 
 const refreshedStatus = run(['status', '--short']);
-console.error('');
-console.error('auto-git-commit: git commit failed; no build commit was made');
-console.error(`Git output:\n${output || '(no output)'}`);
-console.error(`\nCurrent git status:\n${outputOf(refreshedStatus) || '(clean)'}`);
-console.error('');
-process.exit(commit.status || 1);
+const statusText = refreshedStatus.status === 0 ? refreshedStatus.stdout.trim() : outputOf(refreshedStatus);
+requestInput(
+  'git commit failed; no build commit was made',
+  `Git output:\n${outputOf(commit) || '(no output)'}\n\nCurrent git status:\n${statusText || '(clean)'}`,
+  [
+    'Fix the Git problem shown above, then rerun the build script.',
+    'Commit manually if the automatic build commit should be skipped.',
+  ],
+);
+
+fail(commit, 'commit changes');

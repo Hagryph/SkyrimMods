@@ -39,5 +39,8 @@ Get-ChildItem $mod -Recurse -File | ForEach-Object { '  ' + $_.FullName.Substrin
 
 if (-not $NoCommit) {
     $commit = Join-Path (Split-Path (Split-Path $root -Parent) -Parent) 'scripts\auto-git-commit.cjs'
-    if (Test-Path $commit) { & node $commit }
+    if (Test-Path $commit) {
+        & node $commit
+        if ($LASTEXITCODE -ne 0) { throw "auto commit/push failed (exit $LASTEXITCODE)" }
+    }
 }
