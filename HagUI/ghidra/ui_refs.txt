@@ -1,0 +1,593 @@
+# Targeted xref trace + RTTI recovery (imageBase 0x140000000)
+
+== RTTI class names (UI-relevant) ==
+0x142038358  BGSEquipType
+0x142038960  BGSMenuDisplayObject
+0x14203b3a8  InterfacedClass
+0x14203bd10  ?$NiTArray@PEAVTESObjectCELL
+0x14203bd70  ?$NiTArray@PEAVBGSAddonNode
+0x14203cad8  IHandleReaderWriter@BSScript
+0x14203dcc0  ?$NiTArray@PEAUBSAnimNoteReceiverType@BSAnimNoteReceiver
+0x14203df48  UnequipArmorFunctor@?A0x02f1c1c1
+0x14203e128  ExternalIOInterface@BSExternalAudioIO
+0x14203e168  LipAudioInterface@LipSynchAnimDB
+0x142041c50  IDecalRefFunctor@TESObjectCELL
+0x142042f30  ?$NiTLargeArray@PEAVTESForm
+0x142042fd0  ?$NiTArray@PEAVBGSCameraPath
+0x1420438f0  ?$ConcreteObjectFormFactory@VBGSMenuIcon
+0x142043940  ?$ConcreteFormFactory@VBGSMenuIcon
+0x142043980  BGSMenuIcon
+0x142044a30  IMiscStatVisitor@MiscStatManager
+0x142045ab0  ?$ConcreteObjectFormFactory@VBGSEquipSlot
+0x142045b00  ?$ConcreteFormFactory@VBGSEquipSlot
+0x142045b48  BGSEquipSlot
+0x142046908  ?$BSTEventSink@VMenuOpenCloseEvent
+0x142047b50  ?$NiTArray@V?$NiPointer@VbhkRigidBody
+0x14204d4c0  ?$AutoRegisterCreator@VBGSProcedureAcquireExecState
+0x14204d530  ?$AutoRegisterFactory@U?$BSTDerivedCreator@VBGSProcedureAcquireExecState
+0x14204d5d0  ?$BSTDerivedCreator@VBGSProcedureAcquireExecState
+0x1420503a0  BGSProcedureAcquire
+0x1420503d0  ?$BGSProcedureTyped@VBGSProcedureBase
+0x142050450  BGSProcedureAcquireExecState
+0x142050490  ?$BGSTypedItem@VBGSProcedureAcquireExecState
+0x1420504f0  ?$AutoRegisterCreator@VBGSProcedureAcquire
+0x142050580  ?$AutoRegisterFactory@U?$BSTDerivedCreator@VBGSProcedureAcquire
+0x142050630  ?$BSTDerivedCreator@VBGSProcedureAcquire
+0x142056240  ?$NiTArray@PEAVNiAVObject
+0x142056658  IVisitor@BSNavmeshInfoMap
+0x142057ce0  INavmeshSearchFilterSet
+0x1420580f0  IPathBuilderFactoryBase
+0x142058350  ?$AutoRegisterPathBuilderFactory@VPathingRequestClosestGoal
+0x1420583b8  PathBuilder@PathingRequestClosestGoal
+0x14205a4c0  ?$AutoRegisterPathBuilderFactory@VPathingRequestClosePoint
+0x14205a540  PathBuilderClosePointPath@?A0x78355a32
+0x14205a580  ?$AutoRegisterPathBuilderFactory@VPathingRequest
+0x14205a5f8  PathBuilderPathingRequest@?A0xe55edacc
+0x14205a640  ?$AutoRegisterPathBuilderFactory@VPathingRequestStopMoving
+0x14205a6c0  PathBuilderStopMovingPath@?A0xe55edacc
+0x14205a700  ?$AutoRegisterPathBuilderFactory@VPathingRequestRotate
+0x14205a778  PathBuilderRotatePath@?A0xe55edacc
+0x14205a7c0  ?$AutoRegisterPathBuilderFactory@VPathingRequestFlee
+0x14205a838  PathBuilderFleePath@PathBuilderFlee
+0x14205a880  ?$AutoRegisterPathBuilderFactory@VPathingRequestFly
+0x14205a8f8  PathBuilderFlyPath@PathBuilderFlight
+0x14205a940  ?$AutoRegisterPathBuilderFactory@VPathingRequestFlyAction
+0x14205a9c0  PathBuilderFlyActionPath@PathBuilderFlight
+0x14205aa10  ?$AutoRegisterPathBuilderFactory@VPathingRequestFlyHover
+0x14205aa90  PathBuilderFlyHoverPath@PathBuilderFlight
+0x14205aad0  ?$AutoRegisterPathBuilderFactory@VPathingRequestFlyOrbit
+0x14205ab50  PathBuilderFlyOrbitPath@PathBuilderFlight
+0x14205ab90  ?$AutoRegisterPathBuilderFactory@VPathingRequestFlyLand
+0x14205ac10  PathBuilderFlyLandPath@PathBuilderFlight
+0x14205ac50  ?$AutoRegisterPathBuilderFactory@VPathingRequestFlyTakeOff
+0x14205ace0  PathBuilderFlyTakeOffPath@PathBuilderFlight
+0x14205ad30  ?$AutoRegisterPathBuilderFactory@VPathingRequestHide
+0x14205ada8  PathBuilderHidePath@PathBuilderHide
+0x14205adf0  ?$AutoRegisterPathBuilderFactory@VPathingRequestLOS
+0x14205ae60  PathBuilderLOSPath@PathBuilderLOS
+0x14205aea0  ?$AutoRegisterPathBuilderFactory@VPathingRequestOptimalLocation
+0x14205af40  PathBuilderOptimalLocationPath@PathBuilderOptimalLocation
+0x14205af90  ?$AutoRegisterPathBuilderFactory@VPathingRequestSafeStraightLine
+0x14205b030  PathBuilderSafeStraightLinePath@PathBuilderSafeStraightLine
+0x14205d338  hkaRaycastInterface
+0x14205d368  BSIFootIkRaycastInterfaceDB
+0x14205d3c8  BGSFootIkRaycastInterfaceDB
+0x14205d400  ?$BSTSingletonSDM@VBGSFootIkRaycastInterfaceDB
+0x14205d470  ?$BSTSingletonSDMBase@U?$BSTSDMTraits@VBGSFootIkRaycastInterfaceDB
+0x14205d510  ?$BSTSDMTraits@VBGSFootIkRaycastInterfaceDB
+0x14205d5a0  ?$BSTSingletonSDMOpStaticBuffer@VBGSFootIkRaycastInterfaceDB
+0x14205e160  ?$CombatBehaviorTreeCreateContextNode1@VCombatBehaviorContextRanged
+0x14205e730  IUIMessageData
+0x14205e790  ?$_Func_base@XPEAX_NPEBDAEAVGFxValue
+0x14205e7d8  ContentMenu
+0x14205e800  errorCallback@ContentMenu
+0x14205e8e0  ?$_Func_impl_no_alloc@P6AXPEAX_NPEBDAEAVGFxValue
+0x14205e9e8  GFxFunctionHandler
+0x14205ea18  ?$GRefCountBase@VGFxFunctionHandler
+0x14205eac0  loginMenu@LoginMenu
+0x14205ed38  errorCallback@LoginMenu
+0x14205eee0  MenuEventHandler
+0x14205ef08  MarketplaceMenu
+0x14205ef30  InputHandler@MarketplaceMenu
+0x14205ef68  errorCallback@MarketplaceMenu
+0x14205efa0  doNothingCallback@?7??Start@MarketplaceMenu
+0x14205f9f8  ModManagerMenu
+0x14205fcb8  KinectMenu
+0x1420601b0  IPostCreationModification@MagicTarget
+0x1420603a0  DisguiseEffect
+0x1420603c8  DetectionChecker@DisguiseEffect
+0x1420605a0  GuideEffect
+0x142061030  ?$NiTArray@V?$NiPointer@VNiNode
+0x142061458  ?$BSTEventSink@VMenuModeChangeEvent
+0x1420614d8  MenuModeChangeListener@?A0x383195b4
+0x142061518  LoadMenuOpenCloseListener@?A0x383195b4
+0x1420618f8  MenuTopicManager
+0x142061920  ?$BSTSingletonSDM@VMenuTopicManager
+0x142061980  ?$BSTSingletonSDMBase@U?$BSTSDMTraits@VMenuTopicManager
+0x142061a10  ?$BSTSDMTraits@VMenuTopicManager
+0x142061a80  ?$BSTSingletonSDMOpStaticBuffer@VMenuTopicManager
+0x142062270  ?$_Ref_count_obj@UIntRequestResponse@BNETRequester
+0x142062380  ?$_Ref_count_obj@UUInt32ListRequestResponse@BNETRequester
+0x142062730  ?$_Ref_count_obj@UImageRequestResponse@BNETRequester
+0x1420633f8  uiCallback@DownloadAll
+0x142064010  ?$BSTEventSink@UNameChangedEvent@RaceSexMenuEvent
+0x142064660  ?$BSTEventSink@UTESDataHandlerPostBuildFileListEvent
+0x1420649b8  BGSMoviePlayer
+0x1420649e0  MoviePlayer
+0x142064f90  IMovementControllerNPCFunctor
+0x142066090  BSUIMessageData
+0x142066310  ?$BSTEventSink@UEvent@ActorItemEquipped
+0x142066c30  ?$BSTEventSink@UItemHarvested@TESHarvestEvent
+0x142066df0  ActorItemEquippedToMiscStatHandler@?A0x0b80edae
+0x142066fe8  InventoryToMiscStatHandler@?A0x0b80edae
+0x1420672c0  ItemsPickpocketedToMiscStatHandler@?A0x0b80edae
+0x142067310  ItemsStolenToMiscStatHandler@?A0x0b80edae
+0x142067350  ItemCraftedToMiscStatHandler@?A0x0b80edae
+0x142067800  IMovementState
+0x142067828  IMovementInterface
+0x1420679b0  IPackageVisitor@PackageList
+0x142068320  IMessageHandlerWrapper@?$ActorMovementMessageMap@$0BA
+0x142068d30  StopStartEquipabilityFunctor@?A0xa8c7308b
+0x142068d70  UnequipAllVisitor@?A0x6369ebef
+0x142069910  IAllowEGMCacheClear
+0x142069940  ?$BSTSingletonExplicit@UIAllowEGMCacheClear
+0x142069a40  ActivateChoiceMenuCallbackFunctor@?A0xfcc54795
+0x142069ce8  ProcessListMovementInterface
+0x14206a7f8  IMovementControllerRegisterInterface
+0x14206a838  IMovementMessageInterface
+0x14206ad78  IPipelineStageInterface
+0x14206ae38  IMovementHandlerAgent
+0x14206b090  IMovementSetPlayerControls
+0x14206c0c8  IMovementPlannerAgent
+0x14206c570  IMovementSetKeepOffsetFromActor
+0x14206c7e8  IMovementSetWarp
+0x14206cad8  IMovementTweenerAgent
+0x14206de30  FlightCruisingHandler
+0x142072c40  ?$AutoRegisterCreator@VFlightCruisingHandler
+0x142072cf0  ?$AutoRegisterFactory@U?$BSTDerivedCreator@VFlightCruisingHandler
+0x142072de0  ?$BSTDerivedCreator@VFlightCruisingHandler
+0x14207c398  BSDirectAtModifierInterface
+0x14207c410  ?$BSTSingletonSDM@VBSDirectAtModifierInterface
+0x14207c480  ?$BSTSingletonSDMBase@U?$BSTSDMTraits@VBSDirectAtModifierInterface
+0x14207c520  ?$BSTSDMTraits@VBSDirectAtModifierInterface
+0x14207c5b0  ?$BSTSingletonSDMOpStaticBuffer@VBSDirectAtModifierInterface
+0x14207c608  BSPassByTargetTriggerModifierInterface
+0x14207c690  ?$BSTSingletonSDM@VBSPassByTargetTriggerModifierInterface
+0x14207c710  ?$BSTSingletonSDMBase@U?$BSTSDMTraits@VBSPassByTargetTriggerModifierInterface
+0x14207c7d0  ?$BSTSDMTraits@VBSPassByTargetTriggerModifierInterface
+0x14207c870  ?$BSTSingletonSDMOpStaticBuffer@VBSPassByTargetTriggerModifierInterface
+0x14207c930  BSRagdollContactListenerModifierInterface
+0x14207c9c0  ?$BSTSingletonSDM@VBSRagdollContactListenerModifierInterface
+0x14207ca40  ?$BSTSingletonSDMBase@U?$BSTSDMTraits@VBSRagdollContactListenerModifierInterface
+0x14207cb00  ?$BSTSDMTraits@VBSRagdollContactListenerModifierInterface
+0x14207cbb0  ?$BSTSingletonSDMOpStaticBuffer@VBSRagdollContactListenerModifierInterface
+0x14207cfe0  ICommandListVisitor@VATS
+0x142090fa0  ?$NiTArray@PEAVCombatGroup
+0x1420913f0  CombatPathBuilderStandard
+0x142091420  CombatPathBuilder
+0x142091450  ?$CombatPathBuilderT@VCombatPathBuilderStandard
+0x1420917d8  IPathBuilder
+0x1420921d0  ?$AutoRegisterPathBuilderFactory@V?$CombatPathingRequestGeneric@VCombatPathingGoalPolicyFindTargetLocation
+0x142092298  CombatPathingRequestBuilder
+0x142092e68  CombatBehaviorTreeAcquireWeapon
+0x142092ef0  ?$CombatBehaviorTreeCreateContextNode@VCombatBehaviorContextAcquireWeapon
+0x142092f60  ?$CombatBehaviorTreeCreateContextNodeBase@VCombatBehaviorContextAcquireWeapon
+0x142093140  ?$CombatBehaviorTreeNodeObject3@VCombatBehaviorAcquireResource
+0x1420931c0  ?$CombatBehaviorTreeNodeObjectBase@VCombatBehaviorAcquireResource
+0x142093300  ?$CombatBehaviorTreeNodeObject1@VCombatBehaviorFollowPath
+0x142093440  ?$CombatBehaviorTreeNodeObject1@VCombatBehaviorAcquireItem
+0x142093520  ?$CombatBehaviorTreeNodeObjectBase@VCombatBehaviorAcquireItem
+0x142093580  ?$CombatBehaviorTreeConditionalNode@V?$CombatBehaviorExpression@V?$CombatBehaviorMemberFunc@VCombatBehaviorContextAcquireWeapon
+0x142093660  CombatBehaviorTreeActionEquipmentSelector
+0x1420936e0  ?$CombatBehaviorTreeNodeObject2@VCombatBehaviorAcquireResource
+0x142093830  ?$CombatBehaviorTreeCreateContextNode1@VCombatBehaviorEquipContext
+0x1420938f0  ?$CombatBehaviorTreeCreateContextNodeBase@VCombatBehaviorEquipContext
+0x142093b00  ?$CombatBehaviorTreeNodeObject@VCombatBehaviorEquipObject
+0x142093b60  ?$CombatBehaviorTreeNodeObjectBase@VCombatBehaviorEquipObject
+0x142093bc0  ?$CombatBehaviorTreeNodeObject@VCombatBehaviorEquipRangedWeapon
+0x142093c20  ?$CombatBehaviorTreeNodeObjectBase@VCombatBehaviorEquipRangedWeapon
+0x142093c80  ?$CombatBehaviorTreeNodeObject@VCombatBehaviorEquipSpell
+0x142093ce0  ?$CombatBehaviorTreeNodeObjectBase@VCombatBehaviorEquipSpell
+0x142093d40  ?$CombatBehaviorTreeNodeEvaluateFunction@V?$CombatBehaviorExpression@V?$CombatBehaviorMemberFunc@VCombatBehaviorEquipContext
+0x142093df0  ?$CombatBehaviorTreeNodeObject@VCombatBehaviorEquipShout
+0x142093e50  ?$CombatBehaviorTreeNodeObjectBase@VCombatBehaviorEquipShout
+0x142093f50  ?$CombatBehaviorTreeValueNodeT@IV?$CombatBehaviorExpression@V?$CombatBehaviorUnaryExpression@V?$CombatBehaviorMemberFunc@VCombatBehaviorEquipContext
+0x142094050  ?$CombatBehaviorTreeConditionalNode@V?$CombatBehaviorExpression@V?$CombatBehaviorMemberFunc@VCombatBehaviorEquipContext
+0x1420940f0  ?$CombatBehaviorTreeValueNodeT@IV?$CombatBehaviorExpression@V?$CombatBehaviorMemberFunc@VCombatBehaviorEquipContext
+0x1420944b0  ?$CombatBehaviorTreeCreateContextNode2@VCombatBehaviorContextBlock
+0x142095260  ?$CombatPathBuilderT@VCombatPathBuilderStandard
+0x142095930  ?$CombatPathBuilderT@VCombatPathBuilderOpen
+0x1420959c0  CombatPathBuilderOpen
+0x142095f00  ?$AutoRegisterPathBuilderFactory@V?$CombatPathingRequestGeneric@VCombatPathingGoalPolicyFindAttackLocation
+0x142096620  ?$CombatPathBuilderT@VCombatPathBuilderOpen
+0x142097200  ?$AutoRegisterPathBuilderFactory@V?$CombatPathingRequestGeneric@VCombatPathingGoalPolicyFlank
+0x142097ca0  ?$AutoRegisterPathBuilderFactory@V?$CombatPathingRequestGeneric@VCombatPathingGoalPolicyFlankDistant
+0x1420983c0  ?$CombatPathBuilderT@VCombatPathBuilderOpen
+0x142098450  ?$CombatPathBuilderT@VCombatPathBuilderStandard
+0x142099020  ?$AutoRegisterPathBuilderFactory@V?$CombatPathingRequestGeneric@VCombatPathingGoalPolicyFindHideCover
+0x142099af0  ?$AutoRegisterPathBuilderFactory@V?$CombatPathingRequestGeneric@VCombatPathingGoalPolicyFlee
+0x14209a1c0  ?$CombatPathBuilderT@VCombatPathBuilderOpen
+0x14209a250  ?$CombatPathBuilderT@VCombatPathBuilderOpen
+0x14209c630  ?$CombatBehaviorTreeCreateContextNode1@VCombatBehaviorContextMagic
+0x14209ccc0  ?$CombatBehaviorTreeCreateContextNode2@VCombatBehaviorContextMelee
+0x14209d470  ?$AutoRegisterPathBuilderFactory@V?$CombatPathingRequestGeneric@VCombatPathingGoalPolicyReturnToCombatArea
+0x14209e000  ?$AutoRegisterPathBuilderFactory@V?$CombatPathingRequestGeneric@VCombatPathingGoalPolicyExitWater
+0x14209e8c0  ?$CombatPathBuilderT@VCombatPathBuilderOpen
+0x14209e950  ?$CombatPathBuilderT@VCombatPathBuilderStandard
+0x14209fc80  ?$AutoRegisterPathBuilderFactory@V?$CombatPathingRequestGeneric@VCombatPathingGoalPolicySearch
+0x1420a0930  ?$AutoRegisterPathBuilderFactory@V?$CombatPathingRequestGeneric@VCombatPathingGoalPolicySearchWander
+0x1420a1010  ?$CombatPathBuilderT@VCombatPathBuilderOpen
+0x1420a10a0  ?$CombatPathBuilderT@VCombatPathBuilderOpen
+0x1420a1a90  ?$CombatBehaviorTreeCreateContextNode1@VCombatBehaviorContextShout
+0x1420a21c0  ?$AutoRegisterPathBuilderFactory@V?$CombatPathingRequestGeneric@VCombatPathingGoalPolicyFindCover
+0x1420a2890  ?$CombatPathBuilderT@VCombatPathBuilderOpen
+0x1420a2e10  ?$CombatBehaviorTreeCreateContextNode1@VCombatBehaviorContextUsePotion
+0x1420a37a0  ?$AutoRegisterPathBuilderFactory@VCombatPathingRequestStandard
+0x1420a3820  ?$AutoRegisterPathBuilderFactory@VCombatPathingRequestMultiGoal
+0x1420a3aa0  ?$CombatPathBuilderT@VCombatPathBuilderOpen
+0x1420a7120  ?$AutoRegisterPathBuilderFactory@V?$CombatPathingRequestGeneric@VCombatPathingGoalPolicyRetreat
+0x1420a7948  TweenMenuCameraState
+0x1420a7a28  BarterMenu
+0x1420a7e10  ConsoleNativeUIMenu
+0x1420a7e40  ContainerMenu
+0x1420a7e68  CraftingSubMenu@CraftingSubMenus
+0x1420a7ea0  CraftingMenu
+0x1420a7ec8  ConstructibleObjectMenu@CraftingSubMenus
+0x1420a7f10  CreationConfirmCallback@ConstructibleObjectMenu@CraftingSubMenus
+0x1420a7f68  SmithingMenu@CraftingSubMenus
+0x1420a7fa0  SmithingConfirmCallback@SmithingMenu@CraftingSubMenus
+0x1420a7ff0  EnchantConstructMenu@CraftingSubMenus
+0x1420a8030  EnchantMenuCallback@EnchantConstructMenu@CraftingSubMenus
+0x1420a8080  EnchantMenuExitCallback@EnchantConstructMenu@CraftingSubMenus
+0x1420a80e0  EnchantMenuCraftCallback@EnchantConstructMenu@CraftingSubMenus
+0x1420a8140  EnchantMenuDisenchantCallback@EnchantConstructMenu@CraftingSubMenus
+0x1420a81a0  CategoryListEntry@EnchantConstructMenu@CraftingSubMenus
+0x1420a81f0  ItemChangeEntry@EnchantConstructMenu@CraftingSubMenus
+0x1420a8240  EnchantmentEntry@EnchantConstructMenu@CraftingSubMenus
+0x1420a8290  CreateEffectFunctor@EnchantConstructMenu@CraftingSubMenus
+0x1420a82e0  AlchemyMenu@CraftingSubMenus
+0x1420a8320  CraftItemCallback@AlchemyMenu@CraftingSubMenus
+0x1420a8370  QuitMenuCallback@AlchemyMenu@CraftingSubMenus
+0x1420a83c0  ModEffectivenessFunctor@AlchemyMenu@CraftingSubMenus
+0x1420a8468  CreditsMenu
+0x1420a8490  CursorMenu
+0x1420a84b8  DialogueMenu
+0x1420a84e0  FaderMenu
+0x1420a8500  FavoritesMenu
+0x1420a8588  HUDObject
+0x1420a85e8  HUDNotifications
+0x1420a8660  HUDChargeMeter
+0x1420a8920  NewInventoryMenuItemLoadTask
+0x1420a8bf8  InventoryMenu
+0x1420a8c68  LevelUpMenu
+0x1420a8cd8  LoadingMenu
+0x1420a8d30  LockpickingMenu
+0x1420a8db0  MagicMenu
+0x1420a8ea0  MagicMenuAddSpellVisitor@?A0xae1e7982
+0x1420a8ee0  MagicMenuAddActiveEffectVisitor@?A0xae1e7982
+0x1420a8f80  MainMenu
+0x1420a9190  errorCallback@?4??OpenCreationClubMenu@MainMenu
+0x1420a9288  MenuControls
+0x1420a92b0  ?$BSTSingletonSDM@VMenuControls
+0x1420a9310  ?$BSTSingletonSDMBase@U?$BSTSDMTraits@VMenuControls
+0x1420a9390  ?$BSTSDMTraits@VMenuControls
+0x1420a9400  ?$BSTSingletonSDMOpStaticBuffer@VMenuControls
+0x1420a94c8  QuickSaveLoadHandler
+0x1420a94f8  MenuOpenHandler
+0x1420a9570  MessageBoxMenu
+0x1420a95d8  MistMenu
+0x1420a9648  RaceSexMenu
+0x1420a96b0  ConfirmCloseRaceSexMenuCallback@?A0xb30aaf27
+0x1420a9748  ApparelUnequipper@?A0xb30aaf27
+0x1420a9780  SafeZoneMenu
+0x1420a97a8  SleepWaitMenu
+0x1420a97f0  StatsMenu
+0x1420a9a30  StreamingInstallMenu
+0x1420a9a60  TitleSequenceMenu
+0x1420a9a88  TrainingMenu
+0x1420a9ab0  TutorialMenu
+0x1420a9ad8  TweenMenu
+0x1420a9af8  UIBlurManager
+0x1420a9b20  ?$BSTSingletonSDM@VUIBlurManager
+0x1420a9b80  ?$BSTSingletonSDMBase@U?$BSTSDMTraits@VUIBlurManager
+0x1420a9c10  ?$BSTSDMTraits@VUIBlurManager
+0x1420a9c80  ?$BSTSingletonSDMOpStaticBuffer@VUIBlurManager
+0x1420a9d10  FaderData
+0x1420a9d60  RefHandleUIData
+0x1420a9d88  TESFormUIData
+0x1420a9db0  LoadingMenuData
+0x1420a9e40  ?$AutoRegisterCreator@VHUDData
+0x1420a9ec0  ?$AutoRegisterFactory@U?$BSTDerivedCreator@VHUDData
+0x1420a9f70  ?$BSTDerivedCreator@VHUDData
+0x1420a9fb8  ?$IBSTCreator@VIUIMessageData
+0x1420a9ff0  ?$AutoRegisterCreator@VConsoleData
+0x1420aa070  ?$AutoRegisterFactory@U?$BSTDerivedCreator@VConsoleData
+0x1420aa120  ?$BSTDerivedCreator@VConsoleData
+0x1420aa170  ?$AutoRegisterCreator@VMessageBoxData
+0x1420aa200  ?$AutoRegisterFactory@U?$BSTDerivedCreator@VMessageBoxData
+0x1420aa2b0  ?$BSTDerivedCreator@VMessageBoxData
+0x1420aa300  ?$AutoRegisterCreator@UFaderData
+0x1420aa380  ?$AutoRegisterFactory@U?$BSTDerivedCreator@UFaderData
+0x1420aa430  ?$BSTDerivedCreator@UFaderData
+0x1420aa480  ?$AutoRegisterCreator@VInventoryUpdateData
+0x1420aa510  ?$AutoRegisterFactory@U?$BSTDerivedCreator@VInventoryUpdateData
+0x1420aa5c0  ?$BSTDerivedCreator@VInventoryUpdateData
+0x1420aa620  ?$AutoRegisterCreator@URefHandleUIData
+0x1420aa6b0  ?$AutoRegisterFactory@U?$BSTDerivedCreator@URefHandleUIData
+0x1420aa760  ?$BSTDerivedCreator@URefHandleUIData
+0x1420aa7b0  ?$AutoRegisterCreator@UTESFormUIData
+0x1420aa830  ?$AutoRegisterFactory@U?$BSTDerivedCreator@UTESFormUIData
+0x1420aa8e0  ?$BSTDerivedCreator@UTESFormUIData
+0x1420aa930  ?$AutoRegisterCreator@ULoadingMenuData
+0x1420aa9c0  ?$AutoRegisterFactory@U?$BSTDerivedCreator@ULoadingMenuData
+0x1420aaa70  ?$BSTDerivedCreator@ULoadingMenuData
+0x1420aaac0  ?$AutoRegisterCreator@VKinectStateChangeData
+0x1420aab50  ?$AutoRegisterFactory@U?$BSTDerivedCreator@VKinectStateChangeData
+0x1420aac00  ?$BSTDerivedCreator@VKinectStateChangeData
+0x1420aac60  ?$AutoRegisterCreator@VKinectUserEventData
+0x1420aacf0  ?$AutoRegisterFactory@U?$BSTDerivedCreator@VKinectUserEventData
+0x1420aada0  ?$BSTDerivedCreator@VKinectUserEventData
+0x1420aadf8  UISaveLoadManager
+0x1420aae20  ?$BSTSingletonSDM@VUISaveLoadManager
+0x1420aae80  ?$BSTSingletonSDMBase@U?$BSTSDMTraits@VUISaveLoadManager
+0x1420aaf10  ?$BSTSDMTraits@VUISaveLoadManager
+0x1420aaf90  ?$BSTSingletonSDMOpStaticBuffer@VUISaveLoadManager
+0x1420aafe0  BuildSaveListRequest@saveload@bgs
+0x1420ab018  ?$UIMessageDataPtr@VActor
+0x1420ab050  InputHandler@LocalMapMenu
+0x1420ab160  IMapCameraCallbacks
+0x1420ab778  FadeThenMainMenuCallback@?A0x257c8b4e
+0x1420ab818  JournalMenu
+0x1420ac208  ISavePatcherInterface@BSScript
+0x1420ac4e0  ?$StoryEventArguments@VRefStoryEventArgConverter@?A0x96ff5235@SkyrimScript
+0x1420ac5d0  ?$StoryEventArguments@VRefStoryEventArgConverter@?A0x96ff5235@SkyrimScript
+0x1420ac790  ?$StoryEventArguments@VKeywordStoryEventArgConverter@?A0x96ff5235@SkyrimScript
+0x1420aca20  ?$StoryEventArguments@VRefStoryEventArgConverter@?A0x96ff5235@SkyrimScript
+0x1420ad000  ?$StoryEventArguments@VUIntStoryEventArgConverter@?A0x96ff5235@SkyrimScript
+0x1420ad0c0  ?$StoryEventArguments@VRefStoryEventArgConverter@?A0x96ff5235@SkyrimScript
+0x1420ad250  ?$StoryEventArguments@VRefStoryEventArgConverter@?A0x96ff5235@SkyrimScript
+0x1420ad320  ?$StoryEventArguments@VRefStoryEventArgConverter@?A0x96ff5235@SkyrimScript
+0x1420ad410  ?$StoryEventArguments@VRefStoryEventArgConverter@?A0x96ff5235@SkyrimScript
+0x1420ad520  ?$StoryEventArguments@VLocationStoryEventArgConverter@?A0x96ff5235@SkyrimScript
+0x1420ad6e0  ?$StoryEventArguments@VRefStoryEventArgConverter@?A0x96ff5235@SkyrimScript
+0x1420ad978  IObjectHandlePolicy@BSScript
+0x1420ad9b0  IStackCallbackSaveInterface@BSScript
+0x1420ada28  ILoader@BSScript
+0x1420adde8  ?$BSTEventSink@UTESEquipEvent
+0x1420ae818  ISendEventFilter@SkyrimVM
+0x1420af078  ActorEquipArguments@?A0xd0136504
+0x1420af878  IGiftMenuScriptCallback
+0x1420af8b0  GiftMenuCallbackFunc@?A0xe82339f0@1SkyrimScript
+0x1420b21b0  FadeThenMainMenuCallback@?A0xc618b801@SkyrimScript
+0x1420b8040  ?$BSTEventSink@UInterference@SpeechRecognitionEvents
+0x1420b8448  CharReaderBuilder@Json
+0x1420b84d0  StreamWriterBuilder@Json
+0x1420b8530  BuiltStyledStreamWriter@Json
+0x1420bacc8  hkbDefaultRaycastInterface
+0x1420bae38  hkBuiltinTypeRegistry
+0x1420bae68  ?$hkSingleton@VhkBuiltinTypeRegistry
+0x1420baf68  hkDefaultBuiltinTypeRegistry
+0x1420c16b0  IXAudio2EngineCallback
+0x1420c17b0  IUnknown
+0x1420c19c8  IXAudio2VoiceCallback
+0x1420c3a70  ?$NiTArray@V?$NiPointer@VNiAVObject
+0x1420c3b90  ?$NiTLargeArray@V?$NiPointer@VNiObject
+0x1420c3c40  ?$NiTLargeArray@IV?$NiTMallocInterface@I
+0x1420c3cd0  ?$NiTLargeArray@VBSFixedString
+0x1420c3f60  ?$NiTArray@P6AXAEAVNiStream
+0x1420c4108  ?$NiTArray@GV?$NiTMallocInterface@G
+0x1420c41a0  ?$NiTArray@V?$NiPointer@VNiRefObject
+0x1420c4290  ?$NiTArray@IV?$NiTMallocInterface@I
+0x1420c4970  ?$NiTArray@V?$NiPointer@VNiMetricsOutputModule
+0x1420c4c20  ?$NiTArray@PEADV?$NiTMallocInterface@PEAD
+0x1420c4d60  ?$NiTArray@PEAVRecord@NiPick
+0x1420c4f10  ?$NiTArray@PEAVNiBoundingVolume
+0x1420c5200  ?$NiTArray@V?$NiPointer@VNiControllerSequence
+0x1420c5690  ?$NiTArray@PEAUBSAnimReceiverType@BSAnimNoteListener
+0x1420c6040  ?$NiTArray@V?$NiPointer@VNiTransformController
+0x1420c6600  ?$NiTArray@PEAV?$NiTObjectArray@V?$NiPointer@VNiAVObject
+0x1420c6d70  ?$NiTArray@V?$NiPointer@VBSTriShape
+0x1420c6e30  ?$NiTArray@V?$NiPointer@VNiGeometry
+0x1420c8200  ?$NiTArray@V?$NiPointer@VNiAVObject
+0x1420c8620  ?$NiTArray@PEAV?$NiTPrimitiveSet@PEAVNiNode
+0x1420c8e38  hkaRagdollRaycastInterface
+0x1420c9470  ?$NiTLargeArray@VhkNiTriStripsData
+0x1420ca820  bhkLiquidAction
+0x1420cb4e0  hkLiquidAction
+0x1420cccf0  IConvexOverlapImpl
+0x1420cce50  Mediator@hkKdTreeBuildInput
+0x1420ccef8  BSUIScaleformData
+0x1420ccf20  ?$AutoRegisterCreator@VBSUIScaleformData
+0x1420ccfb0  ?$AutoRegisterFactory@U?$BSTDerivedCreator@VBSUIScaleformData
+0x1420cd060  ?$BSTDerivedCreator@VBSUIScaleformData
+0x1420cd0b0  ?$AutoRegisterCreator@VBSUIMessageData
+0x1420cd140  ?$AutoRegisterFactory@U?$BSTDerivedCreator@VBSUIMessageData
+0x1420cd1f0  ?$BSTDerivedCreator@VBSUIMessageData
+0x1420cd240  ?$BSTCommonStaticMessageQueue@PEAVUIMessage
+0x1420cd290  ?$BSTCommonMessageQueue@PEAVUIMessage
+0x1420cd2d0  ?$BSTMessageQueue@PEAVUIMessage
+0x1420cd3c0  ?$GRefCountBase@VGFxState
+0x1420cd428  GFxLogConstants
+0x1420cd450  GFxTranslator
+0x1420cd478  GFxZlibSupportBase
+0x1420cd4a8  GFxZlibSupport
+0x1420cd4d0  BSScaleformTranslator
+0x1420cd560  BSScaleformSysMemMapper@?A0x76709605
+0x1420cd5a0  BSScaleformAllocatorPaged@?A0x76709605
+0x1420cd5e0  ?$BSTSingletonSDM@VBSScaleformAllocatorPaged@?A0x76709605
+0x1420cd660  ?$BSTSingletonSDMBase@U?$BSTSDMTraits@VBSScaleformAllocatorPaged@?A0x76709605
+0x1420cd720  ?$BSTSDMTraits@VBSScaleformAllocatorPaged@?A0x76709605
+0x1420cd7c0  ?$BSTSingletonSDMOpStaticBuffer@VBSScaleformAllocatorPaged@?A0x76709605
+0x1420cd858  GFxImageLoader
+0x1420cd880  BSScaleformImageLoader
+0x1420cd8b0  GFxFileOpenerBase
+0x1420cd8d8  BSScaleformFileOpener
+0x1420cd910  ?$EntryDB@UDBTraits@ScaleformFile
+0x1420cd960  ?$EntryDBBase@U?$EntryDBTraits@UDBTraits@ScaleformFile
+0x1420cda00  ?$EntryDBTraits@UDBTraits@ScaleformFile
+0x1420cda80  ?$Directory@IU?$Directory@UFileID@BSResource
+0x1420cdb78  DBTraits@ScaleformFile
+0x1420cdbb0  ?$BSTSingletonSDM@V?$EntryDB@UDBTraits@ScaleformFile
+0x1420cdc30  ?$BSTSingletonSDMBase@U?$BSTSDMTraits@V?$EntryDB@UDBTraits@ScaleformFile
+0x1420cdd00  ?$BSTSDMTraits@V?$EntryDB@UDBTraits@ScaleformFile
+0x1420cddb0  ?$BSTSingletonSDMOpStaticBuffer@V?$EntryDB@UDBTraits@ScaleformFile
+0x1420cde18  MemoryFile@ScaleformFile
+0x1420cde90  GFxExternalInterface
+0x1420cdf88  BSScaleformMovieLoadTask
+0x1420ce1f0  ITrianglePathSplitter
+0x1420ce220  IPathSmootherRayCast
+0x1420ce3c0  PathSmootherRayCastBuildNodesForLargeZDelta@?A0x3b35f44c
+0x1420ce9e8  IPathBuilderTracker
+0x1420cea18  NullPathBuilderTracker
+0x1420cea50  ?$BSTSingletonImplicit@VNullPathBuilderTracker
+0x1420cecc0  IMovementPathManagerAgent
+0x1420ced28  INodeVisitor@IMovementQueryPathFollowing
+0x1420cedc8  IPathFollowerAction
+0x1420cedf8  ISelectIdleFilter
+0x1420cee20  ICheckEndReachedFunctorMapper
+0x1420cee90  ICheckEndReachedFunctor
+0x1420cf360  ?$IMovementAgentDataTracker@UIMovementPathManagerAgent
+0x1420cf778  IRecursiveVisitor@BSNavmeshInfoMap
+0x1420cf820  INavmeshInfoVisitor@BSPrecomputedNavmeshInfoPathMap
+0x1420cfd60  ?$AutoRegisterPathBuilderFactory@VBSPathingRequest
+0x1420cfdd8  PathBuilderBSPathingRequest@?A0x2d8d6511
+0x1420cfe18  BSPathBuilder
+0x1420d20d8  IMovementSetTranslationControllerType
+0x1420d2370  IMovementSetCorrectionData
+0x1420d2620  ?$IMovementAgentDataTracker@UIMovementHandlerAgent
+0x1420d26a0  ?$IMovementAgentDataTracker@UIMovementHandlerAgent
+0x1420d2720  ?$MovementAgentNullTracker@UIMovementHandlerAgent
+0x1420d2790  ?$BSTSingletonImplicit@V?$MovementAgentNullTracker@UIMovementHandlerAgent
+0x1420d2820  ?$MovementAgentNullTracker@UIMovementHandlerAgent
+0x1420d2890  ?$BSTSingletonImplicit@V?$MovementAgentNullTracker@UIMovementHandlerAgent
+0x1420d2b90  ?$IMovementAgentDataTracker@UIMovementPlannerAgent
+0x1420d2d80  ?$MovementAgentNullTracker@UIMovementPlannerAgent
+0x1420d2e00  ?$BSTSingletonImplicit@V?$MovementAgentNullTracker@UIMovementPlannerAgent
+0x1420d4d38  IsTeleportDoorOnPath@?A0x8cf25e74
+0x1420d5010  ?$IMovementAgentDataTracker@UIMovementTweenerAgent
+0x1420d5080  ?$MovementAgentNullTracker@UIMovementTweenerAgent
+0x1420d50f0  ?$BSTSingletonImplicit@V?$MovementAgentNullTracker@UIMovementTweenerAgent
+0x1420d5e98  ISmoothingRayValidator
+0x1420d5f28  IPathingNodeGenerator
+0x1420d60e0  BuildOpenEdgeListsVisitor@Utilities@VelocityObstacle
+0x1420ec9c0  IFindBoundObjectFunctor@BSScript
+0x1420ec9f8  IVMObjectBindInterface@BSScript
+0x1420eca30  IVMSaveLoadInterface@BSScript
+0x1420eca98  IVMDebugInterface@BSScript
+0x1420ecbc8  IMemoryPagePolicy@BSScript
+0x1420ed320  BuildInstructionOffsetMapFunctor@?A0x385e4389@UnlinkedTypes@BSScript
+0x1420ed600  ?$NiTArray@PEAVImageSpaceEffect
+0x1420eed60  BSImagespaceShaderISLightingCompositeMenu
+0x1420ef338  BSImagespaceShaderISTemporalAA_UI
+0x1420ef970  ?$NiTArray@V?$NiPointer@VNiTexture
+0x1420efa30  ?$NiTArray@W4TextureFilterMode@BSGraphics
+0x1420efd10  ?$NiTArray@_NV?$NiTMallocInterface@_N
+0x1420efe30  ?$NiTArray@PEAVImageSpaceEffectParam
+0x1420efef0  ?$NiTArray@PEAVImageSpaceTexture
+0x1420effb0  ?$NiTArray@PEAVEffectInput@ImageSpaceEffect
+0x1420f0060  ?$NiTArray@HV?$NiTMallocInterface@H
+0x1420f1560  IAllocatorFunctor@BSTArrayBase
+0x1420f1910  ?$_Func_impl_no_alloc@V?$_Binder@U_Unforced@std
+0x1420f1a00  ?$_Binder@U_Unforced@std
+0x1420f1a58  UI_element
+0x1420f1aa0  ?$_Func_impl_no_alloc@V?$_Binder@U_Unforced@std
+0x1420f1b20  ?$_Binder@U_Unforced@std
+0x1420f1b70  UI_homePage
+0x1420f1dc0  ?$_Binder@U_Unforced@std
+0x1420f1f00  ?$_Func_impl_no_alloc@V?$_Binder@U_Unforced@std
+0x1420f2280  UI_bottomBar
+0x1420f2350  ?$_Func_impl_no_alloc@V?$_Binder@U_Unforced@std
+0x1420f2410  ?$_Binder@U_Unforced@std
+0x1420f2558  UI_detailsPage
+0x1420f25d0  ?$_Func_impl_no_alloc@V?$_Binder@U_Unforced@std
+0x1420f27f8  OnSale@UI_detailsPage
+0x1420f2830  ?$_Binder@U_Unforced@std
+0x1420f2c10  UI_Button3
+0x1420f2c38  UI_ScrollingList
+0x1420f2c60  ?$_Func_impl_no_alloc@V?$_Binder@U_Unforced@std
+0x1420f2ce0  ?$_Binder@U_Unforced@std
+0x1420f2d40  ?$_Binder@U_Unforced@std
+0x1420f2e90  UI_DialogDownloadCC
+0x1420f2ec0  ?$_Func_impl_no_alloc@V?$_Binder@U_Unforced@std
+0x1420f2f40  ?$_Func_impl_no_alloc@V?$_Binder@U_Unforced@std
+0x1420f3168  UI_Dialog
+0x1420f3188  UI_element2
+0x1420f31b0  ?$_Binder@U_Unforced@std
+0x1420f3a38  UI_button2
+0x1420f4500  ?$_Binder@U_Unforced@std
+0x1420f4560  ?$_Func_impl_no_alloc@V?$_Binder@U_Unforced@std
+0x1420f45d8  UI_DialogMessage
+0x1420f4620  ?$_Func_impl_no_alloc@V?$_Binder@U_Unforced@std
+0x1420f4690  ?$_Binder@U_Unforced@std
+0x1420f4730  ?$_Func_impl_no_alloc@V?$_Binder@U_Unforced@std
+0x1420f47a8  UI_DialogYesNo
+0x1420f47d0  ?$_Binder@U_Unforced@std
+0x1420f4d40  UI_listEntry
+0x1420f4d68  UI_bannerEntry
+0x1420f4d90  OnSale@UI_listEntry
+0x1420f5478  UI_MarkdownText
+# 525 UI classes
+
+== anchor: "BSScaleformFileOpener failed to open" ==
+  string @0x141a00570 : "Error, BSScaleformFileOpener failed to open %s
+"
+    (no direct references)
+
+== anchor: "Interface/Exported/%s.gfx" ==
+  string @0x1419ffcb0 : "Interface/Exported/%s.gfx"
+    (no direct references)
+
+== anchor: "LoadMovieImageCallback failed" ==
+  string @0x141a07d18 : "LoadMovieImageCallback failed to load image "%s"..."
+    (no direct references)
+  string @0x141a2ade0 : "GASBitmapData::LoadBitmap: LoadMovieImageCallbac..."
+    (no direct references)
+
+== anchor: "GFxLoader read failed" ==
+  string @0x141a09d30 : "Error: GFxLoader read failed - file does not sta..."
+    (no direct references)
+  string @0x141a09e30 : "Error: GFxLoader read failed - incompatible GFX ..."
+    (no direct references)
+  string @0x141a09e80 : "Error: GFxLoader read failed - no ExporterInfo t..."
+    (no direct references)
+
+== anchor: "Journal Menu" ==
+  string @0x141a006f0 : "Journal Menu"
+    (no direct references)
+  string @0x142019390 : "Journal Menu"
+    (no direct references)
+
+== anchor: "InventoryMenu" ==
+  string @0x1418f99e0 : "InventoryMenu"
+    (no direct references)
+  string @0x141902cf0 : "fInventoryMenuLightX:Interface"
+    <- data 0x142018500  DATA  [not in func] -> hop:
+  string @0x141902d10 : "fInventoryMenuLightY:Interface"
+    <- data 0x142018518  DATA  [not in func] -> hop:
+  string @0x141902d30 : "fInventoryMenuLightZ:Interface"
+    <- data 0x142018530  DATA  [not in func] -> hop:
+  string @0x141902e10 : "fInventoryMenuLight2X:Interface"
+    <- data 0x1420185c0  DATA  [not in func] -> hop:
+  string @0x141902e30 : "fInventoryMenuLight2Y:Interface"
+    <- data 0x1420185d8  DATA  [not in func] -> hop:
+
+== anchor: "Cursor Menu" ==
+  string @0x1419feaa0 : "Cursor Menu"
+    (no direct references)
+  string @0x142017608 : "Cursor Menu"
+    (no direct references)
+
+== anchor: "Console" ==
+  string @0x1417862e0 : "GrassConsole\%sx%04dy%04d.gid"
+    (no direct references)
+  string @0x1417b5f28 : "Help - Basic Lockpicking (Console)"
+    (no direct references)
+  string @0x1417c8358 : "SetConsoleOutputFilename >> OUTPUT_DISABLED"
+    (no direct references)
+  string @0x1417c83a0 : "SetConsoleOutputFilename >> '%s'"
+    (no direct references)
+  string @0x1417c8910 : "Console Scope Quest >> %s (%08X)"
+    (no direct references)
+  string @0x1417c8938 : "Console Scope Quest >> EMPTY"
+    (no direct references)
+

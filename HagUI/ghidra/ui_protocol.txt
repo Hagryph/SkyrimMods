@@ -1,0 +1,77 @@
+// ================= 0x1409133b0  func@1409133b0 =================
+
+void FUN_1409133b0(longlong param_1)
+
+{
+  char cVar1;
+  undefined8 local_40;
+  uint local_38;
+  undefined8 local_30;
+  undefined8 local_28;
+  uint local_20;
+  undefined8 local_18;
+  
+  cVar1 = (**(code **)(**(longlong **)(param_1 + 0x10) + 0x50))
+                    (*(longlong **)(param_1 + 0x10),"_root.CodeObj");
+  if (cVar1 != '\0') {
+    local_40 = 0;
+    local_38 = 0;
+    (**(code **)(**(longlong **)(param_1 + 0x10) + 0x88))
+              (*(longlong **)(param_1 + 0x10),&local_40,"_root.CodeObj");
+    local_28 = 0;
+    local_20 = 0;
+    (**(code **)(**(longlong **)(param_1 + 0x10) + 0x78))
+              (*(longlong **)(param_1 + 0x10),&local_28,param_1 + 0x30,0);
+    FUN_140fae210(local_40,local_30,"requestCredits",&local_28,((byte)local_38 & 0x8f) == 8);
+    if ((local_20 >> 6 & 1) != 0) {
+      FUN_140fac750(local_28,&local_28,local_18);
+    }
+    local_28 = 0;
+    local_20 = 0;
+    (**(code **)(**(longlong **)(param_1 + 0x10) + 0x78))
+              (*(longlong **)(param_1 + 0x10),&local_28,param_1 + 0x30,1);
+    FUN_140fae210(local_40,local_30,"getScrollSpeed",&local_28,((byte)local_38 & 0x8f) == 8);
+    if ((local_20 >> 6 & 1) != 0) {
+      FUN_140fac750(local_28,&local_28,local_18);
+    }
+    local_28 = 0;
+    local_20 = 0;
+    (**(code **)(**(longlong **)(param_1 + 0x10) + 0x78))
+              (*(longlong **)(param_1 + 0x10),&local_28,param_1 + 0x30,2);
+    FUN_140fae210(local_40,local_30,"closeMenu",&local_28,((byte)local_38 & 0x8f) == 8);
+    if ((local_20 >> 6 & 1) != 0) {
+      FUN_140fac750(local_28,&local_28,local_18);
+    }
+    cVar1 = (**(code **)(**(longlong **)(param_1 + 0x10) + 0x50))
+                      (*(longlong **)(param_1 + 0x10),"_root.onCodeObjectInit");
+    if (cVar1 != '\0') {
+      (**(code **)(**(longlong **)(param_1 + 0x10) + 0xb8))
+                (*(longlong **)(param_1 + 0x10),"_root.onCodeObjectInit",0,0,0);
+    }
+    if ((local_38 >> 6 & 1) != 0) {
+      FUN_140fac750(local_40,&local_40,local_30);
+    }
+  }
+  return;
+}
+
+
+
+// ================= 0x140faecc0  func@140faecc0 =================
+
+undefined8 * FUN_140faecc0(undefined8 *param_1)
+
+{
+  *param_1 = &PTR_FUN_1418752d0;
+  *param_1 = &PTR_FUN_1419fefa0;
+  *(undefined4 *)(param_1 + 1) = 1;
+  param_1[2] = 0;
+  *(undefined4 *)((longlong)param_1 + 0x1c) = 0;
+  *(undefined1 *)(param_1 + 3) = 3;
+  *(undefined4 *)(param_1 + 4) = 0x13;
+  param_1[5] = 0;
+  return param_1;
+}
+
+
+

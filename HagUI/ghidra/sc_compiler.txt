@@ -1,0 +1,871 @@
+
+#################### TARGET: 0x140345390 ####################
+// resolved 0x140345390 -> 140345390
+
+// ===== FUN_140345390 @ 140345390  [target 0x140345390] =====
+
+int FUN_140345390(undefined8 param_1,longlong param_2,undefined4 *param_3,longlong param_4,
+                 longlong param_5)
+
+{
+  undefined *puVar1;
+  code *pcVar2;
+  uint uVar3;
+  undefined1 uVar4;
+  char cVar5;
+  undefined2 uVar6;
+  int iVar7;
+  undefined **ppuVar8;
+  ulonglong uVar9;
+  uint uVar10;
+  ulonglong uVar11;
+  ulonglong uVar12;
+  ulonglong uVar13;
+  uint local_688 [4];
+  undefined1 local_678 [512];
+  int local_478;
+  char local_474;
+  undefined8 local_470;
+  undefined8 local_468;
+  undefined4 local_458;
+  char local_454 [512];
+  undefined8 local_254;
+  undefined1 local_24c [512];
+  uint local_4c;
+  undefined4 local_40;
+  
+  uVar13 = 0xffffffffffffffff;
+  do {
+    uVar13 = uVar13 + 1;
+  } while (*(char *)(param_4 + uVar13) != '\0');
+  uVar9 = 0;
+  iVar7 = 0;
+  local_688[0] = 0;
+  uVar11 = uVar9;
+  if (uVar13 != 0) {
+    do {
+      iVar7 = isalpha((uint)*(byte *)(uVar9 + param_4));
+      if ((iVar7 != 0) || (*(char *)((ulonglong)local_688[0] + param_4) == '\"')) {
+        local_478 = 0;
+        local_470 = 0;
+        local_474 = '\0';
+        local_468 = 0;
+        memset(local_678,0,0x200);
+        iVar7 = FUN_140345970(param_2,local_678,param_4,local_688,1,1);
+        if (iVar7 == 0) {
+          return 0;
+        }
+        if (local_478 != 0) {
+          uVar4 = 0x72;
+          if (local_474 == 'G') {
+            uVar4 = 0x47;
+          }
+          *(undefined1 *)(uVar11 + param_5) = uVar4;
+          *(undefined2 *)((ulonglong)((int)uVar11 + 1) + param_5) = (undefined2)local_478;
+          uVar11 = (ulonglong)((int)uVar11 + 3);
+        }
+        iVar7 = (int)uVar11;
+        if (local_470._4_4_ == 0) {
+          if (local_474 != 'X') {
+            if (local_474 == 'G') goto LAB_140345684;
+            if ((local_478 != 0) || (cVar5 = FUN_140340da0(param_2,local_678,0,0), cVar5 == '\0')) {
+              FUN_140343ad0(param_2,"Syntax Error.  Unknown command \'%s\'.",local_678);
+              return 0;
+            }
+            *(undefined1 *)(uVar11 + param_5) = 0x5a;
+            uVar6 = (undefined2)local_478;
+            goto LAB_14034567a;
+          }
+          *(undefined1 *)(uVar11 + param_5) = 0x58;
+          *(undefined2 *)((ulonglong)(iVar7 + 1) + param_5) = (undefined2)local_470;
+          uVar10 = iVar7 + 3;
+          if ((int)local_470 - 0x100U < 0x1b7) {
+            ppuVar8 = &PTR_DAT_141fea0b0 + (longlong)(int)((int)local_470 - 0x100U) * 10;
+          }
+          else {
+            if (0x2e0 < (int)local_470 - 0x1000U) goto LAB_1403456eb;
+            ppuVar8 = &PTR_s_GetWantBlocking_141fdba10 +
+                      (longlong)(int)((int)local_470 - 0x1000U) * 10;
+          }
+          if (ppuVar8 == (undefined **)0x0) {
+LAB_1403456eb:
+            FUN_140343ad0(param_2,"Syntax Error.  Undefined function \'%s\'.",local_678);
+            return 0;
+          }
+          if (((*(char *)(ppuVar8 + 4) != '\0') && (*(char *)(param_2 + 0x4c) != '\0')) &&
+             (local_478 == 0)) {
+            FUN_140343ad0(param_2,
+                          "Reference function \'%s\' requires explicit reference in quest script.",
+                          local_678);
+            return 0;
+          }
+          puVar1 = ppuVar8[5];
+          if (puVar1 != (undefined *)0x0) {
+            pcVar2 = (code *)ppuVar8[7];
+            uVar6 = *(undefined2 *)((longlong)ppuVar8 + 0x22);
+            local_458 = 0;
+            local_254 = 0;
+            local_4c = 0;
+            local_40 = 0;
+            memset(local_454,0,0x200);
+            memset(local_24c,0,0x200);
+            strcpy_s(local_454,0x200,(char *)((ulonglong)local_688[0] + param_4));
+            local_4c = 0;
+            local_458 = *param_3;
+            cVar5 = (*pcVar2)(uVar6,puVar1,&local_458,param_2);
+            uVar3 = local_4c;
+            if (cVar5 == '\0') {
+              return 0;
+            }
+            *(undefined2 *)((ulonglong)uVar10 + param_5) = (undefined2)local_4c;
+            memcpy((void *)((ulonglong)(iVar7 + 5U) + param_5),local_24c,(ulonglong)local_4c);
+            local_688[0] = local_688[0] + local_254._4_4_;
+            uVar11 = (ulonglong)(iVar7 + 5U + uVar3);
+            goto LAB_140345684;
+          }
+          *(undefined2 *)((ulonglong)uVar10 + param_5) = 0;
+        }
+        else {
+          *(char *)(uVar11 + param_5) = local_474;
+          uVar6 = local_470._4_2_;
+LAB_14034567a:
+          uVar10 = iVar7 + 1;
+          *(undefined2 *)((ulonglong)uVar10 + param_5) = uVar6;
+        }
+        uVar11 = (ulonglong)(uVar10 + 2);
+      }
+LAB_140345684:
+      uVar12 = uVar11;
+      if (local_688[0] < uVar13) {
+        uVar12 = (ulonglong)((int)uVar11 + 1);
+        *(undefined1 *)(uVar11 + param_5) = *(undefined1 *)((ulonglong)local_688[0] + param_4);
+      }
+      iVar7 = (int)uVar12;
+      local_688[0] = local_688[0] + 1;
+      uVar9 = (ulonglong)local_688[0];
+      uVar11 = uVar12;
+    } while (uVar9 < uVar13);
+  }
+  *(undefined1 *)((ulonglong)(iVar7 + 1) + param_5) = 0;
+  return iVar7;
+}
+
+
+// --- 1 caller-functions of 0x140345390 ---
+
+// ===== FUN_140343e80 @ 140343e80  [caller of 0x140345390] =====
+
+undefined8 FUN_140343e80(undefined8 param_1,undefined8 param_2,longlong param_3,uint *param_4)
+
+{
+  uint *puVar1;
+  byte bVar2;
+  undefined2 uVar3;
+  longlong *plVar4;
+  longlong lVar5;
+  code *pcVar6;
+  undefined1 uVar7;
+  char cVar8;
+  int iVar9;
+  uint uVar10;
+  longlong *plVar11;
+  undefined4 *puVar12;
+  void *pvVar13;
+  undefined **ppuVar14;
+  undefined8 *puVar15;
+  longlong lVar16;
+  uint uVar17;
+  char *pcVar18;
+  int *piVar19;
+  undefined1 *puVar20;
+  int iVar21;
+  ulonglong uVar22;
+  int iVar23;
+  undefined8 *local_res20;
+  ulonglong in_stack_fffffffffffff068;
+  uint7 uVar24;
+  undefined8 uVar25;
+  char local_f78 [512];
+  int local_d78;
+  char local_d74;
+  undefined8 local_d70;
+  undefined8 local_d68;
+  undefined4 local_d58;
+  char local_d54 [508];
+  undefined4 local_b58;
+  uint local_b54;
+  undefined4 uStack_b50;
+  undefined4 uStack_b4c;
+  undefined8 local_b48;
+  uint local_94c;
+  undefined4 local_940;
+  undefined1 local_938 [512];
+  int local_738 [452];
+  
+  uVar25 = 0xfffffffffffffffe;
+  puVar12 = (undefined4 *)0x0;
+  local_d78 = 0;
+  local_d70 = 0;
+  local_d74 = '\0';
+  local_d68 = 0;
+  memset(local_f78,0,0x200);
+  FUN_140327ba0(local_738);
+  param_4[0x103] = 0;
+  puVar1 = param_4 + 0x82;
+  *puVar1 = 0;
+  uVar17 = param_4[0x104];
+  uVar24 = (uint7)(in_stack_fffffffffffff068 >> 8);
+  switch(uVar17) {
+  case 0x10:
+    iVar9 = FUN_140345970(param_3,local_f78,param_4 + 1,puVar1,
+                          in_stack_fffffffffffff068 & 0xffffffffffffff00,0,uVar25);
+    if (iVar9 == 0) {
+      FUN_140343ad0(param_3,"Syntax Error.  Missing block type in \'begin\' command.");
+    }
+    else {
+      ppuVar14 = &PTR_DAT_141ff5208;
+      do {
+        iVar9 = _stricmp(ppuVar14[-1],local_f78);
+        iVar21 = (int)puVar12;
+        if ((iVar9 == 0) || (iVar9 = _stricmp(*ppuVar14,local_f78), iVar9 == 0)) {
+          lVar16 = (longlong)iVar21 * 0x50;
+          *(undefined2 *)((ulonglong)param_4[0x103] + 0x20c + (longlong)param_4) =
+               *(undefined2 *)(&DAT_141ff5210 + lVar16);
+          param_4[0x103] = param_4[0x103] + 2;
+          iVar23 = 0;
+          plVar11 = (longlong *)(param_3 + 0x78);
+          iVar9 = iVar23;
+          if (plVar11 == (longlong *)0x0) goto LAB_1403441eb;
+          goto LAB_140344000;
+        }
+        puVar12 = (undefined4 *)(ulonglong)(iVar21 + 1);
+        ppuVar14 = ppuVar14 + 10;
+      } while ((longlong)ppuVar14 < 0x141ff5d48);
+      FUN_140343ad0(param_3,"Syntax Error.  Invalid block type in \'begin\' command.");
+    }
+    break;
+  case 0x11:
+    if (DAT_143137f90 != 0) {
+      piVar19 = (int *)((ulonglong)(DAT_143137f90 + 4) + *(longlong *)(param_3 + 0x30));
+      *piVar19 = *(int *)(param_3 + 0x38) - *piVar19;
+      DAT_143137f90 = 0;
+      goto switchD_140343f2e_caseD_19;
+    }
+    FUN_140343ad0(param_3,"Syntax Error.  Failed to store the \'begin\' \'end\' jump block.");
+    break;
+  case 0x12:
+  case 0x13:
+  case 0x14:
+  case 0x1f:
+    iVar9 = FUN_140345970(param_3,local_f78,param_4 + 1,puVar1,(ulonglong)uVar24 << 8,0,uVar25);
+    if (iVar9 == 0) {
+      FUN_140343ad0(param_3,"Missing variable name in variable declaration.");
+    }
+    else {
+      if ((local_f78[0] != '\0') && (lVar16 = FUN_1401e0370(local_f78), lVar16 == 0)) {
+        local_b58 = 0;
+        uStack_b50 = 0;
+        uStack_b4c = 0;
+        local_b54 = local_b54 & 0xffffff00;
+        local_b48 = 0;
+        memset(&local_d58,0,0x200);
+        strcpy_s((char *)&local_d58,0x200,local_f78);
+        cVar8 = FUN_1403457f0(&local_d58);
+        if (cVar8 == '\0') {
+          local_res20 = (undefined8 *)FUN_14011bd00(0x28);
+          if (local_res20 != (undefined8 *)0x0) {
+            puVar12 = (undefined4 *)FUN_1403803e0(local_res20);
+          }
+          if ((param_4[0x104] == 0x14) || (param_4[0x104] == 0x1f)) {
+            uVar7 = 0;
+          }
+          else {
+            uVar7 = 1;
+          }
+          *(undefined1 *)(puVar12 + 4) = uVar7;
+          FUN_14010ac10(puVar12 + 6,local_f78,0);
+          puVar20 = &DAT_141acbcc0;
+          if (*(undefined1 **)(puVar12 + 6) != (undefined1 *)0x0) {
+            puVar20 = *(undefined1 **)(puVar12 + 6);
+          }
+          cVar8 = FUN_14033ddd0(param_2,puVar20,puVar12);
+          if (cVar8 == '\0') {
+            *(int *)(param_3 + 0x48) = *(int *)(param_3 + 0x48) + 1;
+            *puVar12 = *(undefined4 *)(param_3 + 0x48);
+          }
+          plVar11 = (longlong *)(param_3 + 0x50);
+          for (plVar4 = *(longlong **)(param_3 + 0x58); plVar4 != (longlong *)0x0;
+              plVar4 = (longlong *)plVar4[1]) {
+            plVar11 = plVar4;
+          }
+          if (*plVar11 == 0) {
+            *plVar11 = (longlong)puVar12;
+          }
+          else {
+            if (DAT_1435f11d0 != 2) {
+              FUN_140cc4680(&DAT_1435f11e0,&DAT_1435f11d0);
+            }
+            local_res20 = (undefined8 *)FUN_140cc40c0(&DAT_1435f11e0,0x10,0);
+            if (local_res20 == (undefined8 *)0x0) {
+              plVar11[1] = 0;
+            }
+            else {
+              *local_res20 = puVar12;
+              local_res20[1] = 0;
+              plVar11[1] = (longlong)local_res20;
+            }
+          }
+          if (param_4[0x104] == 0x1f) {
+            local_d70 = CONCAT44(*puVar12,(undefined4)local_d70);
+            FUN_140340da0(param_3,local_f78,1,0);
+          }
+          goto switchD_140343f2e_caseD_19;
+        }
+      }
+      FUN_140343ad0(param_3,"Invalid variable name \'%s\'.\r\nCompiled script not saved!",local_f78)
+      ;
+    }
+    break;
+  case 0x15:
+    uVar22 = CONCAT71(uVar24,1);
+    iVar9 = FUN_140345970(param_3,local_f78,param_4 + 1,puVar1,uVar22,1,uVar25);
+    if (iVar9 == 0) {
+      FUN_140343ad0(param_3,"Missing variable name in set command.");
+    }
+    else if ((local_d74 == '\0') || (local_d74 == 'X')) {
+      FUN_140343ad0(param_3,"Unknown variable \'%s\'.",local_f78);
+    }
+    else {
+      local_b58 = 0;
+      uStack_b50 = 0;
+      uStack_b4c = 0;
+      local_b54 = local_b54 & 0xffffff00;
+      local_b48 = 0;
+      memset(&local_d58,0,0x200);
+      FUN_140345970(param_3,&local_d58,param_4 + 1,puVar1,uVar22 & 0xffffffffffffff00,0,uVar25);
+      iVar9 = tolower((int)(char)local_d58);
+      if (iVar9 == 0x74) {
+        iVar9 = tolower((int)local_d58._1_1_);
+        if (iVar9 == 0x6f) {
+          if (local_d78 != 0) {
+            if (local_d74 == 'G') {
+              *(undefined1 *)((ulonglong)param_4[0x103] + 0x20c + (longlong)param_4) = 0x47;
+            }
+            else {
+              *(undefined1 *)((ulonglong)param_4[0x103] + 0x20c + (longlong)param_4) = 0x72;
+            }
+            param_4[0x103] = param_4[0x103] + 1;
+            *(undefined2 *)((ulonglong)param_4[0x103] + 0x20c + (longlong)param_4) =
+                 (undefined2)local_d78;
+            param_4[0x103] = param_4[0x103] + 2;
+          }
+          if (local_d70._4_4_ != 0) {
+            *(char *)((ulonglong)param_4[0x103] + 0x20c + (longlong)param_4) = local_d74;
+            param_4[0x103] = param_4[0x103] + 1;
+            *(undefined2 *)((ulonglong)param_4[0x103] + 0x20c + (longlong)param_4) = local_d70._4_2_
+            ;
+            param_4[0x103] = param_4[0x103] + 2;
+          }
+          uVar17 = *puVar1;
+          cVar8 = FUN_140345d80(param_4 + 1);
+          if (cVar8 == '\0') {
+            FUN_140343ad0(param_3,"Syntax Error.  Mismatched parentheses in set command.");
+          }
+          else {
+            while ((bVar2 = *(byte *)((longlong)param_4 + (ulonglong)uVar17 + 4), bVar2 < 0x2d &&
+                   ((0x100100000200U >> ((ulonglong)bVar2 & 0x3f) & 1) != 0))) {
+              uVar17 = uVar17 + 1;
+              *puVar1 = uVar17;
+            }
+            memset(local_938,0,0x200);
+            local_res20 = (undefined8 *)((ulonglong)local_res20 & 0xffffffff00000000);
+            iVar9 = FUN_140345390(param_1,param_3,param_4,(longlong)param_4 + (ulonglong)uVar17 + 4,
+                                  local_938);
+            local_res20 = (undefined8 *)CONCAT44(local_res20._4_4_,iVar9);
+            if (iVar9 == 0) {
+              FUN_140343ad0(param_3,"Syntax Error.  Missing expression in set command.");
+            }
+            else {
+              pvVar13 = (void *)FUN_140327be0(local_738,local_938,&local_res20);
+              if (local_738[0] == 0) {
+                *(undefined2 *)((ulonglong)param_4[0x103] + 0x20c + (longlong)param_4) =
+                     local_res20._0_2_;
+                param_4[0x103] = param_4[0x103] + 2;
+                memcpy((void *)((longlong)param_4 + (ulonglong)param_4[0x103] + 0x20c),pvVar13,
+                       (ulonglong)local_res20 & 0xffffffff);
+                param_4[0x103] = param_4[0x103] + (int)local_res20;
+                goto switchD_140343f2e_caseD_19;
+              }
+              FUN_140343ad0(param_3,"InfixToPostfix Error.");
+            }
+          }
+          break;
+        }
+      }
+      FUN_140343ad0(param_3,"Syntax Error.  Missing \"to\" in set command.");
+    }
+    break;
+  case 0x16:
+  case 0x18:
+    cVar8 = FUN_140345d80(param_4 + 1);
+    if (cVar8 == '\0') {
+      FUN_140343ad0(param_3,"Mismatched parentheses.");
+    }
+    else {
+      while( true ) {
+        bVar2 = *(byte *)((longlong)puVar12 + (longlong)param_4 + 4);
+        if ((0x2c < bVar2) || ((0x100100000200U >> ((ulonglong)bVar2 & 0x3f) & 1) == 0)) break;
+        puVar12 = (undefined4 *)(ulonglong)((int)puVar12 + 1);
+      }
+      memset(local_938,0,0x200);
+      local_res20 = (undefined8 *)((ulonglong)local_res20 & 0xffffffff00000000);
+      iVar9 = FUN_140345390(param_1,param_3,param_4,(longlong)puVar12 + (longlong)param_4 + 4,
+                            local_938);
+      local_res20 = (undefined8 *)CONCAT44(local_res20._4_4_,iVar9);
+      if (iVar9 != 0) {
+        pvVar13 = (void *)FUN_140327be0(local_738,local_938,&local_res20);
+        if (local_738[0] == 0) {
+          iVar9 = FUN_140345270(param_1,param_3,param_4);
+          if (iVar9 == -1) goto LAB_140344861;
+          *(short *)((ulonglong)param_4[0x103] + 0x20c + (longlong)param_4) = (short)iVar9;
+          param_4[0x103] = param_4[0x103] + 2;
+          *(undefined2 *)((ulonglong)param_4[0x103] + 0x20c + (longlong)param_4) = local_res20._0_2_
+          ;
+          param_4[0x103] = param_4[0x103] + 2;
+          memcpy((void *)((longlong)param_4 + (ulonglong)param_4[0x103] + 0x20c),pvVar13,
+                 (ulonglong)local_res20 & 0xffffffff);
+          param_4[0x103] = param_4[0x103] + (int)local_res20;
+          goto switchD_140343f2e_caseD_19;
+        }
+        FUN_140343ad0(param_3,(&PTR_s_Expression_Error__NOERROR_141fdb3c8)[local_738[0]]);
+      }
+    }
+    break;
+  case 0x17:
+    iVar9 = FUN_140345270(param_1,param_3,param_4);
+    if (iVar9 != -1) {
+      *(short *)((ulonglong)param_4[0x103] + 0x20c + (longlong)param_4) = (short)iVar9;
+      param_4[0x103] = param_4[0x103] + 2;
+      goto switchD_140343f2e_caseD_19;
+    }
+LAB_140344861:
+    FUN_140343ad0(param_3,"Mismatched if/then/else block.");
+    break;
+  case 0x19:
+  case 0x1c:
+  case 0x1d:
+  case 0x1e:
+switchD_140343f2e_caseD_19:
+    uVar17 = param_4[0x104];
+    if ((2 < uVar17 - 0x12) && (uVar17 != 0x1f)) {
+      uVar22 = (ulonglong)*(uint *)(param_3 + 0x38);
+      if (0x3fff < param_4[0x103] + 10 + *(uint *)(param_3 + 0x38)) {
+        FUN_140343ad0(param_3,"MAX_SCRIPT_SIZE exceeded.\r\nCompiled script not saved!");
+        break;
+      }
+      if (param_4[0x105] != 0) {
+        *(undefined2 *)(uVar22 + *(longlong *)(param_3 + 0x30)) = 0x1c;
+        *(int *)(param_3 + 0x38) = *(int *)(param_3 + 0x38) + 2;
+        *(short *)((ulonglong)*(uint *)(param_3 + 0x38) + *(longlong *)(param_3 + 0x30)) =
+             (short)param_4[0x105];
+        *(int *)(param_3 + 0x38) = *(int *)(param_3 + 0x38) + 2;
+        uVar22 = (ulonglong)*(uint *)(param_3 + 0x38);
+        uVar17 = (uint)(ushort)param_4[0x104];
+      }
+      *(short *)(uVar22 + *(longlong *)(param_3 + 0x30)) = (short)uVar17;
+      *(int *)(param_3 + 0x38) = *(int *)(param_3 + 0x38) + 2;
+      *(short *)((ulonglong)*(uint *)(param_3 + 0x38) + *(longlong *)(param_3 + 0x30)) =
+           (short)param_4[0x103];
+      *(int *)(param_3 + 0x38) = *(int *)(param_3 + 0x38) + 2;
+      memcpy((void *)((ulonglong)*(uint *)(param_3 + 0x38) + *(longlong *)(param_3 + 0x30)),
+             param_4 + 0x83,(ulonglong)param_4[0x103]);
+      *(int *)(param_3 + 0x38) = *(int *)(param_3 + 0x38) + param_4[0x103];
+    }
+    uVar25 = 1;
+    goto LAB_140344a78;
+  default:
+    uVar10 = uVar17 - 0x100;
+    if (uVar10 < 0x1b7) {
+      ppuVar14 = &PTR_DAT_141fea0b0;
+LAB_1403448cb:
+      ppuVar14 = ppuVar14 + (longlong)(int)uVar10 * 10;
+      if (ppuVar14 != (undefined **)0x0) {
+        if (*(char *)(ppuVar14 + 4) != '\0') {
+          if ((*(char *)(param_3 + 0x4c) != '\0') && (param_4[0x105] == 0)) {
+            FUN_140343ad0(param_3,"Reference function requires explicit reference in quest script.")
+            ;
+            break;
+          }
+          if (param_4[0x105] != 0) {
+            puVar15 = (undefined8 *)FUN_140341020(param_3);
+            lVar16 = __RTDynamicCast(puVar15[2],0,&PTR_PTR_142038168,&PTR_PTR_14203a9e8,
+                                     in_stack_fffffffffffff068 & 0xffffffff00000000);
+            if ((lVar16 == 0) && (*(int *)(puVar15 + 3) == 0)) {
+              puVar20 = &DAT_141acbcc0;
+              if ((undefined1 *)*puVar15 != (undefined1 *)0x0) {
+                puVar20 = (undefined1 *)*puVar15;
+              }
+              FUN_140343ad0(param_3,
+                            "Syntax error.  Invalid reference \'%s\' (only object references and reference variables are allowed in this context)."
+                            ,puVar20);
+              break;
+            }
+          }
+        }
+        if ((ppuVar14[5] == (undefined *)0x0) ||
+           (cVar8 = (*(code *)ppuVar14[7])
+                              (*(undefined2 *)((longlong)ppuVar14 + 0x22),ppuVar14[5],param_4,
+                               param_3), cVar8 != '\0')) goto switchD_140343f2e_caseD_19;
+        break;
+      }
+    }
+    else {
+      uVar10 = uVar17 - 0x1000;
+      if (uVar10 < 0x2e1) {
+        ppuVar14 = &PTR_s_GetWantBlocking_141fdba10;
+        goto LAB_1403448cb;
+      }
+    }
+    FUN_140343ad0(param_3,"Unknown function code %d.");
+  }
+  goto LAB_140344a76;
+LAB_140344000:
+  do {
+    plVar4 = (longlong *)plVar11[1];
+    if ((plVar4 == (longlong *)0x0) && (*plVar11 == 0)) break;
+    if (iVar9 != 0) goto LAB_140344060;
+    uVar17 = *param_4;
+    if (uVar17 < *(uint *)*plVar11) {
+      uVar10 = ((uint *)*plVar11)[0x104];
+      if (uVar10 == 0x10) {
+        FUN_140343ad0(param_3,"Nested begin/end blocks are not allowed.");
+        FUN_140343ad0(param_3,"Mismatched begin/end block.");
+        goto LAB_140344a76;
+      }
+      if (uVar10 == 0x11) {
+        iVar9 = 1;
+      }
+      else {
+        if (0x11 < (int)uVar10) {
+          if ((int)uVar10 < 0x15) goto LAB_14034404f;
+          if (uVar10 == 0xffff) {
+            pcVar18 = "Begin without matching end starting on line %d.";
+            goto LAB_1403441f5;
+          }
+        }
+        iVar23 = iVar23 + 1;
+      }
+    }
+LAB_14034404f:
+    plVar11 = plVar4;
+  } while (plVar4 != (longlong *)0x0);
+  if (iVar9 == 0) {
+LAB_1403441eb:
+    uVar17 = *param_4;
+    pcVar18 = "Mismatched begin/end block starting on line %d.";
+LAB_1403441f5:
+    FUN_140343ad0(param_3,pcVar18,uVar17);
+  }
+  else {
+LAB_140344060:
+    if (iVar23 != -1) {
+      *(undefined4 *)((ulonglong)param_4[0x103] + 0x20c + (longlong)param_4) = 0x55555555;
+      iVar9 = *(int *)(param_3 + 0x38) + param_4[0x103];
+      uVar17 = param_4[0x103] + 4;
+      DAT_143137f90 = iVar9;
+      param_4[0x103] = uVar17;
+      if (lVar16 != -0x141ff5200) {
+        if (((&DAT_141ff5220)[lVar16] != '\0') && (*(char *)(param_3 + 0x4c) != '\0')) {
+          FUN_140343ad0(param_3,"Invalid block type for quest script.");
+          goto LAB_140344a76;
+        }
+        lVar5 = *(longlong *)(&DAT_141ff5228 + lVar16);
+        if (lVar5 != 0) {
+          pcVar6 = (code *)(&PTR_FUN_141ff5238)[(longlong)iVar21 * 10];
+          uVar3 = *(undefined2 *)(&DAT_141ff5222 + lVar16);
+          local_d58 = 0;
+          local_b54 = 0;
+          uStack_b50 = 0;
+          local_94c = 0;
+          local_940 = 0;
+          memset(local_d54,0,0x200);
+          memset(&uStack_b4c,0,0x200);
+          strcpy_s(local_d54,0x200,(char *)((longlong)param_4 + (ulonglong)*puVar1 + 4));
+          local_94c = 0;
+          local_d58 = *param_4;
+          cVar8 = (*pcVar6)(uVar3,lVar5,&local_d58,param_3);
+          if (cVar8 == '\0') goto LAB_140344a76;
+          memcpy((void *)((longlong)param_4 + (ulonglong)param_4[0x103] + 0x20c),&uStack_b4c,
+                 (ulonglong)local_94c);
+          param_4[0x103] = param_4[0x103] + local_94c;
+          uVar17 = param_4[0x103];
+          iVar9 = DAT_143137f90;
+        }
+      }
+      if (iVar9 != 0) {
+        *(uint *)((ulonglong)(uint)(iVar9 - *(int *)(param_3 + 0x38)) + 0x20c + (longlong)param_4) =
+             uVar17 + *(int *)(param_3 + 0x38);
+      }
+      goto switchD_140343f2e_caseD_19;
+    }
+  }
+  FUN_140343ad0(param_3,"Mismatched begin/end block.");
+LAB_140344a76:
+  uVar25 = 0;
+LAB_140344a78:
+  FUN_140327bd0(local_738);
+  return uVar25;
+}
+
+
+//   ^ callers of FUN_140343e80: FUN_140343c20@140343c20  
+
+#################### TARGET: 0x140344af0 ####################
+// resolved 0x140344af0 -> 140344af0
+
+// ===== FUN_140344af0 @ 140344af0  [target 0x140344af0] =====
+
+int FUN_140344af0(undefined8 param_1,longlong *param_2)
+
+{
+  longlong *plVar1;
+  longlong *plVar2;
+  int iVar3;
+  int *piVar4;
+  undefined8 *puVar5;
+  ulonglong uVar6;
+  int *piVar7;
+  bool bVar8;
+  int *local_res10;
+  undefined1 local_458 [512];
+  int local_258;
+  char local_254;
+  undefined8 local_250;
+  undefined8 local_248;
+  undefined1 local_238 [512];
+  undefined4 local_38;
+  undefined1 local_34;
+  undefined8 local_30;
+  undefined8 local_28;
+  
+  uVar6 = 0xffffffffffffffff;
+  do {
+    uVar6 = uVar6 + 1;
+  } while (*(char *)(*param_2 + uVar6) != '\0');
+  if (uVar6 <= *(uint *)(param_2 + 1)) {
+    return 0xffff;
+  }
+  if (DAT_1435f11d0 != 2) {
+    FUN_140cc4680(&DAT_1435f11e0,&DAT_1435f11d0);
+  }
+  piVar4 = (int *)FUN_140cc40c0(&DAT_1435f11e0,0x41c,0,0);
+  piVar7 = (int *)0x0;
+  local_res10 = piVar4;
+  if (piVar4 != (int *)0x0) {
+    *piVar4 = 0;
+    piVar4[0x81] = 0;
+    piVar4[0x82] = 0;
+    piVar4[0x103] = 0;
+    piVar4[0x106] = 0;
+    memset(piVar4 + 1,0,0x200);
+    memset(piVar4 + 0x83,0,0x200);
+    piVar7 = piVar4;
+  }
+  *piVar7 = (int)param_2[5] + 1;
+  iVar3 = FUN_140344ef0(param_2);
+  if (iVar3 == 0) {
+    *(int *)(param_2 + 4) = piVar7[0x106];
+    thunk_FUN_14011bd80(piVar7,0x41c);
+    return 0xffff;
+  }
+  *(int *)(param_2 + 1) = (int)param_2[1] + iVar3;
+  local_258 = 0;
+  local_250 = 0;
+  local_254 = '\0';
+  local_248 = 0;
+  memset(local_458,0,0x200);
+  iVar3 = FUN_140345970(param_2,local_458,piVar7 + 1,piVar7 + 0x82,1,1);
+  if (iVar3 == 0) {
+    FUN_140343ad0(param_2,"Syntax Error\r\n%s\r\nCould not parse this line.",piVar7 + 1);
+    thunk_FUN_14011bd80(piVar7,0x41c);
+    return 0xffff;
+  }
+  piVar7[0x105] = local_258;
+  bVar8 = local_254 != 'X';
+  if (bVar8) {
+    *(int *)(param_2 + 5) = (int)param_2[5] + 1;
+    FUN_140343ad0(param_2,"Script command \"%s\" not found.",local_458);
+    *(undefined4 *)(param_2 + 4) = 0xd;
+  }
+  else if (((int)local_250 - 0x100U < 0x1b7) && (*(int *)((longlong)param_2 + 0xc) != 1)) {
+    FUN_140343ad0(param_2,"Script command \"%s\" is a console-only command.",local_458);
+    goto LAB_140344cd9;
+  }
+  if (!bVar8) {
+    piVar7[0x104] = (int)local_250;
+    piVar7[0x81] = piVar7[0x81] - piVar7[0x82];
+    FUN_140109960(piVar7 + 1,0x200,(ulonglong)(uint)piVar7[0x82] + 4 + (longlong)piVar7,
+                  piVar7[0x81] + 1);
+    *(int *)(param_2 + 5) = *piVar7;
+    iVar3 = piVar7[0x104];
+    if (iVar3 == 0x1d) {
+      local_res10 = (int *)((ulonglong)local_res10 & 0xffffffff00000000);
+      local_38 = 0;
+      local_30 = 0;
+      local_34 = 0;
+      local_28 = 0;
+      memset(local_238,0,0x200);
+      iVar3 = FUN_140345970(param_2,local_238,piVar7 + 1,&local_res10,0,0);
+      if (iVar3 == 0) {
+        FUN_140343ad0(param_2,"Syntax Error.  Missing script name.");
+        *(undefined4 *)(param_2 + 4) = 1;
+        goto LAB_140344cd9;
+      }
+      FUN_14010ac10(param_2 + 2,local_238,0);
+      iVar3 = piVar7[0x104];
+    }
+    if (((iVar3 - 0x16U & 0xfffffffd) != 0) || ((char)piVar7[1] != '\0')) {
+      plVar1 = param_2 + 0xf;
+      for (plVar2 = (longlong *)param_2[0x10]; plVar2 != (longlong *)0x0;
+          plVar2 = (longlong *)plVar2[1]) {
+        plVar1 = plVar2;
+      }
+      if (*plVar1 == 0) {
+        *plVar1 = (longlong)piVar7;
+        return piVar7[0x104];
+      }
+      if (DAT_1435f11d0 != 2) {
+        FUN_140cc4680(&DAT_1435f11e0,&DAT_1435f11d0);
+      }
+      puVar5 = (undefined8 *)FUN_140cc40c0(&DAT_1435f11e0,0x10,0);
+      if (puVar5 != (undefined8 *)0x0) {
+        *puVar5 = piVar7;
+        puVar5[1] = 0;
+        plVar1[1] = (longlong)puVar5;
+        return piVar7[0x104];
+      }
+      plVar1[1] = 0;
+      return piVar7[0x104];
+    }
+    FUN_140343ad0(param_2,"Syntax Error.  No condition specified for \'if\' or \'elseif\'.");
+    *(undefined4 *)(param_2 + 4) = 6;
+  }
+LAB_140344cd9:
+  thunk_FUN_14011bd80(piVar7,0x41c);
+  return 0xffff;
+}
+
+
+// --- 1 caller-functions of 0x140344af0 ---
+
+// ===== FUN_140343c20 @ 140343c20  [caller of 0x140344af0] =====
+
+undefined8 FUN_140343c20(undefined8 param_1,longlong param_2,longlong *param_3)
+
+{
+  longlong *plVar1;
+  undefined8 *puVar2;
+  bool bVar3;
+  char cVar4;
+  int iVar5;
+  char *pcVar6;
+  undefined1 *puVar7;
+  
+  if (param_2 == 0) {
+    return 0;
+  }
+  if (param_3 == (longlong *)0x0) {
+    return 0;
+  }
+  *(undefined1 *)(param_2 + 0x32) = 0;
+  *(undefined1 *)((longlong)param_3 + 0x4c) = *(undefined1 *)(param_2 + 0x30);
+  *(undefined1 *)((longlong)param_3 + 0x4d) = *(undefined1 *)(param_2 + 0x31);
+  *(undefined4 *)(param_3 + 9) = *(undefined4 *)(param_2 + 0x2c);
+  if (*param_3 != 0) {
+    do {
+      iVar5 = FUN_140344af0(param_1,param_3);
+    } while (iVar5 != 0xffff);
+    if (0 < (int)param_3[4]) {
+      return 0;
+    }
+    *(undefined4 *)(param_3 + 5) = 0;
+    if (*(char *)((longlong)param_3 + 0x24) == '\0') {
+      plVar1 = param_3 + 0xf;
+      if ((plVar1 != (longlong *)0x0) && ((param_3[0x10] != 0 || (*plVar1 != 0)))) {
+        if (*(int *)(*plVar1 + 0x410) == 0xffff) {
+          return 0;
+        }
+        if (*(int *)(*plVar1 + 0x410) == 0x1d) {
+          bVar3 = false;
+          while ((plVar1 != (longlong *)0x0 &&
+                 (((longlong *)plVar1[1] != (longlong *)0x0 || (*plVar1 != 0))))) {
+            switch(((undefined4 *)*plVar1)[0x104]) {
+            case 0x10:
+              if (bVar3) {
+                pcVar6 = "Nested begin/end blocks are not allowed.";
+LAB_140343de2:
+                *(undefined4 *)(param_3 + 5) = *(undefined4 *)*plVar1;
+                goto LAB_140343de8;
+              }
+              bVar3 = true;
+              break;
+            case 0x11:
+              if (!bVar3) {
+                pcVar6 = "End without matching Begin.";
+                goto LAB_140343de2;
+              }
+              bVar3 = false;
+              break;
+            case 0x12:
+            case 0x13:
+            case 0x14:
+            case 0x1d:
+            case 0x1f:
+              break;
+            default:
+              if (!bVar3) {
+                pcVar6 = "All script commands must be inside a begin/end block.";
+                goto LAB_140343de2;
+              }
+            }
+            plVar1 = (longlong *)plVar1[1];
+          }
+          goto LAB_140343d4c;
+        }
+      }
+      pcVar6 = "You need to start scripts with \"scriptname ScriptName\"";
+LAB_140343de8:
+      FUN_140343ad0(param_3,pcVar6);
+      return 0;
+    }
+  }
+LAB_140343d4c:
+  for (plVar1 = param_3 + 0xf; (plVar1 != (longlong *)0x0 && ((plVar1[1] != 0 || (*plVar1 != 0))));
+      plVar1 = (longlong *)plVar1[1]) {
+    *(undefined4 *)(param_3 + 5) = *(undefined4 *)*plVar1;
+    cVar4 = FUN_140343e80(param_1,param_2,param_3);
+    if (cVar4 == '\0') {
+      return 0;
+    }
+  }
+  *(int *)((longlong)param_3 + 0x44) = (int)param_3[7];
+  plVar1 = param_3 + 0xc;
+  do {
+    if ((plVar1 == (longlong *)0x0) || (puVar2 = (undefined8 *)*plVar1, puVar2 == (undefined8 *)0x0)
+       ) {
+      FUN_14033c620(param_2,param_3);
+      *(undefined1 *)(param_2 + 0x32) = 1;
+      return 1;
+    }
+    plVar1 = (longlong *)plVar1[1];
+  } while ((puVar2[2] != 0) || (*(int *)(puVar2 + 3) != 0));
+  puVar7 = &DAT_141acbcc0;
+  if ((undefined1 *)*puVar2 != (undefined1 *)0x0) {
+    puVar7 = (undefined1 *)*puVar2;
+  }
+  FUN_140343ad0(param_3,"Unknown referenced object \'%s\'.",puVar7);
+  return 0;
+}
+
+
+//   ^ callers of FUN_140343c20: FUN_1403412d0@1403412d0  FUN_1403413d0@1403413d0  

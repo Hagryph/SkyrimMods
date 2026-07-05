@@ -1,0 +1,193 @@
+// ================= 14098e800  func@14098e800 =================
+
+void FUN_14098e800(undefined8 param_1,longlong *param_2)
+
+{
+  int *piVar1;
+  int iVar2;
+  ulonglong local_res10;
+  ulonglong local_res18;
+  ulonglong local_res20;
+  ulonglong local_88;
+  ulonglong local_80;
+  ulonglong local_78;
+  ulonglong local_70;
+  ulonglong local_68;
+  ulonglong local_60;
+  ulonglong local_58;
+  ulonglong local_50;
+  ulonglong local_48;
+  ulonglong local_40;
+  ulonglong local_38;
+  ulonglong local_30;
+  ulonglong local_28 [2];
+  
+  local_28[1] = 0xfffffffffffffffe;
+  FUN_140979450(DAT_1431384a8);
+  FUN_140fbb150(&local_res10,"RequestIsOnPC");
+  (**(code **)(*param_2 + 8))(param_2,&local_res10,FUN_14098ff10);
+  LOCK();
+  piVar1 = (int *)((local_res10 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(&local_res18,"QuitToMainMenu");
+  (**(code **)(*param_2 + 8))(param_2,&local_res18,FUN_14098ed10);
+  LOCK();
+  piVar1 = (int *)((local_res18 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(&local_res20,"QuitToDesktop");
+  (**(code **)(*param_2 + 8))(param_2,&local_res20,&LAB_14098ed90);
+  LOCK();
+  piVar1 = (int *)((local_res20 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(&local_88,"SetSaveDisabled");
+  (**(code **)(*param_2 + 8))(param_2,&local_88,FUN_14098edb0);
+  LOCK();
+  piVar1 = (int *)((local_88 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(&local_80,"SetVersionText");
+  (**(code **)(*param_2 + 8))(param_2,&local_80,FUN_14098f210);
+  LOCK();
+  piVar1 = (int *)((local_80 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(&local_78,"PopulateHelpTopics");
+  (**(code **)(*param_2 + 8))(param_2,&local_78,FUN_14098f360);
+  LOCK();
+  piVar1 = (int *)((local_78 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(&local_70,"PopulateCreationClubTopics");
+  (**(code **)(*param_2 + 8))(param_2,&local_70,FUN_14098f800);
+  LOCK();
+  piVar1 = (int *)((local_70 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(&local_68,"RequestHelpText");
+  (**(code **)(*param_2 + 8))(param_2,&local_68,FUN_14098f450);
+  LOCK();
+  piVar1 = (int *)((local_68 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(&local_60,"RequestCreationClubText");
+  (**(code **)(*param_2 + 8))(param_2,&local_60,FUN_14098f8e0);
+  LOCK();
+  piVar1 = (int *)((local_60 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(&local_58,"GetButtonFromUserEvent");
+  (**(code **)(*param_2 + 8))(param_2,&local_58,FUN_14097a9e0);
+  LOCK();
+  piVar1 = (int *)((local_58 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(&local_50,"SaveControls");
+  (**(code **)(*param_2 + 8))(param_2,&local_50,FUN_14098fc50);
+  LOCK();
+  piVar1 = (int *)((local_50 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(&local_48,"SaveSettings");
+  (**(code **)(*param_2 + 8))(param_2,&local_48,FUN_14098fc80);
+  LOCK();
+  piVar1 = (int *)((local_48 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(&local_40,"ShouldShowKinectTunerOption");
+  (**(code **)(*param_2 + 8))(param_2,&local_40,FUN_14098fd10);
+  LOCK();
+  piVar1 = (int *)((local_40 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(&local_38,"OpenKinectTuner");
+  (**(code **)(*param_2 + 8))(param_2,&local_38,&DAT_14098fe30);
+  LOCK();
+  piVar1 = (int *)((local_38 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(&local_30,"QuickSave");
+  (**(code **)(*param_2 + 8))(param_2,&local_30,FUN_14098fe40);
+  LOCK();
+  piVar1 = (int *)((local_30 & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140fbb150(local_28,"ModManager");
+  (**(code **)(*param_2 + 8))(param_2,local_28,FUN_14098fe80);
+  LOCK();
+  piVar1 = (int *)((local_28[0] & 0xfffffffffffffffc) + 8);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if (iVar2 == 1) {
+    (**(code **)(*DAT_143292490 + 0x60))();
+  }
+  FUN_140991520(param_1,param_2);
+  FUN_140990c30(param_1,param_2);
+  return;
+}
+
+
+

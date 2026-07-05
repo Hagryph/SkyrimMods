@@ -1,0 +1,517 @@
+
+=== STR @ 1417862e0 : "GrassConsole\%sx%04dy%04d.gid"
+   <- ref from 140201ef1  in FUN_140201610 @ 140201610
+
+=== STR @ 1417b5f28 : "Help - Basic Lockpicking (Console)"
+   (no refs)
+
+=== STR @ 1417c1b28 : "Script command "%s" is a console-only command."
+   <- ref from 140344ccd  in FUN_140344af0 @ 140344af0
+
+=== STR @ 1417c1ea8 : "Invalid variable name '%s'.\nCompiled script not saved!"
+   <- ref from 140344420  in FUN_140343e80 @ 140343e80
+
+=== STR @ 1417c2118 : "MAX_SCRIPT_SIZE exceeded.\nCompiled script not saved!"
+   <- ref from 1403449c3  in FUN_140343e80 @ 140343e80
+
+=== STR @ 1417c2328 : "Syntax Error.  Unknown command '%s'."
+   <- ref from 14034570b  in FUN_140345390 @ 140345390
+
+=== STR @ 1417c2368 : "Missing parameter %s.\nCompiled script not saved!"
+   <- ref from 140343397  in FUN_140343210 @ 140343210
+   <- ref from 140342f7d  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c23a0 : "Parameter %s may not be a variable.\nCompiled script not saved!"
+   <- ref from 140343a02  in FUN_140343210 @ 140343210
+   <- ref from 140342d43  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c23e0 : "Item '%s' not found for parameter %s.\nCompiled script not saved!"
+   <- ref from 1403439f1  in FUN_140343210 @ 140343210
+   <- ref from 140342d65  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2430 : "Invalid inventory object '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341641  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2480 : "Invalid object '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 1403416da  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c24d0 : "Invalid object reference '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342d87  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2520 : "Invalid container reference '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 14034175f  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2570 : "Invalid map marker '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341792  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c25c0 : "Invalid actor '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 1403417c8  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2610 : "Invalid spell item '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341853  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2660 : "Invalid interior cell '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 1403418b5  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c26b0 : "Invalid encounter zone '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341911  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2700 : "Invalid keyword '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 14034196d  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2750 : "Invalid location ref type '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 1403419c9  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c27a0 : "Invalid Idle form'%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341a25  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c27f0 : "Invalid form list '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341a81  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2840 : "Invalid menu icon '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341add  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2890 : "Invalid perk '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341b39  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c28d0 : "Invalid note '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341b95  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2910 : "Invalid worldspace or formlist '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341be6  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2970 : "Invalid magic item '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341c47  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c29c0 : "Invalid effect setting '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341ca8  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2a10 : "Invalid sound '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341ced  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2a60 : "Invalid music type '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341d32  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2ab0 : "Invalid topic '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341d77  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2b00 : "Invalid info '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341dbc  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2b40 : "Invalid race '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341e01  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2b80 : "Invalid class '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341e46  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2bd0 : "Invalid faction '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341e8b  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2c20 : "Invalid global '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341ed0  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2c70 : "Invalid furniture object/list '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341f21  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2cd0 : "Invalid actor base '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140341fca  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2d20 : "Invalid package '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 14034202b  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2d70 : "Invalid combat style '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 14034208c  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2dc0 : "Invalid weather '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 1403420d1  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2e10 : "Invalid Imagespace Modifier '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342116  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2e60 : "Invalid Imagespace '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 14034215b  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2ea8 : "Invalid NPC '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 1403421a0  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2ef0 : "Invalid owner '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 1403421e9  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2f40 : "Invalid Effect Shader '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 14034222e  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2f90 : "Invalid message '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 14034341b  in FUN_140343210 @ 140343210
+   <- ref from 140342273  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c2fe0 : "Invalid location '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 1403422b8  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3030 : "Invalid form '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342da9  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3070 : "Form '%s' for parameter %s is a reference, which is not allowed\nCompiled script not saved!"
+   <- ref from 140342309  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c30d0 : "Invalid Region '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 14034234e  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3120 : "Invalid Shout '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342393  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3170 : "Invalid Word of Power '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 1403423d8  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c31c0 : "Invalid EquipSlot '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 14034241d  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3210 : "Invalid BGSScene '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342462  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3260 : "Invalid BGSAssociationType '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 1403424a7  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c32b0 : "Invalid VoiceType/FormList '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 1403424f8  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3300 : "Invalid BGSReferenceEffect '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 14034253d  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3350 : "Invalid sound category type '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 14034257a  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c33a0 : "Invalid BGSAction '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342dcb  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c33f0 : "Unknown variable '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342ded  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3440 : "Invalid actor value '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342e0f  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3490 : "Invalid SkillAction '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 1403427be  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c34e0 : "Invalid alignment '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342e31  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3530 : "Invalid CriticalStage '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342890  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3580 : "Invalid Casting Source '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 1403428f3  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c35d0 : "Invalid Ward State '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342956  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3620 : "Invalid Furniture Anim Type '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342e53  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3670 : "Invalid Furniture Entry Type '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342e80  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c36c0 : "Invalid Relationship Rank '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342a54  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3710 : "Invalid Alias '%s' for parameter %s in owner quest '%s'.\nCompiled script not saved!"
+   <- ref from 140342ebe  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3770 : "No owner quest on script for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342edb  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c37c0 : "Invalid misc stat '%s' for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342efd  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3810 : "Invalid crime type '%s' for parameter %s.  Crime type must be a numeric value from 0-%d.\nCompiled script not saved!"
+   <- ref from 140342b92  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3890 : "Axis (X,Y,Z) required for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342f25  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c38e0 : "Sex (Male, Female) required for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342f3c  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3930 : "Animation group "%s" not found for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342c73  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3980 : "Form Type "%s" not found for parameter %s.\nCompiled script not saved!"
+   <- ref from 140342f5b  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c39c8 : "Expected end of line.\nCompiled script not saved!"
+   <- ref from 140342fdc  in FUN_140341460 @ 140341460
+
+=== STR @ 1417c3b10 : "Message time must be an integer.\nCompiled script not saved!"
+   <- ref from 140343975  in FUN_140343210 @ 140343210
+
+=== STR @ 1417c4660 : "Actor Value '%s' cannot be modified in scripts or the console."
+   <- ref from 14034981b  in FUN_140349710 @ 140349710
+   <- ref from 140348290  in FUN_1403481a0 @ 1403481a0
+   <- ref from 140348413  in FUN_1403482b0 @ 1403482b0
+   <- ref from 14034854f  in FUN_140348430 @ 140348430
+
+=== STR @ 1417c73f0 : "----CONSOLE COMMANDS--------------------"
+   <- ref from 140368a2a  in FUN_140368940 @ 140368940
+
+=== STR @ 1417c8358 : "SetConsoleOutputFilename >> OUTPUT_DISABLED"
+   <- ref from 1403747d7  in FUN_1403746b0 @ 1403746b0
+
+=== STR @ 1417c83a0 : "SetConsoleOutputFilename >> '%s'"
+   <- ref from 14037479c  in FUN_1403746b0 @ 1403746b0
+
+=== STR @ 1417c8910 : "Console Scope Quest >> %s (%08X)"
+   <- ref from 140373620  in FUN_140373580 @ 140373580
+
+=== STR @ 1417c8938 : "Console Scope Quest >> EMPTY"
+   <- ref from 14037364a  in FUN_140373580 @ 140373580
+
+=== STR @ 1417cb5f0 : "SysWindowCompileAndRun"
+   <- ref from 141ff2d68  (no func)
+
+=== STR @ 1417cb608 : "DialogueCompileAndRun"
+   <- ref from 141ff2d70  (no func)
+
+=== STR @ 1417cc860 : "Select a reference by id for the console."
+   (no refs)
+
+=== STR @ 1417ceac0 : "SetConsoleOuputFile"
+   <- ref from 141fed8f0  (no func)
+
+=== STR @ 1417ceae0 : "Sets the given file as target for console output."
+   (no refs)
+
+=== STR @ 1417cf298 : "RunConsoleBatch"
+   <- ref from 141fee160  (no func)
+
+=== STR @ 1417cf2b0 : "Run a console batch file"
+   (no refs)
+
+=== STR @ 1417cfb80 : "SetConsoleScopeQuest"
+   <- ref from 141feeca0  (no func)
+
+=== STR @ 1417cfba0 : "Sets the scope quest for all console functions. No param clears current scope quest."
+   (no refs)
+
+=== STR @ 1417cfc60 : "ClearConsole"
+   <- ref from 141feed40  (no func)
+
+=== STR @ 1417cfc70 : "Clears the console log"
+   (no refs)
+
+=== STR @ 1418306a8 : "Saving content. Please don't turn off your console."
+   <- ref from 14200c1f8  (no func)
+   <- ref from 142008eb0  (no func)
+
+=== STR @ 141891858 : "sStartingConsoleCommand:General"
+   <- ref from 142012780  (no func)
+
+=== STR @ 1418f1888 : "iConsoleSizeScreenPercent:Menu"
+   (no refs)
+
+=== STR @ 1418f18a8 : "rConsoleTextColor:Menu"
+   (no refs)
+
+=== STR @ 1418f18c0 : "iConsoleTextSize:Menu"
+   (no refs)
+
+=== STR @ 1418f18d8 : "rConsoleHistoryTextColor:Menu"
+   (no refs)
+
+=== STR @ 1418f18f8 : "iConsoleHistoryCharBufferSize:Menu"
+   (no refs)
+
+=== STR @ 1418f1920 : "SkyrimConsole.ini"
+   <- ref from 1408f8d54  in FUN_1408f8c70 @ 1408f8c70
+   <- ref from 1408f7a28  in FUN_1408f76c0 @ 1408f76c0
+   <- ref from 1408f7da8  in FUN_1408f76c0 @ 1408f76c0
+   <- ref from 1420173d8  (no func)
+
+=== STR @ 1418f1938 : "sConsoleINI:Menu"
+   <- ref from 1420173e0  (no func)
+
+=== STR @ 1418f1950 : "SkyrimConsoleDefault.ini"
+   <- ref from 1408f8d42  in FUN_1408f8c70 @ 1408f8c70
+   <- ref from 1420173f0  (no func)
+
+=== STR @ 1418f1970 : "sConsoleDefaultINI:Menu"
+   <- ref from 1420173f8  (no func)
+
+=== STR @ 1418f1988 : "bUseConsoleHotkeys:Menu"
+   (no refs)
+
+=== STR @ 1418f19d0 : "Console"
+   <- ref from 1400b351d  in FUN_1400b34f0 @ 1400b34f0
+
+=== STR @ 1418f23a0 : "Read %u macros/hotkeys from console INI file: %s"
+   <- ref from 1408f8c3c  in FUN_1408f8b90 @ 1408f8b90
+
+=== STR @ 1418f23d8 : "Failed to read console INI file: %s"
+   <- ref from 1408f8c4f  in FUN_1408f8b90 @ 1408f8b90
+
+=== STR @ 1418f2440 : "reload console"
+   <- ref from 1408f7752  in FUN_1408f76c0 @ 1408f76c0
+
+=== STR @ 1418f2580 : "Console"
+   <- ref from 140fb7f5b  in FUN_140fb7e10 @ 140fb7e10
+   <- ref from 1408f7442  in FUN_1408f7380 @ 1408f7380
+   <- ref from 1408f3222  in FUN_1408f3190 @ 1408f3190
+   <- ref from 140cdc1c7  in FUN_140cdbf50 @ 140cdbf50
+
+=== STR @ 1418f2650 : "Console.AddHistory"
+   <- ref from 1408f5b79  in FUN_1408f5ac0 @ 1408f5ac0
+
+=== STR @ 1418f2668 : "Console.SetSize"
+   <- ref from 1408f3315  in FUN_1408f3290 @ 1408f3290
+
+=== STR @ 1418f2678 : "Console.SetTextColor"
+   <- ref from 1408f3333  in FUN_1408f3290 @ 1408f3290
+
+=== STR @ 1418f2690 : "Console.SetTextSize"
+   <- ref from 1408f3351  in FUN_1408f3290 @ 1408f3290
+
+=== STR @ 1418f26a8 : "Console.SetHistoryTextColor"
+   <- ref from 1408f3373  in FUN_1408f3290 @ 1408f3290
+
+=== STR @ 1418f26c8 : "Console.SetHistoryCharBufferSize"
+   <- ref from 1408f3391  in FUN_1408f3290 @ 1408f3290
+
+=== STR @ 1418f26f0 : "Console.Minimize"
+   <- ref from 1408f33ba  in FUN_1408f3290 @ 1408f3290
+
+=== STR @ 1418f2708 : "Console.Show"
+   <- ref from 1408f33d7  in FUN_1408f3290 @ 1408f3290
+
+=== STR @ 1418f2718 : "Console.QShown"
+   <- ref from 1408f3455  in FUN_1408f3290 @ 1408f3290
+
+=== STR @ 1418f2728 : "Console.Hide"
+   <- ref from 1408f347d  in FUN_1408f3290 @ 1408f3290
+
+=== STR @ 1418f2738 : "Console.QHiding"
+   <- ref from 1408f349e  in FUN_1408f3290 @ 1408f3290
+
+=== STR @ 1418f2790 : "Console.PreviousCommand"
+   <- ref from 1408f37d2  in FUN_1408f3290 @ 1408f3290
+
+=== STR @ 1418f27a8 : "Console.NextCommand"
+   <- ref from 1408f37f8  in FUN_1408f3290 @ 1408f3290
+
+=== STR @ 1418f27c0 : "Console.ClearHistory"
+   <- ref from 1408f38ea  in FUN_1408f3290 @ 1408f3290
+
+=== STR @ 1418f2998 : "Console.SetCurrentSelection"
+   <- ref from 1408f5a36  in FUN_1408f5950 @ 1408f5950
+
+=== STR @ 141905838 : "ConsoleData"
+   <- ref from 1400bf9af  in FUN_1400bf9a0 @ 1400bf9a0
+   <- ref from 140fb7e75  in FUN_140fb7e10 @ 140fb7e10
+
+=== STR @ 14195cc58 : "compiledExpressionSet"
+   <- ref from 142028a48  (no func)
+   <- ref from 14194b048  (no func)
+   <- ref from 14194e858  (no func)
+
+=== STR @ 141963c20 : "hkbCompiledExpressionSetToken"
+   <- ref from 1400ccef1  in FUN_1400ccee0 @ 1400ccee0
+   <- ref from 142028cb8  (no func)
+   <- ref from 14201eda8  (no func)
+
+=== STR @ 141963c40 : "!hkbCompiledExpressionSet::Token"
+   <- ref from 14201edb0  (no func)
+
+=== STR @ 141963c68 : "hkbCompiledExpressionSet"
+   <- ref from 1400cce9a  in FUN_1400cce70 @ 1400cce70
+   <- ref from 1400ccf59  in FUN_1400ccf50 @ 1400ccf50
+   <- ref from 1420288d8  (no func)
+
+=== STR @ 141963c88 : "!hkbCompiledExpressionSet"
+   <- ref from 1400ccf6e  in FUN_1400ccf50 @ 1400ccf50
+
+=== STR @ 141965dc0 : "Utils\hkbCompiledExpressionSet.cpp"
+   <- ref from 140b06fcb  in FUN_140b06d80 @ 140b06d80
+   <- ref from 140b06fe4  in FUN_140b06d80 @ 140b06d80
+
+=== STR @ 1419ffcd0 : "$ConsoleFont"
+   <- ref from 140fb1fd8  in FUN_140fb1f20 @ 140fb1f20
+   <- ref from 140fb162a  in FUN_140fb0ab0 @ 140fb0ab0
+
+=== STR @ 141a007e0 : "Console Native UI Menu"
+   <- ref from 140fb823f  in FUN_140fb7e10 @ 140fb7e10
+
+=== STR @ 141a37398 : "Application was compiled with png.h from libpng-%.20s"
+   <- ref from 141126d6c  in FUN_141126d00 @ 141126d00
+   <- ref from 141126c3c  in FUN_141126c00 @ 141126c00
+   <- ref from 141125243  in FUN_141125100 @ 141125100
+   <- ref from 14112441c  in FUN_1411243e0 @ 1411243e0
+   <- ref from 14112454c  in FUN_1411244e0 @ 1411244e0
+   <- ref from 141123776  in FUN_141123630 @ 141123630
+
+=== STR @ 141a37550 : "Application uses deprecated png_read_init() and should be recompiled."
+   <- ref from 141124667  in FUN_141124620 @ 141124620
+
+=== STR @ 141a37890 : "Application uses deprecated png_write_init() and should be recompiled."
+   <- ref from 141126e87  in FUN_141126e40 @ 141126e40
+
+=== STR @ 141a9bb20 : "Variable %u in stack frame %u in stack %u loaded from save doesn't match compiled type - this function will be prevented from running"
+   <- ref from 141432008  in FUN_1414314f0 @ 1414314f0
+
+=== STR @ 141a9cf38 : "Magic number doesn't match, file is not a compiled script."
+   <- ref from 141438744  in FUN_141438610 @ 141438610
+
+=== STR @ 142017430 : "Console Native UI Menu"
+   <- ref from 1400b438d  in FUN_1400b4360 @ 1400b4360
+
+=== STR @ 142044fa0 : ".?AVPrintPapyrusObjectsToConsole@?A0xa042b846@@"
+   (no refs)
+
+=== STR @ 142044fe0 : ".?AVPrintPapyrusObjectsOnAliasToConsole@?A0xa042b846@@"
+   (no refs)
+
+=== STR @ 142045030 : ".?AVPrintPapyrusObjectsOnMagicEffectToConsole@?A0xa042b846@@"
+   (no refs)
+
+=== STR @ 1420a7b58 : ".?AVConsole@@"
+   (no refs)
+
+=== STR @ 1420a7b78 : ".?AVConsoleLogPrinter@?A0x2b772608@@"
+   (no refs)
+
+=== STR @ 1420a7bb0 : ".?AVConsoleHotkeyManager@?A0x2b772608@@"
+   (no refs)
+
+=== STR @ 1420a7bf0 : ".?AU?$BSTSingletonSDM@VConsoleHotkeyManager@?A0x2b772608@@UBSTSingletonSDMOpStaticBuffer@@@@"
+   (no refs)
+
+=== STR @ 1420a7c60 : ".?AU?$BSTSingletonSDMBase@U?$BSTSDMTraits@VConsoleHotkeyManager@?A0x2b772608@@U?$BSTSingletonSDMOpStaticBuffer@VConsoleHotkeyManager@?A0x2b772608@@@@@@@@"
+   (no refs)
+
+=== STR @ 1420a7d10 : ".?AU?$BSTSDMTraits@VConsoleHotkeyManager@?A0x2b772608@@U?$BSTSingletonSDMOpStaticBuffer@VConsoleHotkeyManager@?A0x2b772608@@@@@@"
+   (no refs)
+
+=== STR @ 1420a7db0 : ".?AU?$BSTSingletonSDMOpStaticBuffer@VConsoleHotkeyManager@?A0x2b772608@@@@"
+   (no refs)
+
+=== STR @ 1420a7e10 : ".?AVConsoleNativeUIMenu@@"
+   (no refs)
+
+=== STR @ 1420a9498 : ".?AUConsoleOpenHandler@@"
+   (no refs)
+
+=== STR @ 1420a9ce8 : ".?AVConsoleData@@"
+   (no refs)
+
+=== STR @ 1420a9ff0 : ".?AU?$AutoRegisterCreator@VConsoleData@@V?$BSTCreateFactoryManager@VBSFixedString@@VIUIMessageData@@$0BA@@@@@"
+   (no refs)
+
+=== STR @ 1420aa070 : ".?AV?$AutoRegisterFactory@U?$BSTDerivedCreator@VConsoleData@@VIUIMessageData@@@@V?$BSTCreateFactoryManager@VBSFixedString@@VIUIMessageData@@$0BA@@@@@"
+   (no refs)
+
+=== STR @ 1420aa120 : ".?AU?$BSTDerivedCreator@VConsoleData@@VIUIMessageData@@@@"
+   (no refs)
+
+=== STR @ 1420b9730 : ".?AVhkbCompiledExpressionSet@@"
+   (no refs)
+
+=== STR @ 1420ecc40 : ".?AVCompiledScriptLoader@BSScript@@"
+   (no refs)
+
+// total string hits: 162

@@ -1,0 +1,122 @@
+// ================= 0x1408eb710  func@? =================
+// (no function here)
+
+// ================= 0x1408eb740  func@1408eb740 =================
+
+void FUN_1408eb740(longlong param_1)
+
+{
+  int *piVar1;
+  longlong lVar2;
+  int iVar3;
+  longlong *plVar4;
+  longlong lVar5;
+  longlong lVar6;
+  undefined8 uVar7;
+  undefined8 uVar8;
+  undefined8 *puVar9;
+  longlong lVar10;
+  ulonglong uVar11;
+  int iVar12;
+  longlong unaff_GS_OFFSET;
+  undefined4 uVar13;
+  ulonglong local_res8;
+  undefined1 local_res10 [8];
+  undefined1 local_res18 [8];
+  undefined4 local_res20;
+  longlong local_78 [2];
+  undefined1 local_68 [40];
+  
+  local_78[1] = 0xfffffffffffffffe;
+  lVar2 = *(longlong *)(param_1 + 0x18);
+  if ((lVar2 == 0) || (lVar6 = FUN_1408ef4f0(*(undefined8 *)(lVar2 + 0x30)), lVar6 == 0)) {
+    puVar9 = (undefined8 *)0x0;
+  }
+  else {
+    puVar9 = *(undefined8 **)(lVar6 + 8);
+  }
+  if (puVar9 != (undefined8 *)0x0) {
+    uVar11 = (ulonglong)*(double *)(*(longlong *)(param_1 + 0x28) + 0x10);
+    local_78[0] = 0;
+    local_res8 = uVar11;
+    FUN_14018a9b0(&DAT_1431ac8e4,local_78);
+    lVar5 = local_78[0];
+    plVar4 = DAT_1431874f8;
+    lVar6 = *(longlong *)(local_78[0] + 0x168);
+    lVar10 = local_78[0];
+    if ((lVar6 != 0) && (lVar6 != -0xa8)) {
+      lVar10 = *(longlong *)(lVar6 + 0xd0);
+    }
+    iVar12 = (int)*(double *)(*(longlong *)(param_1 + 0x28) + 0x28) * (int)uVar11;
+    if (*(char *)(*(longlong *)(param_1 + 0x28) + 0x40) == '\0') {
+      lVar6 = *DAT_1431874f8;
+      uVar13 = FUN_140223050(puVar9);
+      (**(code **)(lVar6 + 0x7b8))(plVar4,0x11,uVar13,0,0);
+      plVar4 = DAT_1431874f8;
+      uVar7 = *puVar9;
+      lVar6 = *DAT_1431874f8;
+      uVar8 = FUN_14092ace0(puVar9,local_res8 & 0xffffffff,0);
+      (**(code **)(lVar6 + 0x2b0))
+                (plVar4,local_res18,uVar7,local_res8 & 0xffffffff,2,uVar8,lVar10,0,0);
+      (**(code **)(*DAT_1431874f8 + 0x518))(DAT_1431874f8,*puVar9,0,0);
+      uVar7 = FUN_1401e01a0(0xf);
+      FUN_140222600(local_68,uVar7,0);
+      lVar6 = FUN_1402259d0(lVar10);
+      if (lVar6 != 0) {
+        iVar3 = *(int *)(lVar2 + 0x9c);
+        if (iVar12 < *(int *)(lVar2 + 0x9c)) {
+          iVar3 = iVar12;
+        }
+        FUN_1401bcfe0(DAT_1420f6320,local_68,iVar3,lVar5);
+      }
+      if (*(char *)(lVar2 + 0xa4) == '\0') {
+        uVar7 = FUN_1408ef4f0(*(undefined8 *)(lVar2 + 0x30));
+        FUN_140929cc0(lVar2 + 0x60,uVar7);
+      }
+      uVar7 = FUN_1408efaa0();
+      FUN_1408ef720(uVar7,local_res10);
+      FUN_140222820(local_68);
+    }
+    else if (*(int *)(lVar2 + 0x98) < iVar12) {
+      FUN_14097a5e0(PTR_s_You_don_t_have_enough_gold__14200b6e8,"UIMenuCancel",1);
+    }
+    else {
+      lVar6 = *DAT_1431874f8;
+      uVar13 = FUN_140223050(puVar9);
+      (**(code **)(lVar6 + 0x7b8))(plVar4,0x11,uVar13,0,0);
+      FUN_1401bcfe0(DAT_1420f6320,puVar9,uVar11 & 0xffffffff,lVar5);
+      plVar4 = DAT_1431874f8;
+      uVar7 = FUN_1402259d0(DAT_1431874f8);
+      FUN_1402344b0(uVar7,plVar4,iVar12,lVar10);
+      FUN_1407347a0(DAT_1431874f8,*puVar9,0,0,2);
+      (**(code **)(*DAT_1431874f8 + 0x518))(DAT_1431874f8,*puVar9,1,0);
+      if (*(char *)(lVar2 + 0xa4) == '\0') {
+        uVar7 = FUN_1408ef4f0(*(undefined8 *)(lVar2 + 0x30));
+        FUN_140929cc0(lVar2 + 0x60,uVar7);
+      }
+      uVar7 = FUN_1408efaa0();
+      FUN_1408ef720(uVar7,&local_res8);
+    }
+    plVar4 = DAT_1431874f8;
+    lVar2 = *(longlong *)(lVar2 + 0x30);
+    lVar6 = *(longlong *)(*(longlong *)(unaff_GS_OFFSET + 0x58) + (ulonglong)_tls_index * 8);
+    uVar13 = *(undefined4 *)(lVar6 + 0x768);
+    *(undefined4 *)(lVar6 + 0x768) = 0x46;
+    *(undefined1 *)(lVar2 + 0x50) = 1;
+    local_res20 = uVar13;
+    FUN_140976a80(plVar4,0);
+    *(undefined4 *)(lVar6 + 0x768) = uVar13;
+    LOCK();
+    piVar1 = (int *)(lVar5 + 0x28);
+    iVar12 = *piVar1;
+    *piVar1 = *piVar1 + -1;
+    UNLOCK();
+    if ((iVar12 - 1U & 0x3ff) == 0) {
+      (**(code **)(*(longlong *)(lVar5 + 0x20) + 8))();
+    }
+  }
+  return;
+}
+
+
+

@@ -1,0 +1,59 @@
+# build_mods.ps1 - build every external HagUI mod under mods/ and deploy each DLL as a normal
+# Mod Organizer 2 mod:
+#   <MO2 mods>\<ModName>\SKSE\Plugins\<ModName>.dll
+#
+#   .\build_mods.ps1                # build + deploy all mods
+#   .\build_mods.ps1 -Only HagGeneral
+[CmdletBinding()]
+param(
+    [string]$Mo2Mods = 'C:\Users\Yannis\AppData\Local\ModOrganizer\Skyrim Special Edition\mods',
+    [string]$Only,
+    [switch]$NoCommit
+)
+$ErrorActionPreference = 'Stop'
+$root = $PSScriptRoot
+$repoRoot = Split-Path $root -Parent
+$cmake = 'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe'
+
+$dirs = Get-ChildItem $root -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'CMakeLists.txt') }
+if ($Only) { $dirs = $dirs | Where-Object { $_.Name -eq $Only } }
+if (-not $dirs) { throw "no mods found under $root (need a subfolder with CMakeLists.txt)" }
+
+foreach ($d in $dirs) {
+    $name = $d.Name
+    $bld = Join-Path $d.FullName 'build'
+    Write-Host "== building mod: $name =="
+    & $cmake --preset vs2022 -S $d.FullName | Select-Object -Last 2
+    if ($LASTEXITCODE -ne 0) { throw "configure failed for $name" }
+    & $cmake --build $bld --config Release | Select-Object -Last 3
+    if ($LASTEXITCODE -ne 0) { throw "build failed for $name" }
+
+    $dll = Get-ChildItem $bld -Recurse -Filter "$name.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $dll) { $dll = Get-ChildItem $bld -Recurse -Filter '*.dll' | Select-Object -First 1 }
+    if (-not $dll) { throw "no DLL produced for $name" }
+
+    $modOut = Join-Path $Mo2Mods $name
+    $pluginsOut = Join-Path $modOut 'SKSE\Plugins'
+    New-Item -ItemType Directory -Force $pluginsOut | Out-Null
+
+    [System.IO.File]::Copy($dll.FullName, (Join-Path $pluginsOut $dll.Name), $true)
+    Write-Host "deployed $($dll.Name) -> $pluginsOut"
+
+    Get-ChildItem (Join-Path $d.FullName 'assets') -File -ErrorAction SilentlyContinue | ForEach-Object {
+        [System.IO.File]::Copy($_.FullName, (Join-Path $pluginsOut $_.Name), $true)
+        Write-Host "deployed $($_.Name) -> $pluginsOut"
+    }
+
+    $meta = Join-Path $modOut 'meta.ini'
+    if (-not (Test-Path $meta)) {
+        @('[General]', 'gameName=Skyrim Special Edition', 'modid=0', 'version=0.1.0') |
+            Set-Content $meta -Encoding UTF8
+    }
+}
+
+Write-Host "`nAll external mods built + deployed under $Mo2Mods"
+
+if (-not $NoCommit) {
+    $commit = Join-Path $repoRoot 'scripts\auto-git-commit.cjs'
+    if (Test-Path $commit) { & node $commit }
+}

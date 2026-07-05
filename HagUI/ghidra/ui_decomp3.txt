@@ -1,0 +1,14 @@
+// ================= 0x1400b2a20  func@1400b2a20 =================
+
+void FUN_1400b2a20(void)
+
+{
+  if (DAT_1420f6a00 == 0) {
+    DAT_1420f6a00 = FUN_140fa32f0(&DAT_14315ceb0);
+  }
+  FUN_140fa5480(DAT_1420f6a00,s_BarterMenu_142017240,FUN_1408ef2b0);
+  return;
+}
+
+
+

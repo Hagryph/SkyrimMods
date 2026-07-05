@@ -1,0 +1,162 @@
+
+#################### TARGET: ShowCursor ####################
+// resolved ShowCursor -> EXTERNAL:000000ba
+// --- 4 caller-functions of ShowCursor ---
+
+// ===== FUN_140fba590 @ 140fba590  [caller of ShowCursor] =====
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140fba590(longlong param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,
+                  undefined4 param_5)
+
+{
+  undefined4 uVar1;
+  longlong lVar2;
+  longlong lVar3;
+  int iVar4;
+  undefined8 uVar5;
+  longlong unaff_GS_OFFSET;
+  float fVar6;
+  float fVar7;
+  
+  *(undefined4 *)(param_1 + 0xc) = param_2;
+  *(undefined4 *)(param_1 + 0x10) = param_3;
+  *(undefined4 *)(param_1 + 0x14) = param_4;
+  *(undefined4 *)(param_1 + 0x18) = param_5;
+  lVar2 = *(longlong *)(*(longlong *)(unaff_GS_OFFSET + 0x58) + (ulonglong)_tls_index * 8);
+  uVar1 = *(undefined4 *)(lVar2 + 0x768);
+  *(undefined4 *)(lVar2 + 0x768) = 0x46;
+  fVar7 = (*(float *)(param_1 + 0x14) + *(float *)(param_1 + 0xc)) * DAT_141ad285c;
+  *(float *)(param_1 + 4) = fVar7;
+  fVar6 = (*(float *)(param_1 + 0x18) + *(float *)(param_1 + 0x10)) * DAT_141ad285c;
+  *(float *)(param_1 + 8) = fVar6;
+  lVar3 = DAT_1420f8958;
+  uVar5 = FUN_140fb2fd0(DAT_143169188,1,0,fVar7,fVar6,0,0);
+  FUN_140fa8f20(lVar3 + 0xb8,uVar5);
+  iVar4 = *(int *)(param_1 + 0x2c);
+  while (-1 < iVar4) {
+    iVar4 = ShowCursor(0);
+    *(int *)(param_1 + 0x2c) = iVar4;
+  }
+  *(undefined4 *)(lVar2 + 0x768) = uVar1;
+  *(float *)(param_1 + 0x28) =
+       (*(float *)(param_1 + 0x14) - *(float *)(param_1 + 0xc)) * _DAT_141a01038;
+  return;
+}
+
+
+//   ^ callers of FUN_140fba590: FUN_140640120@140640120  FUN_14079a970@14079a970  FUN_140984a80@140984a80  
+
+// ===== FUN_140fba960 @ 140fba960  [caller of ShowCursor] =====
+
+void FUN_140fba960(longlong param_1,byte param_2)
+
+{
+  int iVar1;
+  
+  iVar1 = *(int *)(param_1 + 0x2c);
+  if (param_2 == 0) {
+    while (-1 < iVar1) {
+      iVar1 = ShowCursor(0);
+      *(int *)(param_1 + 0x2c) = iVar1;
+    }
+  }
+  else if (iVar1 < 0) {
+    do {
+      iVar1 = ShowCursor((uint)param_2);
+      *(int *)(param_1 + 0x2c) = iVar1;
+    } while (iVar1 < 0);
+    return;
+  }
+  return;
+}
+
+
+//   ^ callers of FUN_140fba960: FUN_14064c880@14064c880  
+
+// ===== FUN_140fba4a0 @ 140fba4a0  [caller of ShowCursor] =====
+
+void FUN_140fba4a0(longlong param_1)
+
+{
+  undefined4 uVar1;
+  longlong lVar2;
+  longlong lVar3;
+  int iVar4;
+  undefined8 uVar5;
+  longlong unaff_GS_OFFSET;
+  float fVar6;
+  float fVar7;
+  
+  lVar2 = *(longlong *)(*(longlong *)(unaff_GS_OFFSET + 0x58) + (ulonglong)_tls_index * 8);
+  uVar1 = *(undefined4 *)(lVar2 + 0x768);
+  *(undefined4 *)(lVar2 + 0x768) = 0x46;
+  fVar7 = (*(float *)(param_1 + 0x14) + *(float *)(param_1 + 0xc)) * DAT_141ad285c;
+  *(float *)(param_1 + 4) = fVar7;
+  fVar6 = (*(float *)(param_1 + 0x18) + *(float *)(param_1 + 0x10)) * DAT_141ad285c;
+  *(float *)(param_1 + 8) = fVar6;
+  lVar3 = DAT_1420f8958;
+  uVar5 = FUN_140fb2fd0(DAT_143169188,1,0,fVar7,fVar6,0,0);
+  FUN_140fa8f20(lVar3 + 0xb8,uVar5);
+  iVar4 = *(int *)(param_1 + 0x2c);
+  while (-1 < iVar4) {
+    iVar4 = ShowCursor(0);
+    *(int *)(param_1 + 0x2c) = iVar4;
+  }
+  *(undefined4 *)(lVar2 + 0x768) = uVar1;
+  return;
+}
+
+
+//   ^ callers of FUN_140fba4a0: FUN_1409707f0@1409707f0  FUN_140981640@140981640  FUN_140984a80@140984a80  
+
+// ===== FUN_140fba9c0 @ 140fba9c0  [caller of ShowCursor] =====
+
+void FUN_140fba9c0(longlong param_1,float param_2,float param_3)
+
+{
+  undefined4 uVar1;
+  longlong lVar2;
+  longlong lVar3;
+  int iVar4;
+  undefined8 uVar5;
+  longlong unaff_GS_OFFSET;
+  float fVar6;
+  float fVar7;
+  
+  lVar2 = *(longlong *)(*(longlong *)(unaff_GS_OFFSET + 0x58) + (ulonglong)_tls_index * 8);
+  uVar1 = *(undefined4 *)(lVar2 + 0x768);
+  *(undefined4 *)(lVar2 + 0x768) = 0x46;
+  fVar7 = *(float *)(param_1 + 0x14);
+  if ((param_2 <= *(float *)(param_1 + 0x14)) &&
+     (fVar7 = *(float *)(param_1 + 0xc), *(float *)(param_1 + 0xc) <= param_2)) {
+    fVar7 = param_2;
+  }
+  *(float *)(param_1 + 4) = fVar7;
+  fVar6 = *(float *)(param_1 + 0x18);
+  if ((param_3 <= *(float *)(param_1 + 0x18)) &&
+     (fVar6 = *(float *)(param_1 + 0x10), *(float *)(param_1 + 0x10) <= param_3)) {
+    fVar6 = param_3;
+  }
+  *(float *)(param_1 + 8) = fVar6;
+  lVar3 = DAT_1420f8958;
+  uVar5 = FUN_140fb2fd0(DAT_143169188,1,0,fVar7,fVar6,0,0);
+  FUN_140fa8f20(lVar3 + 0xb8,uVar5);
+  iVar4 = *(int *)(param_1 + 0x2c);
+  while (-1 < iVar4) {
+    iVar4 = ShowCursor(0);
+    *(int *)(param_1 + 0x2c) = iVar4;
+  }
+  *(undefined4 *)(lVar2 + 0x768) = uVar1;
+  return;
+}
+
+
+//   ^ callers of FUN_140fba9c0: 
+
+#################### TARGET: ClipCursor ####################
+// NOT FOUND: ClipCursor
+
+#################### TARGET: SetCursor ####################
+// NOT FOUND: SetCursor

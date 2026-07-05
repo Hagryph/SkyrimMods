@@ -1,0 +1,37 @@
+// ================= 0x140913bb0  func@140913bb0 =================
+
+undefined8 * FUN_140913bb0(void)
+
+{
+  undefined4 uVar1;
+  longlong lVar2;
+  undefined8 *puVar3;
+  longlong unaff_GS_OFFSET;
+  undefined8 uVar4;
+  
+  uVar4 = 0xfffffffffffffffe;
+  lVar2 = *(longlong *)(*(longlong *)(unaff_GS_OFFSET + 0x58) + (ulonglong)_tls_index * 8);
+  uVar1 = *(undefined4 *)(lVar2 + 0x768);
+  *(undefined4 *)(lVar2 + 0x768) = 0x46;
+  puVar3 = (undefined8 *)(**(code **)(*DAT_143292490 + 0x50))(DAT_143292490,0x40);
+  if (puVar3 == (undefined8 *)0x0) {
+    puVar3 = (undefined8 *)0x0;
+  }
+  else {
+    FUN_140faecc0(puVar3);
+    puVar3[6] = &PTR_FUN_1418752d0;
+    *(undefined4 *)(puVar3 + 7) = 1;
+    *puVar3 = &PTR_FUN_1418f5c58;
+    puVar3[6] = &PTR_LAB_1418f5ca8;
+    FUN_140fb0110(DAT_1435f11c8,puVar3,puVar3 + 2,"CreditsMenu",1,DAT_141ad2868,uVar4);
+    *(undefined4 *)((longlong)puVar3 + 0x1c) = 1;
+    *(undefined4 *)(puVar3 + 4) = 1;
+    *(undefined1 *)(puVar3 + 3) = 10;
+    FUN_1409133b0(puVar3);
+  }
+  *(undefined4 *)(lVar2 + 0x768) = uVar1;
+  return puVar3;
+}
+
+
+

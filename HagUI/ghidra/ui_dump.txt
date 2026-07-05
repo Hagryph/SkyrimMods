@@ -1,0 +1,637 @@
+# Skyrim SE UI reverse-engineering dump
+# program : SkyrimSE.exe
+# compiler: unknown
+# imageBase = 0x140000000   (runtime RVA = fileAddr - imageBase)
+
+== UI strings and referencing functions ==
+0x1417771f8  "CopyMenuBG"  <-
+0x14178cddf  "AfMapLocalHeight:MapMenu"  <-
+0x1417b5438  "Map Menu Looping Sound"  <-
+0x1417b54b0  "Pause During Menu Category (Fade)"  <-
+0x1417b54d8  "Pause During Menu Category (Immediate)"  <-
+0x1417b5500  "Pause During Loading Menu Category"  <-
+0x1417b5828  "ImageSpaceModifier for inventory menu."  <-
+0x1417b5868  "Main Menu Cell"  <-
+0x1417b6068  "Help - Skills Menu"  <-
+0x1417b6080  "Help - Map Menu"  <-
+0x1417b94c0  "MenuIcon"  <-
+0x1417bb4a0  ":AudioMenu"  <-
+0x1417bdfb8  "     JournalMenu::bTabsDisabled - %s"  <-
+0x1417c2840  "Invalid menu icon '%s' for parameter %s.\nCompiled script not saved!"  <-
+0x1417c6d78  "Menus -> %s"  <-
+0x1417ca558  "	 CurrentSaveGameNumber:%u  CurrentAutoSaveNumber:%u"  <-
+0x1417cbc30  "Menu Icon"  <-
+0x1417cbf30  "MenuMode"  <-
+0x1417cc5a0  "ToggleMenus"  <-
+0x1417cc5b0  "Hide all the menus. Used for taking screen shots."  <-
+0x1417cde68  "Exit game without going through menus."  <-
+0x1417cf1f0  "ShowMenu"  <-
+0x1417cf200  "Show or create a menu"  <-
+0x1417cf218  "HideMenu"  <-
+0x1417cf228  "Hide or close a menu"  <-
+0x1417d3400  "9 optional (0/1) values. movement|fighting|pov|looking|sneaking|menu|activate|journal|POV Type ex: 1 0 0 1 0 0 0 0 0"  <-
+0x1417d34c0  "8 optional (0/1) values. movement|fighting|pov|looking|sneaking|menu|activate|journal ex: 1 0 0 1 0 0 0 0"  <-
+0x1417d3f68  "ShowClassMenu"  <-
+0x1417d3f78  "ShowRaceMenu"  <-
+0x1417d3fa0  "ShowRaceMenu no parameter will bring up the race menu. SetPlayerRace raceID will change the players race to raceID and reload the players geometry."  <-
+0x1417d4070  "ShowNameMenu"  <-
+0x1417d5130  "ShowBarterMenu"  <-
+0x1417d51c8  "ShowRepairMenu"  <-
+0x1417d5698  "ShowChargenMenu"  <-
+0x1417d5a30  "ShowChargenMenuParams"  <-
+0x1417d5d68  "ShowLockpickMenu"  <-
+0x1417d6470  "ShowLockpickMenuDebug"  <-
+0x14182c010  "Interface\Icons\Misc\cursor.dds"  <-
+0x14182c030  "sCursorFilename"  <-
+0x14182f498  "Main Menu"  <-
+0x14182f4a8  "sMainMenu"  <-
+0x1418301e0  "Turn off 360 Controller in the Controls section of the Settings menu to switch back to Keyboard/Mouse."  <-
+0x1418306e0  "sMenuDisplayXBoxSaveMessage"  <-
+0x141830710  "sMenuDisplayShortXBoxSaveMessage"  <-
+0x141830740  "sMenuDisplaySave"  <-
+0x141830758  "sMenuDisplayPlayTime"  <-
+0x141830780  "sMenuDisplayNoSaves"  <-
+0x1418307a8  "sMenuDisplayNewSave"  <-
+0x1418307d0  "sMenuDisplayQuicksaveName"  <-
+0x1418307f0  "sMenuDisplayAutosaveName"  <-
+0x141830810  "sMenuDisplayLevelString"  <-
+0x141830840  "sMenuDisplayUnknownLocationString"  <-
+0x141830868  "sMenuDisplayDayString"  <-
+0x141830a18  "sSaveGameCorruptMenuMessage"  <-
+0x141830af8  "sLoadFromMainMenu"  <-
+0x141831100  "You have signed out of your profile and will now be returned to the main menu."  <-
+0x141832158  "sMiscPlayerDeadMenuOption"  <-
+0x1418326a8  "sConstructibleMenuDescription"  <-
+0x141832748  "sConstructibleMenuConfirm"  <-
+0x141832ae8  "sSmithingMenuDescription"  <-
+0x141832df0  "sEnchantMenuDescription"  <-
+0x141832fb0  "sEnchantDeconstructMenuDescription"  <-
+0x141833278  "sAlchemyMenuDescription"  <-
+0x141833460  "In Menu"  <-
+0x141833468  "sPresenceInMenu"  <-
+0x1418336a0  "sCloseMarketplaceMenu_Confirm"  <-
+0x141868a40  "uLockedTerrainLOD:MapMenu"  <-
+0x141868a60  "uLockedObjectMapLOD:MapMenu"  <-
+0x1418752e8  "e:\_skyrimhd\code\gamesln\bsmenu\tmenufactory.h"  <-
+0x141875af0  "bMusicOn:CreationsMenu"  <-
+0x1418761d8  "CreditsMenu"  <-
+0x141876220  "closeMenu"  <-
+0x14187a370  "UseMinimalModMenu"  <-
+0x14187a5b0  "KinectMenu"  <-
+0x14187a930  "FadeInMenu"  <-
+0x14187a940  "FadeOutMenu"  <-
+0x141882a70  "fMenuModeFadeOutTime:Audio"  <-
+0x141882a90  "fMenuModeFadeInTime:Audio"  <-
+0x141882b30  "uAudioThreadSleepTimeMenuMode:Audio"  <-
+0x141882c78  "fAudioMasterVolume:AudioMenu"  <-
+0x141884010  " %s is not being allowed to advance the menu waiting for the script run results"  <-
+0x14188ad50  "MenuControls"  <-
+0x14188ad60  "MenuTopicManager"  <-
+0x14188f3a8  "sMainMenuMovieIntro:General"  <-
+0x141892388  "bShowMenuTextureUse:Display"  <-
+0x1418f0d28  "BarterMenu"  <-
+0x1418f0d88  "CloseMenu"  <-
+0x1418f0e80  "ToggleMenuFade"  <-
+0x1418f1770  "BookMenu"  <-
+0x1418f17d8  "BookMenu.BookMenuInstance.PrepForClose"  <-
+0x1418f1800  "BookMenu.BookMenuInstance.TurnPage"  <-
+0x1418f1838  "BookMenu.BookMenuInstance.ShowPageAtOffset"  <-
+0x1418f1888  "iConsoleSizeScreenPercent:Menu"  <-
+0x1418f18a8  "rConsoleTextColor:Menu"  <-
+0x1418f18c0  "iConsoleTextSize:Menu"  <-
+0x1418f18d8  "rConsoleHistoryTextColor:Menu"  <-
+0x1418f18f8  "iConsoleHistoryCharBufferSize:Menu"  <-
+0x1418f1938  "sConsoleINI:Menu"  <-
+0x1418f1970  "sConsoleDefaultINI:Menu"  <-
+0x1418f1988  "bUseConsoleHotkeys:Menu"  <-
+0x1418f3338  "ContainerMenu"  <-
+0x1418f3458  "UIMenuFocus"  <-
+0x1418f5190  "Menu.ItemList"  <-
+0x1418f51a0  "Menu.ItemInfo"  <-
+0x1418f51b0  "Menu.BottomBarInfo"  <-
+0x1418f51c8  "Menu.AdditionalDescription"  <-
+0x1418f51e8  "Menu.MenuName"  <-
+0x1418f51f8  "Menu.ButtonText"  <-
+0x1418f5290  "MenuDescription"  <-
+0x1418f5998  "CraftingMenu"  <-
+0x1418f59fe  "0@Interface/Credits.txt"  <-
+0x1418f5a30  "Interface/Credits_PLRU.txt"  <-
+0x1418f5dc8  "CursorMenu"  <-
+0x1418f61a8  "DialogueMenu"  <-
+0x1418f61f8  "StartHideMenu"  <-
+0x1418f63f8  "FaderMenu"  <-
+0x1418f6408  "mc_FaderMenu.updateFade"  <-
+0x1418f6420  "mc_FaderMenu.initFade"  <-
+0x1418f69b8  "FavoritesMenu"  <-
+0x1418f69c8  "MenuHolder"  <-
+0x1418f6d20  "GiftMenu"  <-
+0x1418f6d30  "SetMenuInfo"  <-
+0x1418f99e0  "InventoryMenu"  <-
+0x1418f99f0  "ShowTweenMenu"  <-
+0x1418f9a00  "CloseTweenMenu"  <-
+0x1418fa078  "e:\_skyrimhd\code\gamesln\game\interface\menus\levelupmenu.cpp"  <-
+0x1418fa0b8  "LevelUpMenu"  <-
+0x1418fa4b0  "LoadingMenu"  <-
+0x1418fa550  "Interface/Lockpicking/LockPickSkeletonKey01.nif"  <-
+0x1418fa580  "Interface/Lockpicking/LockPick01.nif"  <-
+0x1418fa5a8  "Interface/Lockpicking/LockPickShiv01.nif"  <-
+0x1418fafb8  "LockpickingMenu"  <-
+0x1418fbd40  "MagicMenu"  <-
+0x1418fbf28  "sMainMenuMusic:General"  <-
+0x1418fbf40  "uMainMenuMusicFadeTimeMS:General"  <-
+0x1418fbf68  "uMainMenuMusicAttnmB:General"  <-
+0x1418fbf88  "uModMenuMusicAttnmB:General"  <-
+0x1418fbfd8  "bModManagerMenuEnabled:General"  <-
+0x1418fc018  "bAutoSkipMainMenuLogin:Bethesda.net"  <-
+0x1418fca30  "$To download and activate Creations later, visit the Creation Club Menu."  <-
+0x1418fcbc0  "StartMenu"  <-
+0x1418fccb0  "OpenCreditsMenu"  <-
+0x1418fcdc8  "sendMenuProperties"  <-
+0x1418fcee8  "interface/logo/logo01ae.nif"  <-
+0x1418fd1a0  "fMenuKeyRepeatShort:Interface"  <-
+0x1418fd1c0  "fMenuKeyRepeatLong:Interface"  <-
+0x1418fd578  "e:\_skyrimhd\code\gamesln\game\interface\menucontrols.cpp"  <-
+0x1418fd740  "MessageBoxMenu"  <-
+0x1418fdb18  "bUserClosesLoadingMenu:Interface"  <-
+0x1418fde30  "fUIMistMenu_CameraX_G:Interface"  <-
+0x1418fde50  "fUIMistMenu_CameraY_G:Interface"  <-
+0x1418fde70  "fUIMistMenu_CameraZ_G:Interface"  <-
+0x1418fde90  "fUIMistMenu_CameraLookAtX_G:Interface"  <-
+0x1418fdeb8  "fUIMistMenu_CameraLookAtY_G:Interface"  <-
+0x1418fdee0  "fUIMistMenu_CameraLookAtZ_G:Interface"  <-
+0x1418fdf08  "fUIMistMenu_CameraFOV_G:Interface"  <-
+0x1418fdf30  "rUIMistMenu_AmbientXNegRGB:Interface"  <-
+0x1418fdf58  "rUIMistMenu_AmbientXPosRGB:Interface"  <-
+0x1418fdf80  "rUIMistMenu_AmbientYNegRGB:Interface"  <-
+0x1418fdfa8  "rUIMistMenu_AmbientYPosRGB:Interface"  <-
+0x1418fdfd0  "rUIMistMenu_AmbientZNegRGB:Interface"  <-
+0x1418fdff8  "rUIMistMenu_AmbientZPosRGB:Interface"  <-
+0x1418fe020  "fUIMistMenu_DefaultLogoNIFScale:Interface"  <-
+0x1418fe050  "sUIMistMenu_DefaultLogoCameraPath:Interface"  <-
+0x1418fe080  "fUIMistMenu_LogoOnscreenPanThresholdX:Interface"  <-
+0x1418fe0b0  "fUIMistMenu_LogoOnscreenPanThresholdY:Interface"  <-
+0x1418fe0e0  "fUIMistMenu_LogoOnscreenZoomThresholdNear:Interface"  <-
+0x1418fe118  "fUIMistMenu_LogoOnscreenZoomThresholdFar:Interface"  <-
+0x1418fe150  "fUIMistMenu_LogoOnscreenZoomMinFOV:Interface"  <-
+0x1418fe180  "fUIMistMenu_LogoOnscreenZoomMaxFOV:Interface"  <-
+0x1418fe1b0  "interface/logo/logo.nif"  <-
+0x1418ff1a0  "Interface/INTMenuFogParticles.nif"  <-
+0x1418ff960  "sPosePlayerRaceSexMenu:Interface"  <-
+0x141900128  "RaceSex_menu"  <-
+0x141900330  "RaceSexMenuBaseInstance.RaceSexPanelsInstance.bLimitedMenu"  <-
+0x1419007e8  "SleepWaitMenu"  <-
+0x1419007f8  "SleepWaitMenu_mc"  <-
+0x141900868  "Interface/INTPerkSkydome.nif"  <-
+0x141900888  "Interface/INTPerkStars01.nif"  <-
+0x1419008a8  "Interface/INTPerkLine01.nif"  <-
+0x141900e18  "SkillMenuTransition"  <-
+0x141900e30  "SkillMenuIdle"  <-
+0x141901698  "DLC01/Interface/INTVampirePerkSkydome.nif"  <-
+0x1419016c8  "StatsMenu"  <-
+0x1419016e8  "StatsMenuBaseInstance.BeastSkillHolder"  <-
+0x141901748  "StatsMenu.PerkNamesA"  <-
+0x141901760  "StatsMenu.StatsMenuInstance.UpdatePerkText"  <-
+0x141901958  "StatsMenu.SkillStatsA"  <-
+0x1419019b0  "StatsMenuBaseInstance.BeastSkillHolder.BeastSkillInstance.LabelInstance"  <-
+0x141901a00  "StatsMenuBaseInstance.BeastSkillHolder.BeastSkillInstance.ShortBar"  <-
+0x141902468  "TrainingMenu"  <-
+0x141902490  "TrainingMenuObj"  <-
+0x141902800  "TutorialMenu"  <-
+0x141902ba0  "TweenMenu"  <-
+0x141902bc0  "OpenHighlightedMenu"  <-
+0x141902bd8  "HighlightMenu"  <-
+0x141902be8  "StartCloseMenu"  <-
+0x141902c10  "StartOpenMenuAnim"  <-
+0x141902c40  "iLoadingMenuShadowLightFlags:Display "  <-
+0x141902c68  "fLoadingMenuShadowBias:Display "  <-
+0x141902c88  "fLoadingMenuShadowFallOff:Display "  <-
+0x141902cf0  "fInventoryMenuLightX:Interface"  <-
+0x141902d10  "fInventoryMenuLightY:Interface"  <-
+0x141902d30  "fInventoryMenuLightZ:Interface"  <-
+0x141902e10  "fInventoryMenuLight2X:Interface"  <-
+0x141902e30  "fInventoryMenuLight2Y:Interface"  <-
+0x141902e50  "fInventoryMenuLight2Z:Interface"  <-
+0x141905b00  "LoadingMenuData"  <-
+0x141906440  "QuestJournalFader.Menu_mc.SystemFader.Page_mc.SaveLoadPanel"  <-
+0x141906828  "fMapLocalGamepadZoomSpeed:MapMenu"  <-
+0x141906850  "fMapLocalMouseZoomSpeed:MapMenu"  <-
+0x141906870  "fMapLocalGamepadPanSpeed:MapMenu"  <-
+0x141906898  "fMapLocalMousePanSpeed:MapMenu"  <-
+0x1419068b8  "fMapLocalMarkerSelectionDist:MapMenu"  <-
+0x1419068e0  "fMapLocalMinFrustumWidth:MapMenu"  <-
+0x141906e68  "WorldMap.LocalMapMenu"  <-
+0x1419072e8  "fMapTransitionSpeed:MapMenu"  <-
+0x141907308  "fMapWorldMinPanSpeed:MapMenu"  <-
+0x141907328  "fMapWorldMaxPanSpeed:MapMenu"  <-
+0x141907348  "fMapWorldZoomSpeed:MapMenu"  <-
+0x141907368  "fMapWorldMinPitch:MapMenu"  <-
+0x141907388  "fMapWorldMaxPitch:MapMenu"  <-
+0x1419073a8  "fMapWorldYawRange:MapMenu"  <-
+0x1419073c8  "fMapWorldHeightAdjustmentForce:MapMenu"  <-
+0x141907798  "fMapLookMouseSpeed:MapMenu"  <-
+0x1419077b8  "fMapLookGamepadSpeed:MapMenu"  <-
+0x1419077d8  "fMapZoomMouseSpeed:MapMenu"  <-
+0x1419077f8  "fMapMoveKeyboardSpeed:MapMenu"  <-
+0x141907c10  "MapMenu"  <-
+0x141907ec0  "fMapMenuNearClipPlane:MapMenu"  <-
+0x141907ee0  "fMaxMarkerSelectionDist:MapMenu"  <-
+0x141907f00  "fGamepadCursorSensitivity:MapMenu"  <-
+0x141907f28  "fMapWorldCursorMoveArea:MapMenu"  <-
+0x141907f48  "fMapLocalCursorPanSpeed:MapMenu"  <-
+0x141907f68  "fMapLoopFadeTimeSeconds:MapMenu"  <-
+0x141908628  "e:\_skyrimhd\code\gamesln\game\interface\menus\mapmenu.cpp"  <-
+0x141908788  "sMapWorldDefaultWorldSpace:MapMenu"  <-
+0x1419087b0  "fMapWorldTransitionHeight:MapMenu"  <-
+0x141908808  "sWorldMapOverlayNormalTexture:MapMenu"  <-
+0x141908860  "sWorldMapOverlayNormalSnowTexture:MapMenu"  <-
+0x141908890  "fMapMenuOverlayNormalStrength:MapMenu"  <-
+0x1419088b8  "fMapMenuOverlayNormalSnowStrength:MapMenu"  <-
+0x1419088e8  "fMapMenuOverlayScale:MapMenu"  <-
+0x141908908  "fMapMenuOverlaySnowScale:MapMenu"  <-
+0x141908930  "fWorldMapFocalDepth:MapMenu"  <-
+0x141908950  "fWorldMapMaximumDepthBlur:MapMenu"  <-
+0x141908978  "fWorldMapDepthBlurScale:MapMenu"  <-
+0x141908998  "fWorldMapNearDepthBlurScale:MapMenu"  <-
+0x141909d78  "QuitToMainMenu"  <-
+0x14190aba8  "iRightStickRepeatRate:MapMenu"  <-
+0x14191a590  "ShowGiftMenu"  <-
+0x141922368  "IsMenuControlsEnabled"  <-
+0x1419224f0  "ShowTitleSequenceMenu"  <-
+0x141922508  "HideTitleSequenceMenu"  <-
+0x141922580  "ShowLimitedRaceMenu"  <-
+0x141922598  "ShowTrainingMenu"  <-
+0x141933540  "IsInMenuMode"  <-
+0x1419335c0  "WaitMenuMode"  <-
+0x1419a24a4  "MENUS"  <-
+0x1419a3b80  "Interface/Controls/PC/ControlMap.txt"  <-
+0x1419a4218  "Interface/Controls/PC/Gamepad.txt"  <-
+0x1419a49f0  "Cursor"  <-
+0x1419a4ba8  "ToggleCursor"  <-
+0x1419a4ff0  "Interface/Controls/PC/Keyboard_"  <-
+0x1419a51f8  "Interface/Controls/PC/Mouse.txt"  <-
+0x1419a53c0  "Interface/Controls/PC/GamepadOrbis.txt"  <-
+0x1419d91e0  "bStaticMenuBackground:Display"  <-
+0x1419fe2f0  "BSUIScaleformData"  <-
+0x1419fea90  "Top Menu"  <-
+0x1419feaa0  "Cursor Menu"  <-
+0x1419ff2e8  "Scaleform allocator"  <-
+0x1419ffc98  "Interface/%s.swf"  <-
+0x1419ffcb0  "Interface/Exported/%s.gfx"  <-
+0x141a00570  "Error, BSScaleformFileOpener failed to open %s\n"  <-
+0x141a00610  "Dialogue Menu"  <-
+0x141a00620  "HUD Menu"  <-
+0x141a00630  "MessageBoxMenu"  <-
+0x141a00640  "Fader Menu"  <-
+0x141a00650  "Overlay Menu"  <-
+0x141a00660  "Overlay Interaction Menu"  <-
+0x141a00680  "Loading Menu"  <-
+0x141a00690  "Debug Text Menu"  <-
+0x141a006a0  "MapMenu"  <-
+0x141a006a8  "Lockpicking Menu"  <-
+0x141a006c0  "Quantity Menu"  <-
+0x141a006d0  "Sleep/Wait Menu"  <-
+0x141a006e0  "LevelUp Menu"  <-
+0x141a006f0  "Journal Menu"  <-
+0x141a00700  "Book Menu"  <-
+0x141a00710  "RaceSex Menu"  <-
+0x141a00720  "Crafting Menu"  <-
+0x141a00730  "Training Menu"  <-
+0x141a00740  "Mist Menu"  <-
+0x141a00750  "Tutorial Menu"  <-
+0x141a00760  "Credits Menu"  <-
+0x141a00770  "Mod Manager Menu"  <-
+0x141a00788  "Creation Club Menu"  <-
+0x141a007a0  "Login Menu"  <-
+0x141a007b0  "Marketplace Menu"  <-
+0x141a007c8  "TitleSequence Menu"  <-
+0x141a007e0  "Console Native UI Menu"  <-
+0x141a007f8  "Kinect Menu"  <-
+0x141a00818  "StreamingInstallMenu"  <-
+0x141a008e0  "Closing All Menus"  <-
+0x141a008f8  "RefreshMenu"  <-
+0x141a00940  "Menu Texture Degrade Event"  <-
+0x141a00a00  "rDebugTextColor:Menu"  <-
+0x141a00f58  "fMouseCursorSpeed:Interface"  <-
+0x141a00f78  "fGamepadCursorSpeed:Interface"  <-
+0x141a04468  "e:\_skyrimhd\code\gamesln\sdk\scaleform\include\ghash.h"  <-
+0x141a05b20  "Error: InvokeParsed('%s','%s') - invalid format '%%h%c'\n"  <-
+0x141a05b60  "Error: InvokeParsed('%s','%s') - invalid format '%%l%c'\n"  <-
+0x141a05ba0  "Error: InvokeParsed('%s','%s') - invalid format '%%%c'\n"  <-
+0x141a05bd8  "Error: InvokeParsed('%s','%s') - invalid char '%c'\n"  <-
+0x141a05e40  "gfxVersion"  <-
+0x141a05eb8  "gfxPlayer"  <-
+0x141a05ec8  "gfxLanguage"  <-
+0x141a06418  "trackAsMenu"  <-
+0x141a06458  "useHandCursor"  <-
+0x141a07258  "MovieView"  <-
+0x141a0732c  "Invoke"  <-
+0x141a07d18  "LoadMovieImageCallback failed to load image "%s"\n"  <-
+0x141a07ec0  "d:\skyrim10\sdk\scaleform\include\ghash.h"  <-
+0x141a07eff  "AError: %s, GFx_SpriteGotoAndPlay needs one arg\n"  <-
+0x141a08508  "loadMovie"  <-
+0x141a08518  "unloadMovie"  <-
+0x141a09038  "%s, GFxSprite::AddDisplayObject(): unknown cid = %d\n"  <-
+0x141a09d30  "Error: GFxLoader read failed - file does not start with a SWF header\n"  <-
+0x141a09db0  "Error: GFxLoader - unable to read compressed SWF data; GFxZlibState is not set.\n"  <-
+0x141a09e30  "Error: GFxLoader read failed - incompatible GFX file, version 3-4.x expected\n"  <-
+0x141a09e80  "Error: GFxLoader read failed - no ExporterInfo tag in GFX file header\n"  <-
+0x141a09ee8  "GFxLoader failed to open ""  <-
+0x141a09f08  "" - GFX file format expected\n"  <-
+0x141a0a000  "Could not load user image "%s" - GFxImageLoader failed or not specified\n"  <-
+0x141a0a058  "Error: GFx_InflateWrapper() inflateInit() returned %d\n"  <-
+0x141a0a090  "Error: GFx_InflateWrapper() Inflate() returned %d\n"  <-
+0x141a0a0c8  "Error: GFx_InflateWrapper() InflateEnd() return %d\n"  <-
+0x141a0a170  "Unable to load PNG at URL "%s" - GFxPNGState not set\n"  <-
+0x141a0a1e0  "Error: GFxLoader failed to open '%s', GFxFileOpener not installed\n"  <-
+0x141a0a770  "GFxDrawText::ProcessImageTags - No GFxImageLoader found for loading '%s'\n"  <-
+0x141a0a7c0  "GFxDrawText::ProcessImageTags - Unable to load '%s'\n"  <-
+0x141a0a810  "GFxDrawText::Display is called w/o calling GFxDrawTextManager::BeginDisplay().\n"  <-
+0x141a0a888  "Nested GFxDrawTextManager::BeginDisplay() call detected\n"  <-
+0x141a0a8d0  "GFxDrawTextManager: Renderer is not set! Nothing will be rendered!\n"  <-
+0x141a0a920  "GFxDrawTextManager::EndDisplay() is called w/o BeginDisplay() call\n"  <-
+0x141a25a90  "d:\skyrim10\sdk\scaleform\include\garray.h"  <-
+0x141a25e90  "gfxExtensions"  <-
+0x141a261a0  "setCursorType"  <-
+0x141a26930  "Warning: GFxLoader - GFxStream-end tag hit, but not at the end of the file yet; stopping for safety\n"  <-
+0x141a269b8  "gfxfontlib.swf"  <-
+0x141a26a10  "MovieView ""  <-
+0x141a26a20  "Import error: GFxResource '%s' is not exported from movie '%s'\n"  <-
+0x141a26a78  "gfxfontlib.swf"  <-
+0x141a28ef0  "d:\skyrim10\sdk\scaleform\include\gmemory.h"  <-
+0x141a2ade0  "GASBitmapData::LoadBitmap: LoadMovieImageCallback failed to load image "%s"\n"  <-
+0x141a2b818  "showMenu"  <-
+0x141a2e800  "Warning: no user event handler interface is installed; Mouse.setCursorType failed.\n"  <-
+0x141a31218  "_global.gfx_ime_candidate_list_state"  <-
+0x141a31358  "_global.gfx_ime_candidate_list_path"  <-
+0x141a31de8  "Scaleform Windows"  <-
+0x141a33ab0  "GFxMovieRoot::Display"  <-
+0x141a33ac8  "GFxVideoProvider::Display"  <-
+0x141a33ae8  "GFxMeshSet::Display"  <-
+0x141a33b00  "GFxTexture9Grid::Display"  <-
+0x141a33b20  "GFxMesh::Display"  <-
+0x141a33b38  "GFxFontCacheManagerImpl::CreateBatchPackage"  <-
+0x141a33b68  "GFxMovieRoot::Advance"  <-
+0x141a33b80  "GFxMovieRoot::DoActions"  <-
+0x141a33b98  "GFxMovieRoot::ProcessInput"  <-
+0x141a33bb8  "GFxMovieRoot::ProcessKeyboard"  <-
+0x141a33bd8  "GFxMovieRoot::ProcessMouse"  <-
+0x141a33bf8  "GFxMovieRoot::GetTopMostEntity"  <-
+0x141a33c18  "GFxMovieRoot::AdvanceFrame"  <-
+0x141a33c38  "GFxShapeBase::TessellateImpl"  <-
+0x141a33c58  "GFxMovieRoot::Invoke"  <-
+0x141a33c70  "GFxMovieRoot::InvokeArgs"  <-
+0x141a33c90  "GFxMovieRoot::InvokeAlias"  <-
+0x141a33cb0  "GFxMovieRoot::InvokeAliasArgs"  <-
+0x141a33cd0  "GFxMovieRoot::SetVariable"  <-
+0x141a33cf0  "GFxMovieRoot::SetVariableArray"  <-
+0x141a33d10  "GFxMovieRoot::SetVariableArraySize"  <-
+0x141a33d38  "GFxMovieRoot::GetVariable"  <-
+0x141a33d58  "GFxMovieRoot::GetVariableArray"  <-
+0x141a33d78  "GFxMovieRoot::GetVariableArraySize"  <-
+0x141a33da0  "GFxMovieView::Invoke"  <-
+0x141a33db8  "GFxMovieView::InvokeArgs"  <-
+0x141a33dd8  "GFxFillStyle::GetGradientFillTexture"  <-
+0x141a33e00  "GFxFillStyle::GetImageFillTexture"  <-
+0x141a33e28  "GFxExternalInterface::Callback"  <-
+0x141a33e48  "GFxFSCommandHandler::Callback"  <-
+0x141a33e80  "GFxValue::ObjectInterface::HasMember"  <-
+0x141a33ea8  "GFxValue::ObjectInterface::GetMember"  <-
+0x141a33ed0  "GFxValue::ObjectInterface::SetMember"  <-
+0x141a33ef8  "GFxValue::ObjectInterface::Invoke"  <-
+0x141a33f20  "GFxValue::ObjectInterface::DeleteMember"  <-
+0x141a33f48  "GFxValue::ObjectInterface::VisitMembers"  <-
+0x141a33f70  "GFxValue::ObjectInterface::GetArraySize"  <-
+0x141a33f98  "GFxValue::ObjectInterface::SetArraySize"  <-
+0x141a33fc0  "GFxValue::ObjectInterface::GetElement"  <-
+0x141a33fe8  "GFxValue::ObjectInterface::SetElement"  <-
+0x141a34010  "GFxValue::ObjectInterface::VisitElements"  <-
+0x141a34040  "GFxValue::ObjectInterface::PushBack"  <-
+0x141a34068  "GFxValue::ObjectInterface::PopBack"  <-
+0x141a34090  "GFxValue::ObjectInterface::RemoveElements"  <-
+0x141a340c0  "GFxValue::ObjectInterface::GetDisplayMatrix"  <-
+0x141a340f0  "GFxValue::ObjectInterface::SetDisplayMatrix"  <-
+0x141a34120  "GFxValue::ObjectInterface::GetMatrix3D"  <-
+0x141a34148  "GFxValue::ObjectInterface::SetMatrix3D"  <-
+0x141a34170  "GFxValue::ObjectInterface::IsDisplayObjectActive"  <-
+0x141a341a8  "GFxValue::ObjectInterface::GetDisplayInfo"  <-
+0x141a341d8  "GFxValue::ObjectInterface::SetDisplayInfo"  <-
+0x141a34208  "GFxValue::ObjectInterface::SetText"  <-
+0x141a34230  "GFxValue::ObjectInterface::GetText"  <-
+0x141a34258  "GFxValue::ObjectInterface::GotoAndPlay"  <-
+0x141a34280  "GFxValue::ObjectInterface::GetCxform"  <-
+0x141a342a8  "GFxValue::ObjectInterface::SetCxform"  <-
+0x141a342d0  "GFxValue::ObjectInterface::CreateEmptyMovieClip"  <-
+0x141a34300  "GFxValue::ObjectInterface::AttachMovie"  <-
+0x141a34328  "GFxAmpServer::WaitForAmpThread"  <-
+0x141a347c0  "Applying GFxFontMap: ""  <-
+0x141a347e8  "Searching GFxFontLib: ""  <-
+0x141a34810  "GFxFontLib not installed."  <-
+0x141a34830  "Searching GFxFontProvider: ""  <-
+0x141a34850  "GFxFontProvider not installed."  <-
+0x141a34870  "Searching GFxFontLib without [Device] flag: ""  <-
+0x141a350a8  "  GFx_DefineBitsJpeg2Loader: charid = %d pos = 0x%x\n"  <-
+0x141a35128  "  GFx_DefineBitsJpeg3Loader: charid = %d pos = %d\n"  <-
+0x141a35160  "Error: GFxZlibState is not set - can't load zipped image data\n"  <-
+0x141a35250  "GFx_DefineFontInfoLoader: can't find GFxFontResource w/ id %d\n"  <-
+0x141a35310  "  button GFxCharacter loader: CharId = %d\n"  <-
+0x141a35390  "Export error: don't know how to export GFxResource '%s'\n"  <-
+0x141a35e18  "  GFx_ReadFillStyles: count = %d\n"  <-
+0x141a35e40  "Error: GFx_ReadFillStyles, trying to read %d fillstyles into no-style shape\n"  <-
+0x141a35e90  "  GFx_ReadLineStyles: count = %d\n"  <-
+0x141a35eb8  "  GFx_ReadLineStyles: count2 = %d\n"  <-
+0x141a35ee0  "Error: GFx_ReadLineStyles, trying to read %d linestyles into no-style shape\n"  <-
+0x141a38b10  "Could not read tag DefineCompactedFont. Broken gfx file.\n"  <-
+0x141a38b50  "Invalid nominal size for DefineCompactedFont, font %s. Broken gfx file.\n"  <-
+0x141a39730  "GFxMorphCharacterDef, first shape:\n"  <-
+0x141a39758  "GFxMorphCharacterDef, second shape:\n"  <-
+0x141a5e4f8  "bnet::Mods::Telemetry::SendMenuNavEvent"  <-
+0x141a72070  "menu_nav"  <-
+0x141ab1c10  "ISLightingCompositeMenu"  <-
+0x141ab1c28  "BSImagespaceShaderISLightingCompositeMenu"  <-
+0x141ab3e28  "NearFar_Menu_EffectThreshold"  <-
+0x141ab43e0  "NearFar_Menu_DistanceFactor"  <-
+0x141abae70  "fConstHDRAdaptTimerForMenu:Display"  <-
+0x141ac1e20  "bWorldMapNoSkyDepthBlur:MapMenu"  <-
+0x141acb348  "Tween Menu"  <-
+0x141acf158  "UIMenuCancel"  <-
+0x141acf168  "UIMenuOK"  <-
+0x141acf178  "UIMenuFocus"  <-
+0x141acf188  "Interface/marketplace/%s"  <-
+0x141acf510  "Buttons/Xbox/Menu.png"  <-
+0x141acf6d0  "SP_Cursor.png"  <-
+0x141acff48  "$StartMenuFont"  <-
+0x141fd1e24  "ShowCursor"  <-
+0x141fd1e32  "GetCursorPos"  <-
+0x142010df8  "Login Menu"  <-
+0x142010e10  "Marketplace Menu"  <-
+0x142011340  "Mod Manager Menu"  <-
+0x1420113d0  "Kinect Menu"  <-
+0x142017240  "BarterMenu"  <-
+0x142017258  "Book Menu"  <-
+0x142017430  "Console Native UI Menu"  <-
+0x142017448  "ContainerMenu"  <-
+0x142017490  "Crafting Menu"  <-
+0x1420175c8  "Credits Menu"  <-
+0x142017608  "Cursor Menu"  <-
+0x142017618  "Dialogue Menu"  <-
+0x142017670  "Fader Menu"  <-
+0x142017680  "FavoritesMenu"  <-
+0x1420176b0  "GiftMenu"  <-
+0x1420176e0  "HUD Menu"  <-
+0x142017948  "InventoryMenu"  <-
+0x142017990  "LevelUp Menu"  <-
+0x1420179a0  "Loading Menu"  <-
+0x142017a00  "Lockpicking Menu"  <-
+0x142017b68  "MagicMenu"  <-
+0x142017c98  "Main Menu"  <-
+0x142017e28  "Mist Menu"  <-
+0x142018200  "RaceSex Menu"  <-
+0x142018308  "SafeZoneMenu"  <-
+0x142018318  "Sleep/Wait Menu"  <-
+0x142018360  "StatsMenu"  <-
+0x142018430  "TitleSequence Menu"  <-
+0x142018448  "Training Menu"  <-
+0x142018458  "Tutorial Menu"  <-
+0x142018480  "TweenMenu"  <-
+0x142019390  "Journal Menu"  <-
+0x142038960  ".?AVBGSMenuDisplayObject@@"  <-
+0x1420438f0  ".?AV?$ConcreteObjectFormFactory@VBGSMenuIcon@@$07$0CF@$08@@"  <-
+0x142043940  ".?AV?$ConcreteFormFactory@VBGSMenuIcon@@$07@@"  <-
+0x142043980  ".?AVBGSMenuIcon@@"  <-
+0x142046908  ".?AV?$BSTEventSink@VMenuOpenCloseEvent@@@@"  <-
+0x14205e6a0  ".P6AXPEAX_NPEBDAEAVGFxValue@@@Z"  <-
+0x14205e790  ".?AV?$_Func_base@XPEAX_NPEBDAEAVGFxValue@@@std@@"  <-
+0x14205e7d8  ".?AVContentMenu@@"  <-
+0x14205e800  ".?AUerrorCallback@ContentMenu@@"  <-
+0x14205e8e0  ".?AV?$_Func_impl_no_alloc@P6AXPEAX_NPEBDAEAVGFxValue@@@ZXPEAX_NPEBDAEAV1@@std@@"  <-
+0x14205e9e8  ".?AVGFxFunctionHandler@@"  <-
+0x14205ea18  ".?AV?$GRefCountBase@VGFxFunctionHandler@@$01@@"  <-
+0x14205eac0  ".?AVloginMenu@LoginMenu@@"  <-
+0x14205ed38  ".?AUerrorCallback@LoginMenu@@"  <-
+0x14205eee0  ".?AVMenuEventHandler@@"  <-
+0x14205ef08  ".?AVMarketplaceMenu@@"  <-
+0x14205ef30  ".?AVInputHandler@MarketplaceMenu@@"  <-
+0x14205ef68  ".?AUerrorCallback@MarketplaceMenu@@"  <-
+0x14205efa0  ".?AUdoNothingCallback@?7??Start@MarketplaceMenu@@SAXW4MarketplaceMode@2@@Z@"  <-
+0x14205f9f8  ".?AVModManagerMenu@@"  <-
+0x14205fcb8  ".?AVKinectMenu@@"  <-
+0x142061458  ".?AV?$BSTEventSink@VMenuModeChangeEvent@@@@"  <-
+0x1420614d8  ".?AVMenuModeChangeListener@?A0x383195b4@@"  <-
+0x142061518  ".?AVLoadMenuOpenCloseListener@?A0x383195b4@@"  <-
+0x1420618f8  ".?AVMenuTopicManager@@"  <-
+0x142061920  ".?AU?$BSTSingletonSDM@VMenuTopicManager@@UBSTSingletonSDMOpStaticBuffer@@@@"  <-
+0x142061980  ".?AU?$BSTSingletonSDMBase@U?$BSTSDMTraits@VMenuTopicManager@@U?$BSTSingletonSDMOpStaticBuffer@VMenuTopicManager@@@@@@@@"  <-
+0x142061a10  ".?AU?$BSTSDMTraits@VMenuTopicManager@@U?$BSTSingletonSDMOpStaticBuffer@VMenuTopicManager@@@@@@"  <-
+0x142061a80  ".?AU?$BSTSingletonSDMOpStaticBuffer@VMenuTopicManager@@@@"  <-
+0x142064010  ".?AV?$BSTEventSink@UNameChangedEvent@RaceSexMenuEvent@@@@"  <-
+0x142069a40  ".?AVActivateChoiceMenuCallbackFunctor@?A0xfcc54795@@"  <-
+0x1420a7948  ".?AVTweenMenuCameraState@@"  <-
+0x1420a7a28  ".?AVBarterMenu@@"  <-
+0x1420a7e10  ".?AVConsoleNativeUIMenu@@"  <-
+0x1420a7e40  ".?AVContainerMenu@@"  <-
+0x1420a7e68  ".?AVCraftingSubMenu@CraftingSubMenus@@"  <-
+0x1420a7ea0  ".?AVCraftingMenu@@"  <-
+0x1420a7ec8  ".?AVConstructibleObjectMenu@CraftingSubMenus@@"  <-
+0x1420a7f10  ".?AVCreationConfirmCallback@ConstructibleObjectMenu@CraftingSubMenus@@"  <-
+0x1420a7f68  ".?AVSmithingMenu@CraftingSubMenus@@"  <-
+0x1420a7fa0  ".?AVSmithingConfirmCallback@SmithingMenu@CraftingSubMenus@@"  <-
+0x1420a7ff0  ".?AVEnchantConstructMenu@CraftingSubMenus@@"  <-
+0x1420a8030  ".?AVEnchantMenuCallback@EnchantConstructMenu@CraftingSubMenus@@"  <-
+0x1420a8080  ".?AVEnchantMenuExitCallback@EnchantConstructMenu@CraftingSubMenus@@"  <-
+0x1420a80e0  ".?AVEnchantMenuCraftCallback@EnchantConstructMenu@CraftingSubMenus@@"  <-
+0x1420a8140  ".?AVEnchantMenuDisenchantCallback@EnchantConstructMenu@CraftingSubMenus@@"  <-
+0x1420a81a0  ".?AVCategoryListEntry@EnchantConstructMenu@CraftingSubMenus@@"  <-
+0x1420a81f0  ".?AVItemChangeEntry@EnchantConstructMenu@CraftingSubMenus@@"  <-
+0x1420a8240  ".?AVEnchantmentEntry@EnchantConstructMenu@CraftingSubMenus@@"  <-
+0x1420a8290  ".?AVCreateEffectFunctor@EnchantConstructMenu@CraftingSubMenus@@"  <-
+0x1420a82e0  ".?AVAlchemyMenu@CraftingSubMenus@@"  <-
+0x1420a8320  ".?AVCraftItemCallback@AlchemyMenu@CraftingSubMenus@@"  <-
+0x1420a8370  ".?AVQuitMenuCallback@AlchemyMenu@CraftingSubMenus@@"  <-
+0x1420a83c0  ".?AVModEffectivenessFunctor@AlchemyMenu@CraftingSubMenus@@"  <-
+0x1420a8468  ".?AVCreditsMenu@@"  <-
+0x1420a8490  ".?AVCursorMenu@@"  <-
+0x1420a84b8  ".?AVDialogueMenu@@"  <-
+0x1420a84e0  ".?AVFaderMenu@@"  <-
+0x1420a8500  ".?AVFavoritesMenu@@"  <-
+0x1420a8920  ".?AVNewInventoryMenuItemLoadTask@@"  <-
+0x1420a8bf8  ".?AVInventoryMenu@@"  <-
+0x1420a8c68  ".?AVLevelUpMenu@@"  <-
+0x1420a8cd8  ".?AVLoadingMenu@@"  <-
+0x1420a8d30  ".?AVLockpickingMenu@@"  <-
+0x1420a8db0  ".?AVMagicMenu@@"  <-
+0x1420a8ea0  ".?AVMagicMenuAddSpellVisitor@?A0xae1e7982@@"  <-
+0x1420a8ee0  ".?AVMagicMenuAddActiveEffectVisitor@?A0xae1e7982@@"  <-
+0x1420a8f80  ".?AVMainMenu@@"  <-
+0x1420a9190  ".?AUerrorCallback@?4??OpenCreationClubMenu@MainMenu@@SAXXZ@"  <-
+0x1420a9288  ".?AVMenuControls@@"  <-
+0x1420a92b0  ".?AU?$BSTSingletonSDM@VMenuControls@@UBSTSingletonSDMOpStaticBuffer@@@@"  <-
+0x1420a9310  ".?AU?$BSTSingletonSDMBase@U?$BSTSDMTraits@VMenuControls@@U?$BSTSingletonSDMOpStaticBuffer@VMenuControls@@@@@@@@"  <-
+0x1420a9390  ".?AU?$BSTSDMTraits@VMenuControls@@U?$BSTSingletonSDMOpStaticBuffer@VMenuControls@@@@@@"  <-
+0x1420a9400  ".?AU?$BSTSingletonSDMOpStaticBuffer@VMenuControls@@@@"  <-
+0x1420a94f8  ".?AUMenuOpenHandler@@"  <-
+0x1420a9570  ".?AVMessageBoxMenu@@"  <-
+0x1420a95d8  ".?AVMistMenu@@"  <-
+0x1420a9648  ".?AVRaceSexMenu@@"  <-
+0x1420a96b0  ".?AVConfirmCloseRaceSexMenuCallback@?A0xb30aaf27@@"  <-
+0x1420a9780  ".?AVSafeZoneMenu@@"  <-
+0x1420a97a8  ".?AVSleepWaitMenu@@"  <-
+0x1420a97f0  ".?AVStatsMenu@@"  <-
+0x1420a9a30  ".?AVStreamingInstallMenu@@"  <-
+0x1420a9a60  ".?AVTitleSequenceMenu@@"  <-
+0x1420a9a88  ".?AVTrainingMenu@@"  <-
+0x1420a9ab0  ".?AVTutorialMenu@@"  <-
+0x1420a9ad8  ".?AVTweenMenu@@"  <-
+0x1420a9db0  ".?AULoadingMenuData@@"  <-
+0x1420aa930  ".?AU?$AutoRegisterCreator@ULoadingMenuData@@V?$BSTCreateFactoryManager@VBSFixedString@@VIUIMessageData@@$0BA@@@@@"  <-
+0x1420aa9c0  ".?AV?$AutoRegisterFactory@U?$BSTDerivedCreator@ULoadingMenuData@@VIUIMessageData@@@@V?$BSTCreateFactoryManager@VBSFixedString@@VIUIMessageData@@$0BA@@@@@"  <-
+0x1420aaa70  ".?AU?$BSTDerivedCreator@ULoadingMenuData@@VIUIMessageData@@@@"  <-
+0x1420ab050  ".?AVInputHandler@LocalMapMenu@@"  <-
+0x1420ab778  ".?AVFadeThenMainMenuCallback@?A0x257c8b4e@@"  <-
+0x1420ab818  ".?AVJournalMenu@@"  <-
+0x1420af878  ".?AVIGiftMenuScriptCallback@@"  <-
+0x1420af8b0  ".?AVGiftMenuCallbackFunc@?A0xe82339f0@1SkyrimScript@@"  <-
+0x1420b21b0  ".?AVFadeThenMainMenuCallback@?A0xc618b801@SkyrimScript@@"  <-
+0x1420ccef8  ".?AVBSUIScaleformData@@"  <-
+0x1420ccf20  ".?AU?$AutoRegisterCreator@VBSUIScaleformData@@V?$BSTCreateFactoryManager@VBSFixedString@@VIUIMessageData@@$0BA@@@@@"  <-
+0x1420ccfb0  ".?AV?$AutoRegisterFactory@U?$BSTDerivedCreator@VBSUIScaleformData@@VIUIMessageData@@@@V?$BSTCreateFactoryManager@VBSFixedString@@VIUIMessageData@@$0BA@@@@@"  <-
+0x1420cd060  ".?AU?$BSTDerivedCreator@VBSUIScaleformData@@VIUIMessageData@@@@"  <-
+0x1420cd3c0  ".?AV?$GRefCountBase@VGFxState@@$01@@"  <-
+0x1420cd428  ".?AVGFxLogConstants@@"  <-
+0x1420cd450  ".?AVGFxTranslator@@"  <-
+0x1420cd478  ".?AVGFxZlibSupportBase@@"  <-
+0x1420cd4a8  ".?AVGFxZlibSupport@@"  <-
+0x1420cd4d0  ".?AVBSScaleformTranslator@@"  <-
+0x1420cd560  ".?AVBSScaleformSysMemMapper@?A0x76709605@@"  <-
+0x1420cd5a0  ".?AVBSScaleformAllocatorPaged@?A0x76709605@@"  <-
+0x1420cd5e0  ".?AU?$BSTSingletonSDM@VBSScaleformAllocatorPaged@?A0x76709605@@UBSTSingletonSDMOpStaticBuffer@@@@"  <-
+0x1420cd660  ".?AU?$BSTSingletonSDMBase@U?$BSTSDMTraits@VBSScaleformAllocatorPaged@?A0x76709605@@U?$BSTSingletonSDMOpStaticBuffer@VBSScaleformAllocatorPaged@?A0x76709605@@@@@@@@"  <-
+0x1420cd720  ".?AU?$BSTSDMTraits@VBSScaleformAllocatorPaged@?A0x76709605@@U?$BSTSingletonSDMOpStaticBuffer@VBSScaleformAllocatorPaged@?A0x76709605@@@@@@"  <-
+0x1420cd7c0  ".?AU?$BSTSingletonSDMOpStaticBuffer@VBSScaleformAllocatorPaged@?A0x76709605@@@@"  <-
+0x1420cd858  ".?AVGFxImageLoader@@"  <-
+0x1420cd880  ".?AVBSScaleformImageLoader@@"  <-
+0x1420cd8b0  ".?AVGFxFileOpenerBase@@"  <-
+0x1420cd8d8  ".?AVBSScaleformFileOpener@@"  <-
+0x1420cd910  ".?AV?$EntryDB@UDBTraits@ScaleformFile@@@BSResource@@"  <-
+0x1420cd960  ".?AU?$EntryDBBase@U?$EntryDBTraits@UDBTraits@ScaleformFile@@V?$EntryDB@UDBTraits@ScaleformFile@@@BSResource@@@BSResource@@@BSResource@@"  <-
+0x1420cda00  ".?AU?$EntryDBTraits@UDBTraits@ScaleformFile@@V?$EntryDB@UDBTraits@ScaleformFile@@@BSResource@@@BSResource@@"  <-
+0x1420cda80  ".?AU?$Directory@IU?$Directory@UFileID@BSResource@@V?$Entry@PEAUFileData@ScaleformFile@@UCArgs@?$EntryDBTraits@UDBTraits@ScaleformFile@@V?$EntryDB@UDBTraits@ScaleformFile@@@BSResource@@@BSResource@@@2@@BSResource@@@BSResource@@"  <-
+0x1420cdb78  ".?AUDBTraits@ScaleformFile@@"  <-
+0x1420cdbb0  ".?AU?$BSTSingletonSDM@V?$EntryDB@UDBTraits@ScaleformFile@@@BSResource@@UBSTSingletonSDMOpStaticBuffer@@@@"  <-
+0x1420cdc30  ".?AU?$BSTSingletonSDMBase@U?$BSTSDMTraits@V?$EntryDB@UDBTraits@ScaleformFile@@@BSResource@@U?$BSTSingletonSDMOpStaticBuffer@V?$EntryDB@UDBTraits@ScaleformFile@@@BSResource@@@@@@@@"  <-
+0x1420cdd00  ".?AU?$BSTSDMTraits@V?$EntryDB@UDBTraits@ScaleformFile@@@BSResource@@U?$BSTSingletonSDMOpStaticBuffer@V?$EntryDB@UDBTraits@ScaleformFile@@@BSResource@@@@@@"  <-
+0x1420cddb0  ".?AU?$BSTSingletonSDMOpStaticBuffer@V?$EntryDB@UDBTraits@ScaleformFile@@@BSResource@@@@"  <-
+0x1420cde18  ".?AVMemoryFile@ScaleformFile@@"  <-
+0x1420cde90  ".?AVGFxExternalInterface@@"  <-
+0x1420cdf88  ".?AVBSScaleformMovieLoadTask@@"  <-
+0x1420eed60  ".?AVBSImagespaceShaderISLightingCompositeMenu@@"  <-
+0x1437e7998  "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n<assembly xmlns='urn:schemas-microsoft-com:asm.v1' manifestVersion='1.0'>\n  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">\n    <security>\n      <requestedPrivileges>\n        <requestedExecutionLevel level='asInvoker' uiAccess='false' />\n      </requestedPrivileges>\n    </security>\n  </trustInfo>\n</assembly>\n"  <-
+# total UI strings: 621
+
+== Menu-registrar candidates (functions referencing the most distinct *Menu* strings) ==
+
+== Recovered classes (RTTI) matching UI keywords ==
+
+== Symbols matching key UI function names ==
+STEAM_API64.DLL::SteamAPI_RegisterCallback                     @0xEXTERNAL:00000005
+STEAM_API64.DLL::SteamAPI_RegisterCallResult                   @0xEXTERNAL:00000006
+USER32.DLL::RegisterClassA                                     @0xEXTERNAL:000000aa

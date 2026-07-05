@@ -1,0 +1,163 @@
+
+// ===== vtable[0] (off +0x0) @1418f5c58 -> 0x140913a60 =====
+
+undefined8 * FUN_140913a60(undefined8 *param_1,uint param_2)
+
+{
+  char cVar1;
+  undefined8 uVar2;
+  
+  *param_1 = &PTR_FUN_1418f5c58;
+  param_1[6] = &PTR_LAB_1418f5ca8;
+  cVar1 = (**(code **)(*(longlong *)param_1[2] + 0x50))
+                    ((longlong *)param_1[2],"_root.ReleaseCodeObject");
+  if (cVar1 != '\0') {
+    (**(code **)(*(longlong *)param_1[2] + 0xb8))
+              ((longlong *)param_1[2],"_root.ReleaseCodeObject",0,0,0);
+  }
+  FUN_140fa8e80(DAT_1420f8958 + 0xa8,0,0xd);
+  uVar2 = FUN_140fb2fd0(DAT_143169188,3,0,*(undefined4 *)(DAT_143169190 + 4),
+                        *(undefined4 *)(DAT_143169190 + 8),0,0);
+  FUN_140fa8f20(DAT_1420f8958 + 0xd0,uVar2);
+  param_1[6] = &PTR_FUN_141875340;
+  FUN_140fa8fc0(param_1 + 6);
+  FUN_140faed00(param_1);
+  if ((param_2 & 1) != 0) {
+    if ((param_2 & 4) == 0) {
+      (**(code **)(*DAT_143292490 + 0x60))(DAT_143292490,param_1);
+      return param_1;
+    }
+    FUN_140fb7e00(param_1,0x40);
+  }
+  return param_1;
+}
+
+
+
+// ===== vtable[1] (off +0x8) @1418f5c60 -> 0x1405739b0 =====
+// (no function at target)
+
+// ===== vtable[2] (off +0x10) @1418f5c68 -> 0x140573990 =====
+// (no function at target)
+
+// ===== vtable[3] (off +0x18) @1418f5c70 -> 0x1405739a0 =====
+// (no function at target)
+
+// ===== vtable[4] (off +0x20) @1418f5c78 -> 0x140913360 =====
+
+undefined8 FUN_140913360(undefined8 param_1,longlong param_2)
+
+{
+  int iVar1;
+  undefined8 uVar2;
+  
+  if (*(int *)(param_2 + 8) != 6) {
+    uVar2 = FUN_140faed60();
+    return uVar2;
+  }
+  iVar1 = **(int **)(*(longlong *)(param_2 + 0x10) + 0x10);
+  FUN_140faed60(param_1);
+  uVar2 = 2;
+  if (iVar1 != 3) {
+    uVar2 = 0;
+  }
+  return uVar2;
+}
+
+
+
+// ===== vtable[5] (off +0x28) @1418f5c80 -> 0x140faedb0 =====
+
+void FUN_140faedb0(longlong param_1,undefined4 param_2,uint param_3)
+
+{
+  longlong *plVar1;
+  undefined8 local_30;
+  uint local_28;
+  double local_20;
+  
+  plVar1 = *(longlong **)(param_1 + 0x10);
+  if (plVar1 != (longlong *)0x0) {
+    local_30 = 0;
+    local_28 = 3;
+    local_20 = (double)param_3;
+    (**(code **)(*plVar1 + 0x80))(plVar1,"CurrentTime",&local_30,0,0xfffffffffffffffe);
+    (**(code **)(**(longlong **)(param_1 + 0x10) + 0x128))(*(longlong **)(param_1 + 0x10),param_2,2)
+    ;
+    if ((local_28 >> 6 & 1) != 0) {
+      FUN_140fac750(local_30,&local_30,local_20);
+    }
+  }
+  return;
+}
+
+
+
+// ===== vtable[6] (off +0x30) @1418f5c88 -> 0x1405739c0 =====
+// (no function at target)
+
+// ===== vtable[7] (off +0x38) @1418f5c90 -> 0x140faee60 =====
+// (no function at target)
+
+// ===== vtable[8] (off +0x40) @1418f5c98 -> 0x140faee70 =====
+
+void FUN_140faee70(longlong param_1)
+
+{
+  uint uVar1;
+  longlong *plVar2;
+  char cVar3;
+  char cVar4;
+  undefined8 uVar5;
+  undefined8 local_40;
+  uint local_38;
+  double local_30;
+  undefined8 local_28;
+  uint local_20;
+  undefined1 local_18;
+  undefined7 uStack_17;
+  
+  plVar2 = *(longlong **)(param_1 + 0x10);
+  cVar3 = FUN_140cd9100(DAT_14315cea0);
+  if (plVar2 != (longlong *)0x0) {
+    cVar4 = (**(code **)(*plVar2 + 0x50))(plVar2,"_root.SetPlatform");
+    if (cVar4 != '\0') {
+      _eh_vector_constructor_iterator_(&local_40,0x18,2,FUN_14056d6e0,FUN_14056dae0);
+      if ((local_38 >> 6 & 1) != 0) {
+        FUN_140fac750(local_40,&local_40,local_30);
+        local_40 = 0;
+      }
+      local_38 = 3;
+      local_30 = (double)(cVar3 != '\0');
+      if ((local_20 >> 6 & 1) != 0) {
+        FUN_140fac750(local_28,&local_28,CONCAT71(uStack_17,local_18));
+        local_28 = 0;
+      }
+      local_20 = 2;
+      local_18 = 0;
+      FUN_140fbfc90(plVar2,"_root.SetPlatform",&local_40,2);
+      _eh_vector_destructor_iterator_(&local_40,0x18,2,FUN_14056dae0);
+    }
+  }
+  uVar1 = *(uint *)(param_1 + 0x1c);
+  if ((uVar1 >> 10 & 1) != 0) {
+    if (cVar3 == '\0') {
+      *(uint *)(param_1 + 0x1c) = uVar1 | 4;
+      cVar3 = FUN_140fa37b0(DAT_1420f6a00,DAT_1420f8958 + 0xb8);
+      if (cVar3 == '\0') {
+        uVar5 = 1;
+      }
+      else {
+        uVar5 = 0;
+      }
+    }
+    else {
+      *(uint *)(param_1 + 0x1c) = uVar1 & 0xfffffffb;
+      uVar5 = 3;
+    }
+    FUN_1401af260(DAT_1420f8950,DAT_1420f8958 + 0xb8,uVar5,0);
+  }
+  return;
+}
+
+

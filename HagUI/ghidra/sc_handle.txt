@@ -1,0 +1,67 @@
+
+#################### TARGET: 0x1401795f0 ####################
+// resolved 0x1401795f0 -> 1401795f0
+
+// ===== FUN_1401795f0 @ 1401795f0  [target 0x1401795f0] =====
+
+bool FUN_1401795f0(uint *param_1,longlong *param_2)
+
+{
+  int *piVar1;
+  int iVar2;
+  uint uVar3;
+  longlong lVar4;
+  longlong lVar5;
+  uint uVar6;
+  
+  uVar3 = *param_1;
+  if (uVar3 == 0) {
+    lVar5 = *param_2;
+    if ((lVar5 == 0) || (*param_2 = 0, lVar5 == 0)) goto LAB_1401796ea;
+  }
+  else {
+    uVar6 = uVar3 & 0xfffff;
+    lVar5 = *param_2;
+    lVar4 = (&DAT_1420fc608)[(ulonglong)uVar6 * 2] + -0x20;
+    if ((&DAT_1420fc608)[(ulonglong)uVar6 * 2] == 0) {
+      lVar4 = 0;
+    }
+    if (lVar5 != lVar4) {
+      if (lVar4 != 0) {
+        LOCK();
+        *(int *)(lVar4 + 0x28) = *(int *)(lVar4 + 0x28) + 1;
+        UNLOCK();
+      }
+      *param_2 = lVar4;
+      if (lVar5 != 0) {
+        LOCK();
+        piVar1 = (int *)(lVar5 + 0x28);
+        iVar2 = *piVar1;
+        *piVar1 = *piVar1 + -1;
+        UNLOCK();
+        if ((iVar2 - 1U & 0x3ff) == 0) {
+          (**(code **)(*(longlong *)(lVar5 + 0x20) + 8))();
+        }
+      }
+    }
+    if (((((uint)(&DAT_1420fc600)[(ulonglong)uVar6 * 4] >> 0x1a & 1) != 0) &&
+        (((&DAT_1420fc600)[(ulonglong)uVar6 * 4] & 0x3f00000) == (uVar3 & 0x3f00000))) &&
+       (*(uint *)(*param_2 + 0x28) >> 0xb == uVar6)) goto LAB_1401796ea;
+    *param_1 = 0;
+    lVar5 = *param_2;
+    if (lVar5 == 0) goto LAB_1401796ea;
+    *param_2 = 0;
+  }
+  LOCK();
+  piVar1 = (int *)(lVar5 + 0x28);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + -1;
+  UNLOCK();
+  if ((iVar2 - 1U & 0x3ff) == 0) {
+    (**(code **)(*(longlong *)(lVar5 + 0x20) + 8))();
+  }
+LAB_1401796ea:
+  return *param_2 != 0;
+}
+
+

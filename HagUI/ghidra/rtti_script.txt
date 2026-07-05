@@ -1,0 +1,10 @@
+
+############ RTTI: .?AVScript@@ ############
+// NOT FOUND
+
+############ RTTI: .?AVConsole@@ ############
+// type-descriptor string @ 1420a7b58 : .?AVConsole@@
+// TypeDescriptor base ~ 1420a7b48
+
+############ RTTI: .?AVScriptCompiler@@ ############
+// NOT FOUND

@@ -1,0 +1,24 @@
+/build/
+/out/
+/.vs/
+/vcpkg_installed/
+*.user
+CMakeUserPresets.json
+
+# Ghidra projects (large, machine-local)
+/ghidra/*.rep/
+/ghidra/*.gpr
+/ghidra/*.lock
+
+# SWF build temporaries (make_swf.ps1)
+/assets/_scripts/
+/assets/_verify/
+/assets/_asdump/
+/assets/HagUI_stage.swf
+/assets/HagUI_built.swf
+
+# Bethesda-derived movies regenerated from the local game BSA (not redistributed):
+#   StartMenu.swf  <- tools/make_startmenu_swf.ps1  (main-menu + HagUI button)
+#   HagUI.swf      <- tools/make_hagui_swf.ps1       (CreditsMenu CLIK shell + HagUI scripts)
+/assets/StartMenu.swf
+/assets/HagUI.swf

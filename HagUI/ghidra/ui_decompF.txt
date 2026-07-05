@@ -1,0 +1,17 @@
+// ================= 0x140994bc0  func@140994bc0 =================
+
+void FUN_140994bc0(longlong param_1)
+
+{
+  if (*(longlong **)(param_1 + 0x10) != (longlong *)0x0) {
+    (**(code **)(**(longlong **)(param_1 + 0x10) + 0x130))();
+    if ((*(uint *)(param_1 + 0x1c) & 0x80) != 0) {
+      FUN_140972590(DAT_143187780,0,0,0);
+      return;
+    }
+  }
+  return;
+}
+
+
+

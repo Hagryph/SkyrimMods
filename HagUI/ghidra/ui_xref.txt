@@ -1,0 +1,133 @@
+# string targets: 518
+# scanned 5521911 instrs, 443303 LEAs, 459 hits
+
+== loader/Scaleform strings -> referencing functions ==
+0x1419fe2f0 "BSUIScaleformData" <- 0x1400edbe0 0x140fb7e10
+0x1419ffc98 "Interface/%s.swf" <- 0x140fb0110 0x140fb0980
+0x1419ffcb0 "Interface/Exported/%s.gfx" <- 0x140fb0110 0x140fb0980
+0x141a00570 "Error, BSScaleformFileOpener failed to open ..." <- 0x140fb4490
+0x141a07d18 "LoadMovieImageCallback failed to load image ..." <- 0x14100caf0
+0x141a09038 "%s, GFxSprite::AddDisplayObject(): unknown c..." <- 0x14101a4a0
+0x141a09d30 "Error: GFxLoader read failed - file does not..." <- 0x1410323f0
+0x141a09db0 "Error: GFxLoader - unable to read compressed..." <- 0x1410323f0
+0x141a09e30 "Error: GFxLoader read failed - incompatible ..." <- 0x1410323f0
+0x141a09e80 "Error: GFxLoader read failed - no ExporterIn..." <- 0x1410323f0
+0x141a09ee8 "GFxLoader failed to open "" <- 0x141033210
+0x141a0a1e0 "Error: GFxLoader failed to open '%s', GFxFil..." <- 0x1410ce3a0 0x1410353f0 0x141035490
+0x141a26930 "Warning: GFxLoader - GFxStream-end tag hit, ..." <- 0x14105bd20
+0x141a269b8 "gfxfontlib.swf" <- 0x141057fe0
+0x141a26a10 "MovieView "" <- 0x141058da0
+0x141a26a78 "gfxfontlib.swf" <- 0x14105a140
+0x141a2ade0 "GASBitmapData::LoadBitmap: LoadMovieImageCal..." <- 0x1410854f0 0x141085820
+0x141a2ed00 "Warning: ExternalInterface.call - handler is..." <- 0x14109ba00
+0x141a31210 "IME.swf" <- 0x1410acf60
+0x141a31218 "_global.gfx_ime_candidate_list_state" <- 0x1410ad230 0x1410ae680 0x1410aeb00 0x1410aee50 0x1410aefb0 0x1410af540
+0x141a31358 "_global.gfx_ime_candidate_list_path" <- 0x1410aefb0
+0x141a31de8 "Scaleform Windows" <- 0x1410b5520 0x1410b6060
+0x141a33da0 "GFxMovieView::Invoke" <- 0x1410c3ab0
+0x141a33db8 "GFxMovieView::InvokeArgs" <- 0x1410c3ab0
+0x141a33e28 "GFxExternalInterface::Callback" <- 0x1410c3ab0
+0x141a33e80 "GFxValue::ObjectInterface::HasMember" <- 0x1410c3ab0
+0x141a33ea8 "GFxValue::ObjectInterface::GetMember" <- 0x1410c3ab0
+0x141a33ed0 "GFxValue::ObjectInterface::SetMember" <- 0x1410c3ab0
+0x141a33ef8 "GFxValue::ObjectInterface::Invoke" <- 0x1410c3ab0
+0x141a33f20 "GFxValue::ObjectInterface::DeleteMember" <- 0x1410c3ab0
+0x141a33f48 "GFxValue::ObjectInterface::VisitMembers" <- 0x1410c3ab0
+0x141a33f70 "GFxValue::ObjectInterface::GetArraySize" <- 0x1410c3ab0
+0x141a33f98 "GFxValue::ObjectInterface::SetArraySize" <- 0x1410c3ab0
+0x141a33fc0 "GFxValue::ObjectInterface::GetElement" <- 0x1410c3ab0
+0x141a33fe8 "GFxValue::ObjectInterface::SetElement" <- 0x1410c3ab0
+0x141a34010 "GFxValue::ObjectInterface::VisitElements" <- 0x1410c3ab0
+0x141a34040 "GFxValue::ObjectInterface::PushBack" <- 0x1410c3ab0
+0x141a34068 "GFxValue::ObjectInterface::PopBack" <- 0x1410c3ab0
+0x141a34090 "GFxValue::ObjectInterface::RemoveElements" <- 0x1410c3ab0
+0x141a340c0 "GFxValue::ObjectInterface::GetDisplayMatrix" <- 0x1410c3ab0
+0x141a340f0 "GFxValue::ObjectInterface::SetDisplayMatrix" <- 0x1410c3ab0
+0x141a34120 "GFxValue::ObjectInterface::GetMatrix3D" <- 0x1410c3ab0
+0x141a34148 "GFxValue::ObjectInterface::SetMatrix3D" <- 0x1410c3ab0
+0x141a34170 "GFxValue::ObjectInterface::IsDisplayObjectAc..." <- 0x1410c3ab0
+0x141a341a8 "GFxValue::ObjectInterface::GetDisplayInfo" <- 0x1410c3ab0
+0x141a341d8 "GFxValue::ObjectInterface::SetDisplayInfo" <- 0x1410c3ab0
+0x141a34208 "GFxValue::ObjectInterface::SetText" <- 0x1410c3ab0
+0x141a34230 "GFxValue::ObjectInterface::GetText" <- 0x1410c3ab0
+0x141a34258 "GFxValue::ObjectInterface::GotoAndPlay" <- 0x1410c3ab0
+0x141a34280 "GFxValue::ObjectInterface::GetCxform" <- 0x1410c3ab0
+0x141a342a8 "GFxValue::ObjectInterface::SetCxform" <- 0x1410c3ab0
+0x141a342d0 "GFxValue::ObjectInterface::CreateEmptyMovieC..." <- 0x1410c3ab0
+0x141a34300 "GFxValue::ObjectInterface::AttachMovie" <- 0x1410c3ab0
+
+== top menu-referencing functions (registrar / ctor candidates) ==
+FUNC 0x140fb7e10  distinctMenuStrings=47
+FUNC 0x140a0d750  distinctMenuStrings=7
+FUNC 0x140904b30  distinctMenuStrings=6
+FUNC 0x140970e80  distinctMenuStrings=4
+FUNC 0x14092d2a0  distinctMenuStrings=3
+FUNC 0x141584840  distinctMenuStrings=3
+FUNC 0x141569a70  distinctMenuStrings=3
+FUNC 0x14093c310  distinctMenuStrings=3
+FUNC 0x140916370  distinctMenuStrings=3
+FUNC 0x141597740  distinctMenuStrings=2
+FUNC 0x140934e80  distinctMenuStrings=2
+FUNC 0x14096f890  distinctMenuStrings=2
+FUNC 0x140940090  distinctMenuStrings=2
+FUNC 0x14093b490  distinctMenuStrings=2
+FUNC 0x1408ef2b0  distinctMenuStrings=2
+FUNC 0x141592770  distinctMenuStrings=2
+FUNC 0x1409686c0  distinctMenuStrings=2
+FUNC 0x14156c300  distinctMenuStrings=2
+FUNC 0x141492300  distinctMenuStrings=2
+FUNC 0x141594d10  distinctMenuStrings=2
+FUNC 0x1409704d0  distinctMenuStrings=2
+FUNC 0x14095e4e0  distinctMenuStrings=2
+FUNC 0x14157e1c0  distinctMenuStrings=2
+FUNC 0x140935020  distinctMenuStrings=2
+FUNC 0x1408f0620  distinctMenuStrings=2
+
+== menus referenced by top candidate (FUNC 0x140fb7e10) ==
+  BarterMenu
+  Book Menu
+  CloseMenu
+  Closing All Menus
+  Console Native UI Menu
+  ContainerMenu
+  Crafting Menu
+  Creation Club Menu
+  Credits Menu
+  Cursor Menu
+  Debug Text Menu
+  Dialogue Menu
+  Fader Menu
+  FavoritesMenu
+  GiftMenu
+  HUD Menu
+  InventoryMenu
+  Journal Menu
+  Kinect Menu
+  LevelUp Menu
+  Loading Menu
+  LoadingMenuData
+  Lockpicking Menu
+  Login Menu
+  MagicMenu
+  Main Menu
+  MapMenu
+  Marketplace Menu
+  Menu Texture Degrade Event
+  MessageBoxMenu
+  Mist Menu
+  Mod Manager Menu
+  Overlay Interaction Menu
+  Overlay Menu
+  Quantity Menu
+  RaceSex Menu
+  RefreshMenu
+  Sleep/Wait Menu
+  StatsMenu
+  StreamingInstallMenu
+  TitleSequence Menu
+  Top Menu
+  Training Menu
+  Tutorial Menu
+  TweenMenu
+  UIMenuCancel
+  UIMenuOK
