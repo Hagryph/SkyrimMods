@@ -28,13 +28,6 @@ void OnSKSEMessage(skse::Message* msg) {
         HAG_INFO("kDataLoaded -> registering HagUIMenu");
         ui::HagMenu::Register();
         ModManager::Get().OnDataLoaded();
-        game_state::SetGameRunning(false, "DataLoaded/MainMenu");
-    } else if (msg->type == skse::kMessage_PreLoadGame) {
-        game_state::SetGameRunning(false, "PreLoadGame");
-    } else if (msg->type == skse::kMessage_PostLoadGame) {
-        game_state::SetGameRunning(true, "PostLoadGame");
-    } else if (msg->type == skse::kMessage_NewGame) {
-        game_state::SetGameRunning(true, "NewGame");
     }
 }
 

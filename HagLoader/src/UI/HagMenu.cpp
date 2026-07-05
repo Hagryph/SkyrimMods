@@ -2,7 +2,6 @@
 #include "UI/HagMenu.h"
 #include "UI/OptionRender.h"
 #include "api/HagApi.h"
-#include "GameState.h"
 #include "Log.h"
 #include "Offsets.h"
 #include "Hooking.h"
@@ -80,7 +79,6 @@ namespace {
         if (type == offsets::kMsg_Show) {
             HAG_INFO("HagUIMenu::ProcessMessage kShow (SWF renders the Welcome)");
             g_open = true;
-            game_state::SetGameRunning(false, "HagUI shown");
             return 0;
         }
         // Delegate everything else to the base IMenu ProcessMessage. Critically, kUserEvent(6)
@@ -186,7 +184,6 @@ void* HagMenu::Create() {
 }
 
 void HagMenu::Open() {
-    game_state::SetGameRunning(false, "HagUI open requested");
     void* queue = *reinterpret_cast<void**>(offsets::FromRVA(offsets::kUIMessageQueue_ptr));
     if (!queue) { HAG_WARN("HagUIMenu::Open - no UIMessageQueue"); return; }
 

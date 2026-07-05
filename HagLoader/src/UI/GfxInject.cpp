@@ -1,7 +1,6 @@
 #include "PCH.h"
 #include "UI/HagMenu.h"
 #include "UI/OptionRender.h"
-#include "GameState.h"
 #include "Log.h"
 #include "Offsets.h"
 #include "Hooking.h"
@@ -161,7 +160,6 @@ using SetupFn = void (*)(void* self);
 SetupFn g_origMainSetup = nullptr;
 void Detour_MainSetup(void* self) {
     g_origMainSetup(self);                                   // builds MainList via setupMainMenu
-    game_state::SetGameRunning(false, "MainMenu setup");
     __try {
         void* movie = *reinterpret_cast<void**>(reinterpret_cast<char*>(self) + offsets::menu_layout::kMovieView);
         if (movie) { g_mainMovie = movie; InjectMainMenu(movie); }
@@ -209,7 +207,6 @@ void CatPress(HagHandler*, FnParams* params) {
         std::snprintf(q, sizeof q, "%s.entry.hagIndex", evt);
         if (MGetNum(m, q) == kHagIndex) {
             HAG_INFO("HagUI System-menu row -> opening HagUI");
-            game_state::SetGameRunning(false, "HagUI opened from System menu");
             OptionRender::SetContext(true);                  // in-game (save loaded): show PerSave pages
             HagMenu::Open();
             return;                                          // ours: do NOT forward
@@ -261,7 +258,6 @@ using AdvanceFn = void (*)(void*);
 AdvanceFn g_origAdvance = nullptr;
 void Detour_JournalAdvance(void* self) {
     g_origAdvance(self);                                     // let the journal advance/render first
-    game_state::SetGameRunning(false, "JournalMenu advance");
     __try {
         void* movie = *reinterpret_cast<void**>(reinterpret_cast<char*>(self) + offsets::menu_layout::kMovieView);
         if (movie) { g_sysMovie = movie; SystemSetupIfNeeded(movie); }
