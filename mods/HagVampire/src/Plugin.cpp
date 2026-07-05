@@ -37,7 +37,7 @@ void OnTransformResult(void*, const HagLoader_ConsoleResult* result) {
 }
 
 void OnTransformClicked(void*) {
-    constexpr const char* kCommand = "cqf PlayerVampireQuest VampireChange player";
+    constexpr const char* kCommand = "setstage PlayerVampireQuest 10";
     if (!g_loaderApi || !g_loaderApi->QueueConsoleCommandWithCallback) {
         HAG_ERR("vampire transform failed: HagLoader queue-console API unavailable");
         return;
@@ -46,7 +46,7 @@ void OnTransformClicked(void*) {
         HAG_ERR("vampire transform failed: could not queue '{}'", kCommand);
         return;
     }
-    HAG_INFO("vampire transform queued: '{}'", kCommand);
+    HAG_INFO("vampire transform quest stage queued: '{}'", kCommand);
 }
 
 }  // namespace

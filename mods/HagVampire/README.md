@@ -9,11 +9,11 @@ Sanguinare Vampiris:
 PlayerVampireQuestScript.VampireChange(Game.GetPlayer())
 ```
 
-The mod does not directly run console commands. It uses HagLoader's queue-only loader API to enqueue
-the command and receive an optional async result callback:
+The mod does not use `cqf`. It uses HagLoader's queue-only loader API to advance the vanilla vampire
+quest to its transformation stage and receive an optional async result callback:
 
 ```text
-cqf PlayerVampireQuest VampireChange player
+setstage PlayerVampireQuest 10
 ```
 
 That function handles the transform effects, race mapping, disease cleanup, vampire spells,

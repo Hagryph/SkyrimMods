@@ -46,4 +46,4 @@ successful build or deploy. This applies to the loader (`HagLoader\build.ps1`), 
 - Manual SKSE/Ghidra approach: no Address Library, no CommonLibSSE-NG.
 - One repo owns loader, shared ABI, tools, and feature mods.
 - `HagCharacter` has been removed; `HagGeneral` is the first external mod under `mods/`.
-- `HagVampire` uses the vanilla quest-script conversion path (`cqf PlayerVampireQuest VampireChange player`), not a raw race swap.
+- `HagVampire` advances the vanilla vampire quest to its transformation stage (`setstage PlayerVampireQuest 10`), not a raw race swap and not `cqf`.
