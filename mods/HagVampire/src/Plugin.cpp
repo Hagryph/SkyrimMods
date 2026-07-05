@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cstdio>
 #include <stdexcept>
 
 namespace hag {
@@ -544,6 +545,18 @@ void RegisterFeedHotkey() {
     HAG_INFO("feed hotkey registered at VK {:#x}", hotkey);
 }
 
+const char* FeedingCounterText(void*) {
+    static thread_local char text[64];
+    std::uint32_t count = 0;
+    if (g_loaderApi && g_loaderApi->SaveStorageAvailable && g_loaderApi->SaveStorageAvailable() &&
+        g_loaderApi->SaveFormIDSetCountForModule) {
+        count = g_loaderApi->SaveFormIDSetCountForModule(g_selfModule, kFedCorpseSet);
+    }
+    const char* noun = (count == 1) ? "corpse" : "corpses";
+    std::snprintf(text, sizeof(text), "%u %s fed", count, noun);
+    return text;
+}
+
 void OnFeedHotkeyChanged(void*, HagUI_Value value) {
     int next = 0;
     if (value.type == HAGUI_VT_INT) {
@@ -634,8 +647,8 @@ void Init(HagUI_PageHandle* page) {
         throw std::runtime_error("HagVampire requires HagLoader HagUI API/page");
     }
 
-    if (!g_uiApi->AddDynamicButton || !g_uiApi->SetIntState || !g_uiApi->AddHotkey) {
-        throw std::runtime_error("HagVampire requires HagUI dynamic button/state/hotkey API");
+    if (!g_uiApi->AddDynamicButton || !g_uiApi->SetIntState || !g_uiApi->AddHotkey || !g_uiApi->AddCounter) {
+        throw std::runtime_error("HagVampire requires HagUI dynamic button/state/hotkey/counter API");
     }
 
     g_uiApi->AddDynamicButton(page,
@@ -656,6 +669,11 @@ void Init(HagUI_PageHandle* page) {
                        g_feedHotkey.load(),
                        &OnFeedHotkeyChanged,
                        nullptr);
+    g_uiApi->AddCounter(page,
+                        "feeding_counter",
+                        "Feeding counter",
+                        &FeedingCounterText,
+                        nullptr);
     g_uiApi->AddStepper(page,
                         "animation_mode",
                         "Animation mode (0 Crouch / 1 Bedroll / 2 Custom)",

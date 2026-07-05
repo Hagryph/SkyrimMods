@@ -80,6 +80,20 @@ void C_AddHotkey(HagUI_PageHandle* page, const char* id, const char* label,
     AsPage(page)->Hotkey(id ? id : "", label ? label : "", initialKey, Wrap(cb, user));
 }
 
+SampleFn WrapCounter(HagUI_TextCb cb, void* user) {
+    if (!cb) return {};
+    return [cb, user]() -> BarSample {
+        const char* text = cb(user);
+        return BarSample{ 0.0, text ? std::string(text) : std::string() };
+    };
+}
+
+void C_AddCounter(HagUI_PageHandle* page, const char* id, const char* label,
+                  HagUI_TextCb sample, void* user) {
+    if (!page) return;
+    AsPage(page)->Counter(id ? id : "", label ? label : "", WrapCounter(sample, user));
+}
+
 void C_SetToggleState(HagUI_PageHandle* page, const char* id, bool value, bool enabled, const char* note) {
     if (!page) return;
     HagUI::Get().SetOptionState(AsPage(page), id ? id : "", Value(value), enabled, note ? note : "");
@@ -151,6 +165,7 @@ const HagUIAPI g_api = {
     &C_SetIntState,       // v5
     &C_SetDoubleState,    // v5
     &C_AddHotkey,         // v6
+    &C_AddCounter,        // v7
 };
 
 }  // namespace

@@ -276,6 +276,24 @@ function paintActionButton(b, hover, enabled, pressed)
    _root.rrPath(b, 0, 0, b._bw, b._bh, 7);
    b.endFill();
 }
+function paintActionIndicator(ind, hover, enabled, pressed)
+{
+   ind.clear();
+   var col = 0xE0B34A;
+   var border = 44;
+   var fill = 6;
+   if (!enabled) { col = 0x6B6456; border = 18; fill = 3; }
+   else if (hover) { border = 86; fill = 18; }
+   if (enabled && pressed) { border = 100; fill = 28; }
+   ind.lineStyle(1, col, border, true, "none", "round", "round");
+   ind.beginFill(col, fill);
+   _root.rrPath(ind, 0, 0, 22, 22, 5);
+   ind.endFill();
+   ind.lineStyle(2, col, enabled ? 100 : 45, true, "none", "round", "round");
+   ind.moveTo(8, 6);
+   ind.lineTo(14, 11);
+   ind.lineTo(8, 16);
+}
 function makeActionButton(parent, name, depth, x, y, w, op)
 {
    var en = (op.enabled != 0);
@@ -283,33 +301,35 @@ function makeActionButton(parent, name, depth, x, y, w, op)
    row._x = x; row._y = y;
    row._op = op;
 
-   var bw = op.label.length * 10 + 58;
-   if (bw < 196) { bw = 196; }
-   if (bw > 286) { bw = 286; }
+   var bw = op.label.length * 10 + 70;
+   if (bw < 180) { bw = 180; }
    if (bw > w) { bw = w; }
-   var bh = 32;
-   var b = row.createEmptyMovieClip("btn", 2);
-   b._x = 36; b._y = 0; b._bw = bw; b._bh = bh; b._op = op;
-   _root.paintActionButton(b, false, en, false);
+   row.beginFill(0xFFFFFF, 0); _root.rect(row, 0, 0, bw, 32); row.endFill();
+
+   var ind = row.createEmptyMovieClip("ind", 2);
+   ind._x = 0; ind._y = 5;
+   _root.paintActionIndicator(ind, false, en, false);
    var col = en ? "#E0B34A" : "#6B6456";
-   var t = _root.mkText(b, "text", 1, 0, 0, bw, 24,
-      "<p align='center'><font face='$EverywhereBoldFont' size='15' color='" + col + "'>" + op.label + "</font></p>");
-   t._y = Math.round((bh - t.textHeight) / 2) - 2;
+   var t = _root.mkText(row, "text", 3, 34, 3, bw - 34, 24,
+      "<font face='$EverywhereBoldFont' size='15' color='" + col + "'>" + op.label + "</font>");
+   row._labelHtml = "<font face='$EverywhereBoldFont' size='15' color='#E0B34A'>" + op.label + "</font>";
+   row._labelHoverHtml = "<font face='$EverywhereBoldFont' size='15' color='#ECE6DA'>" + op.label + "</font>";
+   row._labelDisabledHtml = "<font face='$EverywhereBoldFont' size='15' color='#6B6456'>" + op.label + "</font>";
 
    if (op.note != undefined && op.note != "" && op.note != "undefined")
    {
-      _root.mkText(row, "note", 3, bw + 52, 7, w - bw - 52, 20,
+      _root.mkText(row, "note", 4, bw + 14, 8, w - bw - 14, 20,
          "<font face='$EverywhereFont' size='12' color='#B8862F'><i>" + op.note + "</i></font>");
    }
    if (en)
    {
-      b.onRollOver = function() { _root.paintActionButton(this, true, true, false); };
-      b.onRollOut = function() { this._x = 36; this._y = 0; _root.paintActionButton(this, false, true, false); };
-      b.onPress = function() { this._x = 37; this._y = 1; _root.paintActionButton(this, true, true, true); };
-      b.onReleaseOutside = function() { this._x = 36; this._y = 0; _root.paintActionButton(this, false, true, false); };
-      b.onRelease = function()
+      row.onRollOver = function() { _root.paintActionIndicator(this.ind, true, true, false); this.text.htmlText = this._labelHoverHtml; };
+      row.onRollOut = function() { this.ind._x = 0; this.text._x = 34; _root.paintActionIndicator(this.ind, false, true, false); this.text.htmlText = this._labelHtml; };
+      row.onPress = function() { this.ind._x = 1; this.text._x = 35; _root.paintActionIndicator(this.ind, true, true, true); this.text.htmlText = this._labelHoverHtml; };
+      row.onReleaseOutside = function() { this.ind._x = 0; this.text._x = 34; _root.paintActionIndicator(this.ind, false, true, false); this.text.htmlText = this._labelHtml; };
+      row.onRelease = function()
       {
-         this._x = 36; this._y = 0; _root.paintActionButton(this, true, true, false);
+         this.ind._x = 0; this.text._x = 34; _root.paintActionIndicator(this.ind, true, true, false); this.text.htmlText = this._labelHoverHtml;
          if (_root.hagSetOption) { _root.hagSetOption(this._op.pageIdx, this._op.optIdx, 1); }
       };
    }
@@ -412,10 +432,11 @@ function makeHotkey(parent, name, depth, x, y, w, op)
    var lbl = _root.mkText(row, "lbl", 1, 0, 5, w - 154, 24,
       "<font face='$EverywhereFont' size='17' color='" + lblCol + "'>" + op.label + "</font>");
 
-   var bw = 116;
-   var bh = 32;
-   var bx = Math.round(lbl.textWidth + 42);
-   if (bx < 250) { bx = 250; }
+   var bw = 84;
+   var bh = 30;
+   var lw = lbl.textWidth;
+   if (!(lw > 10)) { lw = op.label.length * 8; }
+   var bx = Math.round(lw + 24);
    if (bx > w - bw) { bx = w - bw; }
    var b = row.createEmptyMovieClip("btn", 2);
    b._x = bx; b._y = 0; b._baseX = bx; b._bw = bw; b._bh = bh; b._op = op;
@@ -486,10 +507,39 @@ function buildProgressBar(parent, name, depth, x, y, w, op)
    _root.HAG_BARS.push(rec);
    return row;
 }
+// ---- Counter widget (type 8): read-only live text, rendered as a compact value capsule. ----
+function paintCounterPill(pill, w, h)
+{
+   pill.clear();
+   pill.lineStyle(1, 0xE0B34A, 38, true, "none", "round", "round");
+   pill.beginGradientFill("linear", [0xE0B34A, 0xB8862F], [17, 6], [0, 255],
+      _root.boxM(0, 0, w, h, Math.PI / 2));
+   _root.rrPath(pill, 0, 0, w, h, 6);
+   pill.endFill();
+}
+function buildCounter(parent, name, depth, x, y, w, op)
+{
+   var row = parent.createEmptyMovieClip(name, depth);
+   row._x = x; row._y = y;
+   _root.mkText(row, "lbl", 1, 0, 3, w - 150, 24,
+      "<font face='$EverywhereFont' size='17' color='#ECE6DA'>" + op.label + "</font>");
+   var vw = 126;
+   var pill = row.createEmptyMovieClip("pill", 2);
+   pill._x = w - vw; pill._y = 0;
+   _root.paintCounterPill(pill, vw, 30);
+   var bt = (op.bartext == undefined || op.bartext == "undefined") ? "" : op.bartext;
+   var val = _root.mkText(pill, "val", 1, 0, 4, vw, 22,
+      "<p align='center'><font face='$EverywhereBoldFont' size='13' color='#E0B34A'>" + bt + "</font></p>");
+   if (!_root.HAG_COUNTERS) { _root.HAG_COUNTERS = new Array(); }
+   var crec = new Object();
+   crec.val = val; crec.i = op.pageIdx; crec.j = op.optIdx;
+   _root.HAG_COUNTERS.push(crec);
+   return row;
+}
 // Called by C++ (OptionRender::UpdateLive) every menu tick — cheap: just resizes the fill + text.
 function HagUpdateBars()
 {
-   if (!_root.HAG_BARS) { return; }
+   if (!_root.HAG_BARS) { _root.HAG_BARS = new Array(); }
    var k = 0;
    while (k < _root.HAG_BARS.length)
    {
@@ -502,6 +552,18 @@ function HagUpdateBars()
       if (t != undefined)
       {
          rec.val.htmlText = "<p align='right'><font face='$EverywhereFont' size='13' color='#9C9486'>" + t + "</font></p>";
+      }
+      k = k + 1;
+   }
+   if (!_root.HAG_COUNTERS) { return; }
+   k = 0;
+   while (k < _root.HAG_COUNTERS.length)
+   {
+      var crec = _root.HAG_COUNTERS[k];
+      var ct = _root["hagPage" + crec.i + "_opt" + crec.j + "_bartext"];
+      if (ct != undefined)
+      {
+         crec.val.htmlText = "<p align='center'><font face='$EverywhereBoldFont' size='13' color='#E0B34A'>" + ct + "</font></p>";
       }
       k = k + 1;
    }
@@ -557,6 +619,7 @@ function buildOptionPage(c, x, y, w, pageIdx)
    var pg = _root.HAG_PAGES[pageIdx];
    if (!pg) { return; }
    _root.HAG_BARS = new Array();   // reset the live-bar registry for this page render
+   _root.HAG_COUNTERS = new Array();
    _root.mkText(c, "hd", 1, x, y, w, 26,
       "<font face='$EverywhereBoldFont' size='21' color='#ECE6DA'>" + pg.title + "</font>");
    var topY = y + 44;
@@ -602,6 +665,11 @@ function buildOptionPage(c, x, y, w, pageIdx)
       {
          _root.makeHotkey(c, "hotkey" + i, depth, colX, rowY, colW, op);
          rowY = rowY + 46;
+      }
+      else if (op.type == 8)     // Counter -> live read-only value
+      {
+         _root.buildCounter(c, "counter" + i, depth, colX, rowY, colW, op);
+         rowY = rowY + 40;
       }
       // type 6 (Model3D) is already placed in the left column above
       depth = depth + 2;

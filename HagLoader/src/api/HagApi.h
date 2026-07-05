@@ -19,7 +19,7 @@ enum class Scope { Global, PerSave };
 // Where a menu is being built — decides which scopes are visible.
 enum class MenuContext { MainMenu, InGame };
 
-enum class Control { Toggle, Slider, Stepper, Text, Button, ProgressBar, Model3D, Hotkey };
+enum class Control { Toggle, Slider, Stepper, Text, Button, ProgressBar, Model3D, Hotkey, Counter };
 
 using Value    = std::variant<bool, std::int64_t, double, std::string>;
 using ChangeFn = std::function<void(const Value&)>;
@@ -62,6 +62,7 @@ public:
     Page& Button(std::string id, std::string label, ClickFn onClick);
     Page& DynamicButton(std::string id, std::string fallbackLabel, LabelFn label, ClickFn onClick);
     Page& Hotkey(std::string id, std::string label, std::int64_t initial, ChangeFn cb);
+    Page& Counter(std::string id, std::string label, SampleFn sample);
     // Read-only live widgets (no onChange): a progress bar polled each tick, and a 3D character view.
     Page& ProgressBar(std::string id, std::string label, std::uint32_t color, SampleFn sample);
     Page& Model3D(std::string id, std::string label, std::uint32_t formID);

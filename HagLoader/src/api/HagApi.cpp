@@ -61,6 +61,14 @@ Page& Page::Hotkey(std::string id, std::string label, std::int64_t initial, Chan
     return *this;
 }
 
+Page& Page::Counter(std::string id, std::string label, SampleFn sample) {
+    Option o;
+    o.id = std::move(id); o.label = std::move(label); o.control = Control::Counter;
+    o.sample = std::move(sample);
+    m_options.push_back(std::move(o));
+    return *this;
+}
+
 Page& Page::ProgressBar(std::string id, std::string label, std::uint32_t color, SampleFn sample) {
     Option o;
     o.id = std::move(id); o.label = std::move(label); o.control = Control::ProgressBar;

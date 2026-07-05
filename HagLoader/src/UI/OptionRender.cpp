@@ -105,7 +105,7 @@ void PushPages(void* view) {
             std::snprintf(p, sizeof p, "_root.hagPage%d_opt%d_note",    i, j); MSetStr(view, p, o.note.c_str());
             std::snprintf(p, sizeof p, "_root.hagPage%d_opt%d_color",   i, j); MSetNum(view, p, static_cast<double>(o.color));
             // seed the live fields so the bar draws immediately (before the first UpdateLive tick)
-            if (o.control == Control::ProgressBar && o.sample) {
+            if ((o.control == Control::ProgressBar || o.control == Control::Counter) && o.sample) {
                 BarSample s = o.sample();
                 std::snprintf(p, sizeof p, "_root.hagPage%d_opt%d_fill",    i, j); MSetNum(view, p, s.frac);
                 std::snprintf(p, sizeof p, "_root.hagPage%d_opt%d_bartext", i, j); MSetStr(view, p, s.text.c_str());
@@ -125,7 +125,7 @@ void DoUpdateLive(void* view) {
         const auto& opts = pages[i]->Options();
         for (int j = 0; j < static_cast<int>(opts.size()); ++j) {
             const Option& o = opts[j];
-            if (o.control != Control::ProgressBar || !o.sample) continue;
+            if ((o.control != Control::ProgressBar && o.control != Control::Counter) || !o.sample) continue;
             BarSample s = o.sample();
             double f = s.frac < 0.0 ? 0.0 : (s.frac > 1.0 ? 1.0 : s.frac);
             std::snprintf(p, sizeof p, "_root.hagPage%d_opt%d_fill",    i, j); MSetNum(view, p, f);

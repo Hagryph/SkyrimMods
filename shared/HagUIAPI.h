@@ -33,7 +33,8 @@ extern "C" {
 // v4: added AddDynamicButton (label callback sampled whenever HagUI rebuilds the page model).
 // v5: added SetIntState + SetDoubleState for refreshing non-toggle controls after save-load.
 // v6: added AddHotkey (VK-code backed keybind widget).
-#define HAGUI_ABI_VERSION 6u
+// v7: added AddCounter (live, read-only text counter).
+#define HAGUI_ABI_VERSION 7u
 
 // Scope: Global  = shown in the Main Menu AND in-game; persists outside any save.
 //        PerSave = in-game only; belongs to the loaded save.
@@ -69,6 +70,7 @@ typedef struct HagUI_PageHandle HagUI_PageHandle;
 typedef void (*HagUI_ChangeCb)(void* user, HagUI_Value value);
 typedef void (*HagUI_ClickCb)(void* user);
 typedef const char* (*HagUI_LabelCb)(void* user);
+typedef const char* (*HagUI_TextCb)(void* user);
 
 // A ProgressBar reading: fraction in [0,1] plus a short label ("80 / 100"). HagUI polls the sample
 // callback every menu tick; `text` need only stay valid for that call (host copies it immediately).
@@ -132,6 +134,11 @@ typedef struct HagUIAPI {
     // Rebindable keyboard shortcut widget. `initialKey` is a Win32 virtual-key code (e.g. 'V' == 0x56).
     void (*AddHotkey)(HagUI_PageHandle* page, const char* id, const char* label,
                       int64_t initialKey, HagUI_ChangeCb onChange, void* user);
+
+    // --- v7 ---
+    // A live, read-only counter/readout. HagUI polls `sample(user)` every menu tick while visible.
+    void (*AddCounter)(HagUI_PageHandle* page, const char* id, const char* label,
+                       HagUI_TextCb sample, void* user);
 } HagUIAPI;
 
 // Signature of the exported resolver, for reinterpret_cast<> on the consumer side.
