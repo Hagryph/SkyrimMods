@@ -8,6 +8,7 @@
 #include "api/HagApi.h"
 #include "ModManager.h"
 #include "ConsoleQueue.h"
+#include "GameState.h"
 
 #include <variant>
 
@@ -22,10 +23,18 @@ namespace {
 // SKSE -> us. Register our menu once the game's UI/data is up (kDataLoaded);
 // the UI registry may not exist yet at plugin-load time.
 void OnSKSEMessage(skse::Message* msg) {
-    if (msg && msg->type == skse::kMessage_DataLoaded) {
+    if (!msg) return;
+    if (msg->type == skse::kMessage_DataLoaded) {
         HAG_INFO("kDataLoaded -> registering HagUIMenu");
         ui::HagMenu::Register();
         ModManager::Get().OnDataLoaded();
+        game_state::SetGameRunning(false, "DataLoaded/MainMenu");
+    } else if (msg->type == skse::kMessage_PreLoadGame) {
+        game_state::SetGameRunning(false, "PreLoadGame");
+    } else if (msg->type == skse::kMessage_PostLoadGame) {
+        game_state::SetGameRunning(true, "PostLoadGame");
+    } else if (msg->type == skse::kMessage_NewGame) {
+        game_state::SetGameRunning(true, "NewGame");
     }
 }
 
@@ -54,6 +63,7 @@ bool Plugin::OnLoad(const skse::Interface* skse) {
         return false;
     }
 
+    game_state::InstallHooks();
     ui::HagMenu::InstallTrigger();  // (debug) click Credits -> open HagUIMenu
 
     if (kRegisterTestPage) {

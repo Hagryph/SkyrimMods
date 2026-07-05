@@ -1,5 +1,6 @@
 #include "PCH.h"
 #include "ConsoleQueue.h"
+#include "GameState.h"
 #include "Log.h"
 #include "UI/HagMenu.h"
 
@@ -27,23 +28,30 @@ struct DrainTask : skse::TaskDelegate {
 };
 
 void ScheduleDrain();
+bool HasQueuedCommands();
+void TryScheduleDrain(const char* reason);
 
 void RunDrain(skse::TaskDelegate* self) {
     for (;;) {
+        if (!game_state::IsGameRunning()) {
+            HAG_INFO("queued console command drain paused: game is not running");
+            g_scheduled.store(false);
+            return;
+        }
+
         QueuedCommand job;
         {
             std::lock_guard lock(g_mutex);
             if (g_commands.empty()) {
                 g_scheduled.store(false);
-                if (g_commands.empty()) return;
-                if (g_scheduled.exchange(true)) return;
+                return;
             }
             job = std::move(g_commands.front());
             g_commands.pop();
         }
 
-        HAG_INFO("queued console command running on SKSE task thread: haguiOpen={} command='{}'",
-                 ui::HagMenu::IsOpen(), job.command);
+        HAG_INFO("queued console command running on SKSE task thread: gameRunning={} haguiOpen={} command='{}'",
+                 game_state::IsGameRunning(), ui::HagMenu::IsOpen(), job.command);
         console::Result result = console::Run(job.command);
         HAG_INFO("queued console command result: compiled={} faulted={} noCompiler={} bytes={} output='{}'",
                  result.compiled, result.faulted, result.noCompiler, result.compiledSize, result.output);
@@ -77,10 +85,33 @@ void ScheduleDrain() {
     g_task->AddTask(task);
 }
 
+bool HasQueuedCommands() {
+    std::lock_guard lock(g_mutex);
+    return !g_commands.empty();
+}
+
+void TryScheduleDrain(const char* reason) {
+    if (!HasQueuedCommands()) return;
+    if (!game_state::IsGameRunning()) {
+        HAG_INFO("queued console command drain waiting: game is not running ({})",
+                 reason ? reason : "unspecified");
+        return;
+    }
+    if (!g_scheduled.exchange(true)) {
+        HAG_INFO("queued console command drain scheduled ({})", reason ? reason : "unspecified");
+        ScheduleDrain();
+    }
+}
+
 }  // namespace
 
 void SetTaskInterface(skse::TaskInterface* task) {
+    static std::once_flag registerStateCallback;
     g_task = task;
+    std::call_once(registerStateCallback, [] {
+        game_state::AddChangeCallback(
+            [](bool running, void*) { console_queue::OnGameRunningChanged(running); });
+    });
     HAG_INFO("SKSE task interface {}", task ? "acquired for deferred console commands" : "unavailable");
 }
 
@@ -95,12 +126,16 @@ bool Queue(std::string command, HagLoader_ConsoleResultCb callback, void* user) 
         g_commands.push({std::move(command), callback, user});
     }
 
-    HAG_INFO("queued console command onto SKSE task queue; haguiOpen={}", ui::HagMenu::IsOpen());
+    HAG_INFO("queued console command; gameRunning={} haguiOpen={}",
+             game_state::IsGameRunning(), ui::HagMenu::IsOpen());
 
-    if (!g_scheduled.exchange(true)) {
-        ScheduleDrain();
-    }
+    TryScheduleDrain("new command");
     return true;
+}
+
+void OnGameRunningChanged(bool running) {
+    if (!running) return;
+    TryScheduleDrain("game resumed");
 }
 
 }  // namespace hag::console_queue

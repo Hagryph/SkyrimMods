@@ -10,5 +10,6 @@ namespace hag::console_queue {
 void SetTaskInterface(skse::TaskInterface* task);
 bool Available();
 bool Queue(std::string command, HagLoader_ConsoleResultCb callback = nullptr, void* user = nullptr);
+void OnGameRunningChanged(bool running);
 
 }  // namespace hag::console_queue

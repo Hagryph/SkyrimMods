@@ -179,6 +179,10 @@ namespace movie {
 // Open/close a menu
 inline constexpr std::uintptr_t UIMessageQueue_AddMsg = 0x1AF260;
 inline constexpr std::uintptr_t UIMessageQueue_Ptr    = 0x20F8950; // *(UIMessageQueue**)
+// Called by UI::ProcessMessages after menu open/close updates the counters at UI+0x160..0x178.
+// This is the engine-level point where pause/menu-mode state has just changed.
+inline constexpr std::uintptr_t UI_UpdateMenuState = 0xFA5E70; // FUN_140fa5e70(UI*, topMenu, ...)
+inline constexpr std::size_t    UI_NumPausesGame   = 0x160;    // uint32 UI::numPausesGame
 
 // GFxMovieView vtable SLOT byte-offsets (call (*(*view+slot))(view,...))
 namespace gfxview {
