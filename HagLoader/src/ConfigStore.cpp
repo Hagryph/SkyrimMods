@@ -70,6 +70,16 @@ bool ParseBool(const std::string& v, bool dflt) {
     return dflt;
 }
 
+std::int64_t ParseInt(const std::string& v, std::int64_t dflt) {
+    try {
+        std::size_t consumed = 0;
+        const auto out = std::stoll(v, &consumed, 10);
+        return consumed == v.size() ? out : dflt;
+    } catch (...) {
+        return dflt;
+    }
+}
+
 std::map<std::string, std::string> LoadFile(const std::filesystem::path& path) {
     std::map<std::string, std::string> values;
     std::ifstream in(path);
@@ -132,6 +142,39 @@ bool SetBool(Scope scope, const std::string& modName, const std::string& key, bo
     return true;
 }
 
+std::int64_t GetInt(Scope scope, const std::string& modName, const std::string& key, std::int64_t defaultValue) {
+    if (modName.empty() || key.empty()) return defaultValue;
+    const auto path = ConfigPath(scope, modName);
+    if (path.empty()) return defaultValue;
+    auto values = LoadFile(path);
+    const auto it = values.find(key);
+    if (it != values.end()) {
+        return ParseInt(it->second, defaultValue);
+    }
+
+    values[key] = std::to_string(defaultValue);
+    if (SaveFile(path, values)) {
+        HAG_INFO("config default saved: {} {}={}", path.string(), key, defaultValue);
+    } else {
+        HAG_ERR("config default save failed: {}", path.string());
+    }
+    return defaultValue;
+}
+
+bool SetInt(Scope scope, const std::string& modName, const std::string& key, std::int64_t value) {
+    if (modName.empty() || key.empty()) return false;
+    const auto path = ConfigPath(scope, modName);
+    if (path.empty()) return false;
+    auto values = LoadFile(path);
+    values[key] = std::to_string(value);
+    if (!SaveFile(path, values)) {
+        HAG_ERR("config save failed: {}", path.string());
+        return false;
+    }
+    HAG_INFO("config saved: {} {}={}", path.string(), key, value);
+    return true;
+}
+
 bool GetBoolForModule(HMODULE module, Scope scope, const std::string& configName, const std::string& key, bool defaultValue) {
     if (!module || configName.empty() || key.empty()) return defaultValue;
     const auto path = ConfigPathFromRoot(ModuleRootFromHandle(module), scope, configName);
@@ -157,6 +200,39 @@ bool SetBoolForModule(HMODULE module, Scope scope, const std::string& configName
     if (path.empty()) return false;
     auto values = LoadFile(path);
     values[key] = value ? "true" : "false";
+    if (!SaveFile(path, values)) {
+        HAG_ERR("config save failed: {}", path.string());
+        return false;
+    }
+    HAG_INFO("config saved: {} {}={}", path.string(), key, value);
+    return true;
+}
+
+std::int64_t GetIntForModule(HMODULE module, Scope scope, const std::string& configName, const std::string& key, std::int64_t defaultValue) {
+    if (!module || configName.empty() || key.empty()) return defaultValue;
+    const auto path = ConfigPathFromRoot(ModuleRootFromHandle(module), scope, configName);
+    if (path.empty()) return defaultValue;
+    auto values = LoadFile(path);
+    const auto it = values.find(key);
+    if (it != values.end()) {
+        return ParseInt(it->second, defaultValue);
+    }
+
+    values[key] = std::to_string(defaultValue);
+    if (SaveFile(path, values)) {
+        HAG_INFO("config default saved: {} {}={}", path.string(), key, defaultValue);
+    } else {
+        HAG_ERR("config default save failed: {}", path.string());
+    }
+    return defaultValue;
+}
+
+bool SetIntForModule(HMODULE module, Scope scope, const std::string& configName, const std::string& key, std::int64_t value) {
+    if (!module || configName.empty() || key.empty()) return false;
+    const auto path = ConfigPathFromRoot(ModuleRootFromHandle(module), scope, configName);
+    if (path.empty()) return false;
+    auto values = LoadFile(path);
+    values[key] = std::to_string(value);
     if (!SaveFile(path, values)) {
         HAG_ERR("config save failed: {}", path.string());
         return false;

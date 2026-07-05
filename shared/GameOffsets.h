@@ -228,7 +228,18 @@ inline constexpr std::uint32_t AV_Health  = 0x18;
 inline constexpr std::uint32_t AV_Magicka = 0x19;
 inline constexpr std::uint32_t AV_Stamina = 0x1A;
 
+// Actor virtual slots from CommonLibSSE-NG headers, verified against Skyrim SE 1.6.1170 layout.
+inline constexpr int VSlot_IsDead = 0x099;                       // bool Actor::IsDead(bool notEssential)
+inline constexpr int VSlot_SetVampireFeed = 0x0BF;               // void Actor::SetVampireFeed(bool)
+inline constexpr int VSlot_InitiateVampireFeedPackage = 0x0C0;   // void Actor::InitiateVampireFeedPackage(Actor*, TESObjectREFR*)
+
 }  // namespace actor
+
+namespace refr {
+
+inline constexpr int VSlot_GetCurrent3D = 0x08D;  // TESObjectREFR::GetCurrent3D()
+
+}  // namespace refr
 
 // ============================================================================
 // TES forms.
@@ -239,6 +250,24 @@ inline constexpr std::uintptr_t LookupByID = 0x1E01A0;  // TESForm* LookupByID(F
 inline constexpr std::size_t    FormType   = 0x1A;      // uint8 form type
 
 }  // namespace form
+
+namespace handle {
+
+// Address Library 1.6.1170 id 12332. Kept separate from the older console-path
+// ResolveRefHandle RVA above because the signatures differ.
+inline constexpr std::uintptr_t LookupReferenceByHandle = 0x179710;
+
+}  // namespace handle
+
+namespace crosshair {
+
+// Address Library 1.6.1170 id 401585: CrosshairPickData** singleton.
+// CrosshairPickData layout: target handle @+0x04, targetActor handle @+0x08.
+inline constexpr std::uintptr_t CrosshairPickDataSingletonPtr = 0x3138ED0;
+inline constexpr std::size_t CrosshairPickData_Target = 0x04;
+inline constexpr std::size_t CrosshairPickData_TargetActor = 0x08;
+
+}  // namespace crosshair
 
 // ============================================================================
 // Papyrus VM.

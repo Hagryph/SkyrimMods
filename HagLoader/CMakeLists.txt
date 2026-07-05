@@ -16,6 +16,7 @@ add_library(HagLoader SHARED
     src/ConsoleExec.cpp
     src/ConsoleQueue.cpp
     src/PapyrusCall.cpp
+    src/NativeTaskQueue.cpp
     src/LoaderApiExport.cpp
     src/UI/HagMenu.cpp
     src/UI/GfxInject.cpp

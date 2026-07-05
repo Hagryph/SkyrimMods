@@ -9,6 +9,7 @@
 #include "ModManager.h"
 #include "ConsoleQueue.h"
 #include "GameState.h"
+#include "NativeTaskQueue.h"
 #include "PapyrusCall.h"
 
 #include <variant>
@@ -71,6 +72,7 @@ bool Plugin::OnLoad(const skse::Interface* skse) {
             skse->QueryInterface(skse::kInterface_Task));
         console_queue::SetTaskInterface(task);
         papyrus_call::SetTaskInterface(task);
+        native_task_queue::SetTaskInterface(task);
 
         auto* msg = reinterpret_cast<skse::MessagingInterface*>(
             skse->QueryInterface(skse::kInterface_Messaging));

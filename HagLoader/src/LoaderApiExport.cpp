@@ -3,6 +3,7 @@
 #include "ConsoleQueue.h"
 #include "HagLoaderAPI.h"
 #include "Log.h"
+#include "NativeTaskQueue.h"
 #include "PapyrusCall.h"
 
 namespace {
@@ -45,6 +46,24 @@ bool C_SetConfigBoolForModule(void* moduleHandle, std::int32_t scope, const char
         static_cast<HMODULE>(moduleHandle), CfgScope(scope), configName ? configName : "", key ? key : "", value);
 }
 
+std::int64_t C_GetConfigInt(std::int32_t scope, const char* modName, const char* key, std::int64_t defaultValue) {
+    return hag::config_store::GetInt(CfgScope(scope), modName ? modName : "", key ? key : "", defaultValue);
+}
+
+bool C_SetConfigInt(std::int32_t scope, const char* modName, const char* key, std::int64_t value) {
+    return hag::config_store::SetInt(CfgScope(scope), modName ? modName : "", key ? key : "", value);
+}
+
+std::int64_t C_GetConfigIntForModule(void* moduleHandle, std::int32_t scope, const char* configName, const char* key, std::int64_t defaultValue) {
+    return hag::config_store::GetIntForModule(
+        static_cast<HMODULE>(moduleHandle), CfgScope(scope), configName ? configName : "", key ? key : "", defaultValue);
+}
+
+bool C_SetConfigIntForModule(void* moduleHandle, std::int32_t scope, const char* configName, const char* key, std::int64_t value) {
+    return hag::config_store::SetIntForModule(
+        static_cast<HMODULE>(moduleHandle), CfgScope(scope), configName ? configName : "", key ? key : "", value);
+}
+
 bool C_QueuePapyrusStaticCall(const char* scriptName, const char* functionName) {
     if (!scriptName || !*scriptName || !functionName || !*functionName) return false;
     const bool queued = hag::papyrus_call::QueueStaticCall(scriptName, functionName);
@@ -64,6 +83,12 @@ bool C_QueuePapyrusStaticCallWithCallback(const char* scriptName,
     return queued;
 }
 
+bool C_QueueMainThreadTask(HagLoader_MainThreadTaskCb callback, void* user) {
+    const bool queued = hag::native_task_queue::Queue(callback, user);
+    HAG_INFO("HagLoader API QueueMainThreadTask {}", queued ? "queued" : "queue failed");
+    return queued;
+}
+
 const HagLoaderAPI g_loaderApi = {
     HAGLOADER_ABI_VERSION,
     &C_QueueConsoleCommand,
@@ -74,6 +99,11 @@ const HagLoaderAPI g_loaderApi = {
     &C_SetConfigBoolForModule,
     &C_QueuePapyrusStaticCall,
     &C_QueuePapyrusStaticCallWithCallback,
+    &C_QueueMainThreadTask,
+    &C_GetConfigInt,
+    &C_SetConfigInt,
+    &C_GetConfigIntForModule,
+    &C_SetConfigIntForModule,
 };
 
 }  // namespace
