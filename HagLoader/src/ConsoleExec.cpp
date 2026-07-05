@@ -2,6 +2,9 @@
 #include "ConsoleExec.h"
 #include "Offsets.h"
 
+#include <cctype>
+#include <string_view>
+
 namespace hag::console {
 
 namespace {
@@ -75,6 +78,25 @@ bool RunGuarded(const char* cmd, std::size_t len, int compilerMode, Result* out,
     }
 }
 
+bool StartsWithCommand(std::string_view text, std::string_view command) {
+    while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front()))) {
+        text.remove_prefix(1);
+    }
+    if (text.size() < command.size()) return false;
+    for (std::size_t i = 0; i < command.size(); ++i) {
+        const auto a = static_cast<unsigned char>(text[i]);
+        const auto b = static_cast<unsigned char>(command[i]);
+        if (std::tolower(a) != std::tolower(b)) return false;
+    }
+    return text.size() == command.size() ||
+           std::isspace(static_cast<unsigned char>(text[command.size()]));
+}
+
+int CompilerModeFor(std::string_view command) {
+    // "cqf" is a console command. Plain script snippets need the legacy script compiler mode.
+    return StartsWithCommand(command, "cqf") ? 0 : 1;
+}
+
 }  // namespace
 
 Result Run(const std::string& command) {
@@ -83,7 +105,8 @@ Result Run(const std::string& command) {
 
     char obuf[8192];
     std::size_t olen = 0;
-    if (!RunGuarded(command.c_str(), command.size(), 0, &r, obuf, sizeof(obuf), &olen)) {
+    const int compilerMode = CompilerModeFor(command);
+    if (!RunGuarded(command.c_str(), command.size(), compilerMode, &r, obuf, sizeof(obuf), &olen)) {
         r.faulted = true;
         return r;
     }
