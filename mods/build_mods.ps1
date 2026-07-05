@@ -7,8 +7,7 @@
 [CmdletBinding()]
 param(
     [string]$Mo2Mods = 'C:\Users\Yannis\AppData\Local\ModOrganizer\Skyrim Special Edition\mods',
-    [string]$Only,
-    [switch]$NoCommit
+    [string]$Only
 )
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
@@ -53,10 +52,8 @@ foreach ($d in $dirs) {
 
 Write-Host "`nAll external mods built + deployed under $Mo2Mods"
 
-if (-not $NoCommit) {
-    $commit = Join-Path $repoRoot 'scripts\auto-git-commit.cjs'
-    if (Test-Path $commit) {
-        & node $commit
-        if ($LASTEXITCODE -ne 0) { throw "auto commit/push failed (exit $LASTEXITCODE)" }
-    }
+$commit = Join-Path $repoRoot 'scripts\auto-git-commit.cjs'
+if (Test-Path $commit) {
+    & node $commit
+    if ($LASTEXITCODE -ne 0) { throw "auto commit/push failed (exit $LASTEXITCODE)" }
 }

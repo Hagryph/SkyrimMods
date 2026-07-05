@@ -18,15 +18,11 @@ const HagLoaderAPI* g_loaderApi = nullptr;
 void RunVampireChange() {
     HAG_INFO("Vampire button pressed: calling PlayerVampireQuestScript.VampireChange(Game.GetPlayer())");
 
+    // This is intentionally the console command path. HagLoader::RunConsoleCommand runs the game's
+    // console compiler mode, not the normal Papyrus script compiler mode.
     constexpr const char* kQuestFunctionCommand = "cqf PlayerVampireQuest VampireChange player";
     HagLoader_ConsoleResult result{};
     bool ok = g_loaderApi && g_loaderApi->RunConsoleCommand(kQuestFunctionCommand, &result);
-
-    if (!ok || !result.compiled) {
-        HAG_WARN("primary vampire change command did not compile; trying form-id fallback");
-        result = {};
-        ok = g_loaderApi && g_loaderApi->RunConsoleCommand("cqf 000EAFD5 VampireChange player", &result);
-    }
 
     if (result.faulted) {
         HAG_ERR("vampire change command faulted");

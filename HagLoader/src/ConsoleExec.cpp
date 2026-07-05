@@ -12,7 +12,7 @@ using Ctor2_t      = void  (*)(void*);
 using CompileRun_t = void  (*)(void*, void*, int, void*);
 using Dtor_t       = void  (*)(void*);
 
-bool RunGuarded(const char* cmd, std::size_t len, Result* out,
+bool RunGuarded(const char* cmd, std::size_t len, int compilerMode, Result* out,
                 char* obuf, std::size_t ocap, std::size_t* olen) noexcept {
     *olen = 0;
     __try {
@@ -51,7 +51,7 @@ bool RunGuarded(const char* cmd, std::size_t len, Result* out,
             lenBefore = *reinterpret_cast<unsigned short*>(reinterpret_cast<char*>(c0) + offsets::kConsLen);
         }
 
-        CompileRun(script, compiler, 1, nullptr);
+        CompileRun(script, compiler, compilerMode, nullptr);
 
         out->compiledSize = *reinterpret_cast<unsigned*>(script + offsets::kOffCompiled);
         out->compiled = out->compiledSize > 0;
@@ -83,9 +83,11 @@ Result Run(const std::string& command) {
 
     char obuf[8192];
     std::size_t olen = 0;
-    if (!RunGuarded(command.c_str(), command.size(), &r, obuf, sizeof(obuf), &olen)) {
+    if (!RunGuarded(command.c_str(), command.size(), 0, &r, obuf, sizeof(obuf), &olen)) {
         r.faulted = true;
-    } else if (olen) {
+        return r;
+    }
+    if (olen) {
         r.output.assign(obuf, olen);
     }
     return r;

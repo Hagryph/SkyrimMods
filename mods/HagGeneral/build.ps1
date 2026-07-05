@@ -3,8 +3,7 @@
 [CmdletBinding()]
 param(
     [switch]$NoBuild,
-    [string]$Mo2Mods = 'C:\Users\Yannis\AppData\Local\ModOrganizer\Skyrim Special Edition\mods',
-    [switch]$NoCommit
+    [string]$Mo2Mods = 'C:\Users\Yannis\AppData\Local\ModOrganizer\Skyrim Special Edition\mods'
 )
 $ErrorActionPreference = 'Stop'
 $root  = $PSScriptRoot
@@ -46,10 +45,8 @@ if (-not (Test-Path $meta)) {
 Write-Host "`nMO2 mod ready: $mod"
 Get-ChildItem $mod -Recurse -File | ForEach-Object { '  ' + $_.FullName.Substring($mod.Length + 1) }
 
-if (-not $NoCommit) {
-    $commit = Join-Path (Split-Path (Split-Path $root -Parent) -Parent) 'scripts\auto-git-commit.cjs'
-    if (Test-Path $commit) {
-        & node $commit
-        if ($LASTEXITCODE -ne 0) { throw "auto commit/push failed (exit $LASTEXITCODE)" }
-    }
+$commit = Join-Path (Split-Path (Split-Path $root -Parent) -Parent) 'scripts\auto-git-commit.cjs'
+if (Test-Path $commit) {
+    & node $commit
+    if ($LASTEXITCODE -ne 0) { throw "auto commit/push failed (exit $LASTEXITCODE)" }
 }

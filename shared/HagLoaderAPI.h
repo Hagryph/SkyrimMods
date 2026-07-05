@@ -4,7 +4,7 @@
 // HagLoaderAPI.h - generic services exported by HagLoader.dll for external mods.
 //
 // HagUIAPI remains the UI/widget API. This table is for loader-level capabilities that many mods
-// may need, such as running a console/Papyrus command through Skyrim's own Script CompileAndRun path.
+// may need, such as running a console/Papyrus command through Skyrim's own CompileAndRun path.
 
 extern "C" {
 

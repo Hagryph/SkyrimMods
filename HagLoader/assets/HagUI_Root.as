@@ -68,13 +68,14 @@ function mkText(parent, name, depth, x, y, w, h, html)
 
 // ---- reusable gold button: gradient bg + border, brightens on hover, fires a GameDelegate
 // callback on its own click (direct hit-test, not the backdrop rectangle). ----
-function paintButton(b, hover)
+function paintButton(b, hover, pressed)
 {
    b.clear();
    var a1 = 18;
    var a2 = 6;
    var ba = 42;
    if (hover) { a1 = 34; a2 = 14; ba = 78; }
+   if (pressed) { a1 = 46; a2 = 22; ba = 96; }
    b.lineStyle(1, 0xE0B34A, ba, true, "none", "round", "round");
    b.beginGradientFill("linear", [0xE0B34A, 0xE0B34A], [a1, a2], [0, 255], _root.boxM(b._bx, b._by, b._bw, b._bh, Math.PI / 2));
    _root.rrPath(b, b._bx, b._by, b._bw, b._bh, 7);
@@ -90,14 +91,15 @@ function makeButton(parent, name, depth, bx, by, bw, bh, html, cb)
    g._visible = false;
    var b = parent.createEmptyMovieClip(name, depth + 1);
    b._bx = bx; b._by = by; b._bw = bw; b._bh = bh; b._cb = cb; b._glow = g;
-   _root.paintButton(b, false);
+   _root.paintButton(b, false, false);
    var lbl = _root.mkText(b, "lbl", 1, bx, by, bw, 30, html);
    // vertical-center on the REAL text height (minus Flash's 2px top gutter) instead of a guess
    lbl._y = by + Math.round((bh - lbl.textHeight) / 2) - 2;
-   b.onRollOver = function() { _root.paintButton(this, true); this._glow._visible = true; };
-   b.onRollOut = function() { _root.paintButton(this, false); this._glow._visible = false; };
-   b.onReleaseOutside = function() { _root.paintButton(this, false); this._glow._visible = false; };
-   b.onRelease = function() { gfx.io.GameDelegate.call(this._cb, []); };
+   b.onRollOver = function() { _root.paintButton(this, true, false); this._glow._visible = true; };
+   b.onRollOut = function() { this._x = 0; this._y = 0; _root.paintButton(this, false, false); this._glow._visible = false; };
+   b.onPress = function() { this._x = 1; this._y = 1; _root.paintButton(this, true, true); this._glow._visible = true; };
+   b.onReleaseOutside = function() { this._x = 0; this._y = 0; _root.paintButton(this, false, false); this._glow._visible = false; };
+   b.onRelease = function() { this._x = 0; this._y = 0; _root.paintButton(this, true, false); gfx.io.GameDelegate.call(this._cb, []); };
    return b;
 }
 
@@ -258,7 +260,7 @@ function makeCheckbox(parent, name, depth, x, y, w, op)
    return row;
 }
 // ---- Action button widget (type 4): explicit command button for one-shot mod actions. ----
-function paintActionButton(b, hover, enabled)
+function paintActionButton(b, hover, enabled, pressed)
 {
    b.clear();
    var a1 = 20;
@@ -267,6 +269,7 @@ function paintActionButton(b, hover, enabled)
    var tc = 0xE0B34A;
    if (!enabled) { a1 = 6; a2 = 3; ba = 18; tc = 0x6B6456; }
    else if (hover) { a1 = 38; a2 = 16; ba = 82; }
+   if (enabled && pressed) { a1 = 50; a2 = 26; ba = 100; }
    b.lineStyle(1, tc, ba, true, "none", "round", "round");
    b.beginGradientFill("linear", [0xE0B34A, 0xB8862F], [a1, a2], [0, 255],
       _root.boxM(0, 0, b._bw, b._bh, Math.PI / 2));
@@ -285,7 +288,7 @@ function makeActionButton(parent, name, depth, x, y, w, op)
    var bh = 34;
    var b = row.createEmptyMovieClip("btn", 2);
    b._x = 0; b._y = 0; b._bw = bw; b._bh = bh; b._op = op;
-   _root.paintActionButton(b, false, en);
+   _root.paintActionButton(b, false, en, false);
    var col = en ? "#E0B34A" : "#6B6456";
    var t = _root.mkText(b, "text", 1, 0, 0, bw, 24,
       "<p align='center'><font face='$EverywhereBoldFont' size='15' color='" + col + "'>" + op.label + "</font></p>");
@@ -298,11 +301,13 @@ function makeActionButton(parent, name, depth, x, y, w, op)
    }
    if (en)
    {
-      b.onRollOver = function() { _root.paintActionButton(this, true, true); };
-      b.onRollOut = function() { _root.paintActionButton(this, false, true); };
-      b.onReleaseOutside = function() { _root.paintActionButton(this, false, true); };
+      b.onRollOver = function() { _root.paintActionButton(this, true, true, false); };
+      b.onRollOut = function() { this._x = 0; this._y = 0; _root.paintActionButton(this, false, true, false); };
+      b.onPress = function() { this._x = 1; this._y = 1; _root.paintActionButton(this, true, true, true); };
+      b.onReleaseOutside = function() { this._x = 0; this._y = 0; _root.paintActionButton(this, false, true, false); };
       b.onRelease = function()
       {
+         this._x = 0; this._y = 0; _root.paintActionButton(this, true, true, false);
          if (_root.hagSetOption) { _root.hagSetOption(this._op.pageIdx, this._op.optIdx, 1); }
       };
    }

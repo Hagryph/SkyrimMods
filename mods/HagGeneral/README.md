@@ -32,7 +32,7 @@ From the repo root, all external mods can be built with:
 .\mods\build_mods.ps1
 ```
 
-Pass `-NoCommit` to skip the post-build auto-commit helper.
+Successful builds/deploys always run the post-build auto-commit helper.
 
 ## Layout
 

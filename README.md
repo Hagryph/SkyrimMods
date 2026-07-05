@@ -38,8 +38,8 @@ This follows the `SoWMods` layout, adapted for Skyrim and Mod Organizer 2:
   `mods\build_mods.ps1 -Only HagGeneral`
 
 Build scripts deploy to Mod Organizer 2 by default and automatically commit + push the repo after a
-successful build unless `-NoCommit` is passed. This applies to the loader (`HagLoader\build.ps1`), the
-dev IPC plugin (`HagIPC\build.ps1`), individual external mod scripts, and `mods\build_mods.ps1`.
+successful build or deploy. This applies to the loader (`HagLoader\build.ps1`), the dev IPC plugin
+(`HagIPC\build.ps1`), individual external mod scripts, and `mods\build_mods.ps1`.
 
 ## Conventions
 
