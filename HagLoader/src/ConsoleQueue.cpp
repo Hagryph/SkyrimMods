@@ -13,8 +13,15 @@ namespace {
 
 skse::TaskInterface* g_task = nullptr;
 std::mutex g_mutex;
-std::queue<std::string> g_commands;
 std::atomic<bool> g_scheduled{false};
+
+struct QueuedCommand {
+    std::string command;
+    HagLoader_ConsoleResultCb callback = nullptr;
+    void* user = nullptr;
+};
+
+std::queue<QueuedCommand> g_commands;
 
 struct DrainTask : skse::TaskDelegate {
 };
@@ -23,7 +30,7 @@ void ScheduleDrain();
 
 void RunDrain(skse::TaskDelegate* self) {
     for (;;) {
-        std::string command;
+        QueuedCommand job;
         {
             std::lock_guard lock(g_mutex);
             if (g_commands.empty()) {
@@ -31,15 +38,24 @@ void RunDrain(skse::TaskDelegate* self) {
                 if (g_commands.empty()) return;
                 if (g_scheduled.exchange(true)) return;
             }
-            command = std::move(g_commands.front());
+            job = std::move(g_commands.front());
             g_commands.pop();
         }
 
         HAG_INFO("queued console command running on SKSE task thread: haguiOpen={} command='{}'",
-                 ui::HagMenu::IsOpen(), command);
-        console::Result result = console::Run(command);
+                 ui::HagMenu::IsOpen(), job.command);
+        console::Result result = console::Run(job.command);
         HAG_INFO("queued console command result: compiled={} faulted={} noCompiler={} bytes={} output='{}'",
                  result.compiled, result.faulted, result.noCompiler, result.compiledSize, result.output);
+        if (job.callback) {
+            HagLoader_ConsoleResult out{};
+            out.faulted = result.faulted;
+            out.noCompiler = result.noCompiler;
+            out.compiled = result.compiled;
+            out.compiledSize = result.compiledSize;
+            out.output = result.output.c_str();
+            job.callback(job.user, &out);
+        }
     }
 }
 
@@ -72,11 +88,11 @@ bool Available() {
     return g_task != nullptr;
 }
 
-bool Queue(std::string command) {
+bool Queue(std::string command, HagLoader_ConsoleResultCb callback, void* user) {
     if (command.empty() || !g_task) return false;
     {
         std::lock_guard lock(g_mutex);
-        g_commands.push(std::move(command));
+        g_commands.push({std::move(command), callback, user});
     }
 
     HAG_INFO("queued console command onto SKSE task queue; haguiOpen={}", ui::HagMenu::IsOpen());

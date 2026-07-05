@@ -12,9 +12,17 @@ bool C_QueueConsoleCommand(const char* command) {
     return queued;
 }
 
+bool C_QueueConsoleCommandWithCallback(const char* command, HagLoader_ConsoleResultCb callback, void* user) {
+    if (!command || !*command) return false;
+    const bool queued = hag::console_queue::Queue(command, callback, user);
+    HAG_INFO("HagLoader API QueueConsoleCommandWithCallback('{}') {}", command, queued ? "queued" : "queue failed");
+    return queued;
+}
+
 const HagLoaderAPI g_loaderApi = {
     HAGLOADER_ABI_VERSION,
     &C_QueueConsoleCommand,
+    &C_QueueConsoleCommandWithCallback,
 };
 
 }  // namespace

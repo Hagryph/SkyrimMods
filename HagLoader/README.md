@@ -37,7 +37,7 @@ The UI movie remains `Interface\HagUI.swf`.
 | `src/Hooking.*` | MinHook trampoline wrapper |
 | `src/ConsoleExec.*` | internal console/Papyrus script execution through Skyrim's own `CompileAndRun` path |
 | `src/ConsoleQueue.*` | internal SKSE task-queued console command runner |
-| `src/LoaderApiExport.cpp` | exports the narrow queue-only `HagLoader_GetAPI` |
+| `src/LoaderApiExport.cpp` | exports the narrow queue-only `HagLoader_GetAPI`, with optional async result callback |
 | `src/ModManager.*` | discovers external mods and passes each one its HagUI page |
 | `src/Offsets.h` | hand-found addresses (RVA off image base `0x140000000`) |
 | `src/UI/HagMenu.*` | the Scaleform menu |

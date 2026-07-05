@@ -9,7 +9,8 @@ Sanguinare Vampiris:
 PlayerVampireQuestScript.VampireChange(Game.GetPlayer())
 ```
 
-The mod does not directly run console commands. It uses HagLoader's queue-only loader API to enqueue:
+The mod does not directly run console commands. It uses HagLoader's queue-only loader API to enqueue
+the command and receive an optional async result callback:
 
 ```text
 cqf PlayerVampireQuest VampireChange player

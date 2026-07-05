@@ -15,13 +15,34 @@ namespace {
 bool g_initialized = false;
 const HagLoaderAPI* g_loaderApi = nullptr;
 
+void OnTransformResult(void*, const HagLoader_ConsoleResult* result) {
+    if (!result) {
+        HAG_ERR("vampire transform result callback received null result");
+        return;
+    }
+    if (result->faulted) {
+        HAG_ERR("vampire transform command faulted");
+        return;
+    }
+    if (result->noCompiler) {
+        HAG_ERR("vampire transform command could not run: ScriptCompiler unavailable");
+        return;
+    }
+    if (!result->compiled) {
+        HAG_ERR("vampire transform command did not compile; output='{}'", result->output ? result->output : "");
+        return;
+    }
+    HAG_INFO("vampire transform command compiled ({} bytes). output='{}'",
+             result->compiledSize, result->output ? result->output : "");
+}
+
 void OnTransformClicked(void*) {
     constexpr const char* kCommand = "cqf PlayerVampireQuest VampireChange player";
-    if (!g_loaderApi || !g_loaderApi->QueueConsoleCommand) {
+    if (!g_loaderApi || !g_loaderApi->QueueConsoleCommandWithCallback) {
         HAG_ERR("vampire transform failed: HagLoader queue-console API unavailable");
         return;
     }
-    if (!g_loaderApi->QueueConsoleCommand(kCommand)) {
+    if (!g_loaderApi->QueueConsoleCommandWithCallback(kCommand, &OnTransformResult, nullptr)) {
         HAG_ERR("vampire transform failed: could not queue '{}'", kCommand);
         return;
     }
@@ -42,7 +63,7 @@ void Init(HagUI_PageHandle* page) {
 
     auto getLoaderApi = reinterpret_cast<HagLoader_GetAPIFn>(::GetProcAddress(h, "HagLoader_GetAPI"));
     g_loaderApi = getLoaderApi ? getLoaderApi(HAGLOADER_ABI_VERSION) : nullptr;
-    if (!g_loaderApi || !g_loaderApi->QueueConsoleCommand) {
+    if (!g_loaderApi || !g_loaderApi->QueueConsoleCommandWithCallback) {
         throw std::runtime_error("HagVampire requires HagLoader queue-console API");
     }
 
