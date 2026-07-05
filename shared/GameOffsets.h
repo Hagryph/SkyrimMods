@@ -231,6 +231,16 @@ inline constexpr std::uint32_t AV_Stamina = 0x1A;
 }  // namespace actor
 
 // ============================================================================
+// TES forms.
+// ============================================================================
+namespace form {
+
+inline constexpr std::uintptr_t LookupByID = 0x1E01A0;  // TESForm* LookupByID(FormID)
+inline constexpr std::size_t    FormType   = 0x1A;      // uint8 form type
+
+}  // namespace form
+
+// ============================================================================
 // Papyrus VM.
 // ============================================================================
 namespace papyrus {

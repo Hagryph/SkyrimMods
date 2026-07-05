@@ -7,6 +7,13 @@ Function TransformPlayer() Global
     endif
 EndFunction
 
+Function CurePlayer() Global
+    PlayerVampireQuestScript vampireQuest = ResolvePlayerVampireQuest()
+    if vampireQuest
+        vampireQuest.VampireCure(Game.GetPlayer())
+    endif
+EndFunction
+
 PlayerVampireQuestScript Function ResolvePlayerVampireQuest() Global
     PlayerVampireQuestScript vampireQuest = Game.GetForm(0x000EAFD5) as PlayerVampireQuestScript
     if vampireQuest

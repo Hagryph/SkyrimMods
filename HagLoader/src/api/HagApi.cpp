@@ -10,35 +10,48 @@ namespace hag::api {
 
 Page& Page::Toggle(std::string id, std::string label, bool initial, ChangeFn cb) {
     m_options.push_back({std::move(id), std::move(label), Control::Toggle, initial,
-                         0, 1, 1, std::move(cb), 0});
+                         0, 1, 1, std::move(cb), {}, 0});
     return *this;
 }
 
 Page& Page::Slider(std::string id, std::string label, double mn, double mx, double step,
                    double initial, ChangeFn cb, std::uint32_t debounceMs) {
     m_options.push_back({std::move(id), std::move(label), Control::Slider, initial,
-                         mn, mx, step, std::move(cb), debounceMs});
+                         mn, mx, step, std::move(cb), {}, debounceMs});
     return *this;
 }
 
 Page& Page::Stepper(std::string id, std::string label, double mn, double mx, double step,
                     double initial, ChangeFn cb) {
     m_options.push_back({std::move(id), std::move(label), Control::Stepper, initial,
-                         mn, mx, step, std::move(cb), 0});
+                         mn, mx, step, std::move(cb), {}, 0});
     return *this;
 }
 
 Page& Page::Text(std::string id, std::string label, std::string initial, ChangeFn cb,
                  std::uint32_t debounceMs) {
     m_options.push_back({std::move(id), std::move(label), Control::Text, std::move(initial),
-                         0, 0, 0, std::move(cb), debounceMs});
+                         0, 0, 0, std::move(cb), {}, debounceMs});
     return *this;
 }
 
 Page& Page::Button(std::string id, std::string label, ClickFn onClick) {
     ChangeFn wrapped = [cb = std::move(onClick)](const Value&) { if (cb) cb(); };
     m_options.push_back({std::move(id), std::move(label), Control::Button, false,
-                         0, 0, 0, std::move(wrapped), 0});
+                         0, 0, 0, std::move(wrapped), {}, 0});
+    return *this;
+}
+
+Page& Page::DynamicButton(std::string id, std::string fallbackLabel, LabelFn label, ClickFn onClick) {
+    ChangeFn wrapped = [cb = std::move(onClick)](const Value&) { if (cb) cb(); };
+    Option o;
+    o.id = std::move(id);
+    o.label = std::move(fallbackLabel);
+    o.control = Control::Button;
+    o.value = false;
+    o.onChange = std::move(wrapped);
+    o.labelFn = std::move(label);
+    m_options.push_back(std::move(o));
     return *this;
 }
 
@@ -125,6 +138,18 @@ void HagUI::SetOptionState(Page* page, const std::string& id, Value value, bool 
         o.enabled = enabled;
         o.note    = std::move(note);
         return;
+    }
+}
+
+void HagUI::RefreshDynamicLabels() {
+    for (auto& p : m_pages) {
+        for (auto& o : p->m_options) {
+            if (!o.labelFn) continue;
+            std::string next = o.labelFn();
+            if (!next.empty()) {
+                o.label = std::move(next);
+            }
+        }
     }
 }
 

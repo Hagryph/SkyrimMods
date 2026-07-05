@@ -30,7 +30,8 @@ extern "C" {
 // for a version it cannot satisfy, so a consumer can degrade gracefully.
 // v2: added SetToggleState + Refresh (per-control enabled/greyed state + note text).
 // v3: added AddProgressBar (live, read-only bar) + AddModel3D (Route-A 3D character widget).
-#define HAGUI_ABI_VERSION 3u
+// v4: added AddDynamicButton (label callback sampled whenever HagUI rebuilds the page model).
+#define HAGUI_ABI_VERSION 4u
 
 // Scope: Global  = shown in the Main Menu AND in-game; persists outside any save.
 //        PerSave = in-game only; belongs to the loaded save.
@@ -65,6 +66,7 @@ typedef struct HagUI_PageHandle HagUI_PageHandle;
 // Control change / button-click callbacks. `user` is the pointer you passed to Add*.
 typedef void (*HagUI_ChangeCb)(void* user, HagUI_Value value);
 typedef void (*HagUI_ClickCb)(void* user);
+typedef const char* (*HagUI_LabelCb)(void* user);
 
 // A ProgressBar reading: fraction in [0,1] plus a short label ("80 / 100"). HagUI polls the sample
 // callback every menu tick; `text` need only stay valid for that call (host copies it immediately).
@@ -111,6 +113,12 @@ typedef struct HagUIAPI {
     // shows it). `formID` selects WHAT to show: 0x14 = the player (live 3D); any other TESForm id loads
     // that object's model (NPC base, static, plant, weapon, ...). 0 = player as well.
     void (*AddModel3D)(HagUI_PageHandle* page, const char* id, const char* label, uint32_t formID);
+
+    // --- v4 ---
+    // Button whose label is recomputed when the HagUI page model is built. The returned const char*
+    // only needs to stay valid for the callback; the host copies it.
+    void (*AddDynamicButton)(HagUI_PageHandle* page, const char* id, const char* fallbackLabel,
+                             HagUI_LabelCb label, HagUI_ClickCb onClick, void* user);
 } HagUIAPI;
 
 // Signature of the exported resolver, for reinterpret_cast<> on the consumer side.

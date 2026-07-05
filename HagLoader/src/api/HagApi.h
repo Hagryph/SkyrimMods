@@ -24,6 +24,7 @@ enum class Control { Toggle, Slider, Stepper, Text, Button, ProgressBar, Model3D
 using Value    = std::variant<bool, std::int64_t, double, std::string>;
 using ChangeFn = std::function<void(const Value&)>;
 using ClickFn  = std::function<void()>;
+using LabelFn  = std::function<std::string()>;
 
 // A ProgressBar reading, polled every menu tick (read-only display widget).
 struct BarSample { double frac = 0.0; std::string text; };  // frac 0..1, e.g. text "80 / 100"
@@ -36,6 +37,7 @@ struct Option {
     Value         value{};
     double        min = 0.0, max = 1.0, step = 1.0;   // slider / stepper
     ChangeFn      onChange;
+    LabelFn       labelFn;                             // optional: recompute label before page rebuild
     std::uint32_t debounceMs = 0;                      // 0 = fire immediately
     bool          enabled = true;                      // false => greyed out + not clickable
     std::string   note;                                // small hint under the control (e.g. "applies after restart")
@@ -58,6 +60,7 @@ public:
     Page& Text(std::string id, std::string label, std::string initial, ChangeFn cb,
                std::uint32_t debounceMs = 300);
     Page& Button(std::string id, std::string label, ClickFn onClick);
+    Page& DynamicButton(std::string id, std::string fallbackLabel, LabelFn label, ClickFn onClick);
     // Read-only live widgets (no onChange): a progress bar polled each tick, and a 3D character view.
     Page& ProgressBar(std::string id, std::string label, std::uint32_t color, SampleFn sample);
     Page& Model3D(std::string id, std::string label, std::uint32_t formID);
@@ -89,6 +92,7 @@ public:
     // Update a control's value / enabled (greyed) state / note without firing its onChange. A mod
     // calls this (via the C API) for dependent controls + restart hints; then Refresh() re-renders.
     void SetOptionState(Page* page, const std::string& id, Value value, bool enabled, std::string note);
+    void RefreshDynamicLabels();
 
     // Mark the rendered panel stale so the next menu tick re-pushes + re-draws it. TakeDirty is read
     // by the renderer each tick.

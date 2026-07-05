@@ -85,6 +85,7 @@ void InstallSetOption(void* view) {
 
 // --- C++ -> AS: flat page/option model ----------------------------------------
 void PushPages(void* view) {
+    HagUI::Get().RefreshDynamicLabels();
     auto pages = HagUI::Get().PagesFor(g_ctx);
     char p[128];
     MSetNum(view, "_root.hagPageCount", static_cast<double>(pages.size()));

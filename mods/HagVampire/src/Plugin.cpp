@@ -2,10 +2,12 @@
 
 #include "HagLoaderAPI.h"
 #include "HagUIAPI.h"
+#include "GameOffsets.h"
 #include "Log.h"
 #include "SKSE_Min.h"
 #include "SkyrimModAPI.h"
 
+#include <atomic>
 #include <stdexcept>
 
 namespace hag {
@@ -15,36 +17,76 @@ namespace {
 bool g_initialized = false;
 const HagLoaderAPI* g_loaderApi = nullptr;
 
-void OnTransformResult(void*, const HagLoader_PapyrusResult* result) {
+enum class VampireAction {
+    Transform,
+    Cure,
+};
+
+std::atomic_bool g_pageActionConsumed{false};
+VampireAction g_actionAtPageBuild = VampireAction::Transform;
+
+std::uintptr_t SkyrimBase() {
+    return reinterpret_cast<std::uintptr_t>(::GetModuleHandleW(nullptr));
+}
+
+bool IsPlayerVampire() {
+    __try {
+        using LookupByIdFn = void* (*)(std::uint32_t);
+        auto lookup = reinterpret_cast<LookupByIdFn>(SkyrimBase() + game::form::LookupByID);
+        void* form = lookup ? lookup(0x000ED06D) : nullptr;
+        if (!form) return false;
+        auto* bytes = static_cast<std::uint8_t*>(form);
+        if (bytes[game::form::FormType] != 0x09) return false;
+        const float value = *reinterpret_cast<float*>(bytes + 0x34);
+        return value >= 0.5f;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+const char* VampireActionLabel(void*) {
+    g_actionAtPageBuild = IsPlayerVampire() ? VampireAction::Cure : VampireAction::Transform;
+    g_pageActionConsumed.store(false);
+    return g_actionAtPageBuild == VampireAction::Cure ? "Cure Vampirism" : "Transform into a Vampire";
+}
+
+void OnActionResult(void*, const HagLoader_PapyrusResult* result) {
     if (!result) {
-        HAG_ERR("vampire transform result callback received null result");
+        HAG_ERR("vampire action result callback received null result");
         return;
     }
     if (result->faulted) {
-        HAG_ERR("vampire transform Papyrus call faulted");
+        HAG_ERR("vampire action Papyrus call faulted");
         return;
     }
     if (!result->dispatched) {
-        HAG_ERR("vampire transform Papyrus call was not dispatched: '{}'",
+        HAG_ERR("vampire action Papyrus call was not dispatched: '{}'",
                 result->message ? result->message : "");
         return;
     }
-    HAG_INFO("vampire transform Papyrus call dispatched: '{}'",
+    HAG_INFO("vampire action Papyrus call dispatched: '{}'",
              result->message ? result->message : "");
 }
 
-void OnTransformClicked(void*) {
+void OnVampireActionClicked(void*) {
+    if (g_pageActionConsumed.exchange(true)) {
+        HAG_INFO("vampire action ignored: page-build action already queued");
+        return;
+    }
+
     constexpr const char* kScript = "HagVampireBridge";
-    constexpr const char* kFunction = "TransformPlayer";
+    const char* function = g_actionAtPageBuild == VampireAction::Cure ? "CurePlayer" : "TransformPlayer";
     if (!g_loaderApi || !g_loaderApi->QueuePapyrusStaticCallWithCallback) {
-        HAG_ERR("vampire transform failed: HagLoader Papyrus API unavailable");
+        HAG_ERR("vampire action failed: HagLoader Papyrus API unavailable");
+        g_pageActionConsumed.store(false);
         return;
     }
-    if (!g_loaderApi->QueuePapyrusStaticCallWithCallback(kScript, kFunction, &OnTransformResult, nullptr)) {
-        HAG_ERR("vampire transform failed: could not queue {}.{}()", kScript, kFunction);
+    if (!g_loaderApi->QueuePapyrusStaticCallWithCallback(kScript, function, &OnActionResult, nullptr)) {
+        HAG_ERR("vampire action failed: could not queue {}.{}()", kScript, function);
+        g_pageActionConsumed.store(false);
         return;
     }
-    HAG_INFO("vampire transform Papyrus bridge queued: {}.{}()", kScript, kFunction);
+    HAG_INFO("vampire action Papyrus bridge queued: {}.{}()", kScript, function);
 }
 
 }  // namespace
@@ -71,7 +113,16 @@ void Init(HagUI_PageHandle* page) {
         throw std::runtime_error("HagVampire requires HagLoader HagUI API/page");
     }
 
-    api->AddButton(page, "transform_vampire", "Transform into a Vampire", &OnTransformClicked, nullptr);
+    if (!api->AddDynamicButton) {
+        throw std::runtime_error("HagVampire requires HagUI dynamic button API");
+    }
+
+    api->AddDynamicButton(page,
+                          "vampire_action",
+                          "Transform into a Vampire",
+                          &VampireActionLabel,
+                          &OnVampireActionClicked,
+                          nullptr);
     api->Refresh();
 
     HAG_INFO("HagVampire page registered");

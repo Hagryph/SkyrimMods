@@ -101,6 +101,22 @@ void C_AddModel3D(HagUI_PageHandle* page, const char* id, const char* label, std
     AsPage(page)->Model3D(id ? id : "", label ? label : "", formID);
 }
 
+LabelFn WrapLabel(HagUI_LabelCb cb, void* user, std::string fallback) {
+    return [cb, user, fallback = std::move(fallback)]() -> std::string {
+        if (!cb) return fallback;
+        const char* label = cb(user);
+        return label && *label ? std::string(label) : fallback;
+    };
+}
+
+void C_AddDynamicButton(HagUI_PageHandle* page, const char* id, const char* fallbackLabel,
+                        HagUI_LabelCb label, HagUI_ClickCb cb, void* user) {
+    if (!page) return;
+    const std::string fallback = fallbackLabel ? fallbackLabel : "";
+    ClickFn fn = cb ? ClickFn([cb, user]() { cb(user); }) : ClickFn{};
+    AsPage(page)->DynamicButton(id ? id : "", fallback, WrapLabel(label, user, fallback), std::move(fn));
+}
+
 // The single interface table handed to every consumer (function addresses are
 // process-stable, so one shared const instance is correct).
 const HagUIAPI g_api = {
@@ -115,6 +131,7 @@ const HagUIAPI g_api = {
     &C_Refresh,
     &C_AddProgressBar,   // v3
     &C_AddModel3D,       // v3
+    &C_AddDynamicButton,  // v4
 };
 
 }  // namespace
