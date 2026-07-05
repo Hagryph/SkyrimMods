@@ -15,38 +15,36 @@ namespace {
 bool g_initialized = false;
 const HagLoaderAPI* g_loaderApi = nullptr;
 
-void OnTransformResult(void*, const HagLoader_ConsoleResult* result) {
+void OnTransformResult(void*, const HagLoader_PapyrusResult* result) {
     if (!result) {
         HAG_ERR("vampire transform result callback received null result");
         return;
     }
     if (result->faulted) {
-        HAG_ERR("vampire transform command faulted");
+        HAG_ERR("vampire transform Papyrus call faulted");
         return;
     }
-    if (result->noCompiler) {
-        HAG_ERR("vampire transform command could not run: ScriptCompiler unavailable");
+    if (!result->dispatched) {
+        HAG_ERR("vampire transform Papyrus call was not dispatched: '{}'",
+                result->message ? result->message : "");
         return;
     }
-    if (!result->compiled) {
-        HAG_ERR("vampire transform command did not compile; output='{}'", result->output ? result->output : "");
-        return;
-    }
-    HAG_INFO("vampire transform command compiled ({} bytes). output='{}'",
-             result->compiledSize, result->output ? result->output : "");
+    HAG_INFO("vampire transform Papyrus call dispatched: '{}'",
+             result->message ? result->message : "");
 }
 
 void OnTransformClicked(void*) {
-    constexpr const char* kCommand = "cqf PlayerVampireQuest VampireChange player";
-    if (!g_loaderApi || !g_loaderApi->QueueConsoleCommandWithCallback) {
-        HAG_ERR("vampire transform failed: HagLoader queue-console API unavailable");
+    constexpr const char* kScript = "HagVampireBridge";
+    constexpr const char* kFunction = "TransformPlayer";
+    if (!g_loaderApi || !g_loaderApi->QueuePapyrusStaticCallWithCallback) {
+        HAG_ERR("vampire transform failed: HagLoader Papyrus API unavailable");
         return;
     }
-    if (!g_loaderApi->QueueConsoleCommandWithCallback(kCommand, &OnTransformResult, nullptr)) {
-        HAG_ERR("vampire transform failed: could not queue '{}'", kCommand);
+    if (!g_loaderApi->QueuePapyrusStaticCallWithCallback(kScript, kFunction, &OnTransformResult, nullptr)) {
+        HAG_ERR("vampire transform failed: could not queue {}.{}()", kScript, kFunction);
         return;
     }
-    HAG_INFO("vampire transform quest function queued: '{}'", kCommand);
+    HAG_INFO("vampire transform Papyrus bridge queued: {}.{}()", kScript, kFunction);
 }
 
 }  // namespace
@@ -63,8 +61,8 @@ void Init(HagUI_PageHandle* page) {
 
     auto getLoaderApi = reinterpret_cast<HagLoader_GetAPIFn>(::GetProcAddress(h, "HagLoader_GetAPI"));
     g_loaderApi = getLoaderApi ? getLoaderApi(HAGLOADER_ABI_VERSION) : nullptr;
-    if (!g_loaderApi || !g_loaderApi->QueueConsoleCommandWithCallback) {
-        throw std::runtime_error("HagVampire requires HagLoader queue-console API");
+    if (!g_loaderApi || !g_loaderApi->QueuePapyrusStaticCallWithCallback) {
+        throw std::runtime_error("HagVampire requires HagLoader Papyrus API");
     }
 
     auto getApi = reinterpret_cast<HagUI_GetAPIFn>(h ? ::GetProcAddress(h, "HagUI_GetAPI") : nullptr);

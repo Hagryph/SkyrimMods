@@ -3,6 +3,7 @@
 #include "ConsoleQueue.h"
 #include "HagLoaderAPI.h"
 #include "Log.h"
+#include "PapyrusCall.h"
 
 namespace {
 
@@ -44,6 +45,25 @@ bool C_SetConfigBoolForModule(void* moduleHandle, std::int32_t scope, const char
         static_cast<HMODULE>(moduleHandle), CfgScope(scope), configName ? configName : "", key ? key : "", value);
 }
 
+bool C_QueuePapyrusStaticCall(const char* scriptName, const char* functionName) {
+    if (!scriptName || !*scriptName || !functionName || !*functionName) return false;
+    const bool queued = hag::papyrus_call::QueueStaticCall(scriptName, functionName);
+    HAG_INFO("HagLoader API QueuePapyrusStaticCall('{}.{}') {}",
+             scriptName, functionName, queued ? "queued" : "queue failed");
+    return queued;
+}
+
+bool C_QueuePapyrusStaticCallWithCallback(const char* scriptName,
+                                          const char* functionName,
+                                          HagLoader_PapyrusResultCb callback,
+                                          void* user) {
+    if (!scriptName || !*scriptName || !functionName || !*functionName) return false;
+    const bool queued = hag::papyrus_call::QueueStaticCall(scriptName, functionName, callback, user);
+    HAG_INFO("HagLoader API QueuePapyrusStaticCallWithCallback('{}.{}') {}",
+             scriptName, functionName, queued ? "queued" : "queue failed");
+    return queued;
+}
+
 const HagLoaderAPI g_loaderApi = {
     HAGLOADER_ABI_VERSION,
     &C_QueueConsoleCommand,
@@ -52,6 +72,8 @@ const HagLoaderAPI g_loaderApi = {
     &C_SetConfigBool,
     &C_GetConfigBoolForModule,
     &C_SetConfigBoolForModule,
+    &C_QueuePapyrusStaticCall,
+    &C_QueuePapyrusStaticCallWithCallback,
 };
 
 }  // namespace

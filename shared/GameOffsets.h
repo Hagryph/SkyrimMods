@@ -231,6 +231,16 @@ inline constexpr std::uint32_t AV_Stamina = 0x1A;
 }  // namespace actor
 
 // ============================================================================
+// Papyrus VM.
+// ============================================================================
+namespace papyrus {
+
+inline constexpr std::uintptr_t SkyrimVMSingletonPtr = 0x20FBA70;  // *(SkyrimVM**); impl smart ptr at +0x200
+inline constexpr std::size_t    SkyrimVM_Impl        = 0x200;      // SkyrimVM::impl (BSScript::IVirtualMachine*)
+
+}  // namespace papyrus
+
+// ============================================================================
 // Render / Scaleform img:// virtual images (used by HagUI's Model3D widget, Route A =
 // reuse the engine's menu-3D renderer + bind its render target as an img:// image).
 // Full RE notes + roadmap: HagLoader/docs/Model3D-RE.md.

@@ -9,7 +9,7 @@
 
 extern "C" {
 
-#define HAGLOADER_ABI_VERSION 4u
+#define HAGLOADER_ABI_VERSION 5u
 
 #define HAGLOADER_CONFIG_GLOBAL 0
 #define HAGLOADER_CONFIG_PERSAVE 1
@@ -24,6 +24,14 @@ typedef struct HagLoader_ConsoleResult {
 
 typedef void (*HagLoader_ConsoleResultCb)(void* user, const HagLoader_ConsoleResult* result);
 
+typedef struct HagLoader_PapyrusResult {
+    bool faulted;
+    bool dispatched;
+    const char* message;  // valid only for the duration of the callback
+} HagLoader_PapyrusResult;
+
+typedef void (*HagLoader_PapyrusResultCb)(void* user, const HagLoader_PapyrusResult* result);
+
 typedef struct HagLoaderAPI {
     uint32_t abiVersion;
     bool (*QueueConsoleCommand)(const char* command);
@@ -32,6 +40,8 @@ typedef struct HagLoaderAPI {
     bool (*SetConfigBool)(int32_t scope, const char* modName, const char* key, bool value);
     bool (*GetConfigBoolForModule)(void* moduleHandle, int32_t scope, const char* configName, const char* key, bool defaultValue);
     bool (*SetConfigBoolForModule)(void* moduleHandle, int32_t scope, const char* configName, const char* key, bool value);
+    bool (*QueuePapyrusStaticCall)(const char* scriptName, const char* functionName);
+    bool (*QueuePapyrusStaticCallWithCallback)(const char* scriptName, const char* functionName, HagLoader_PapyrusResultCb callback, void* user);
 } HagLoaderAPI;
 
 typedef const HagLoaderAPI* (*HagLoader_GetAPIFn)(uint32_t abiVersion);

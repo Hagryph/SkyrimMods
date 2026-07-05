@@ -51,6 +51,11 @@ foreach ($d in $dirs) {
         Write-Host "deployed $($_.Name) -> $pluginsOut"
     }
 
+    Get-ChildItem (Join-Path $d.FullName 'assets') -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $modOut $_.Name) -Recurse -Force
+        Write-Host "deployed asset folder $($_.Name) -> $modOut"
+    }
+
     $meta = Join-Path $modOut 'meta.ini'
     if (-not (Test-Path $meta)) {
         @('[General]', 'gameName=Skyrim Special Edition', 'modid=0', 'version=0.1.0') |

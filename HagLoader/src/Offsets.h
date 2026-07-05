@@ -31,6 +31,10 @@ inline constexpr auto kConsolePtr  = game::ConsolePtr;
 inline constexpr auto kConsData    = game::Console_Text;
 inline constexpr auto kConsLen     = game::Console_Len;
 
+// ---- re-exported from game::papyrus ----
+inline constexpr auto kSkyrimVM_ptr  = game::papyrus::SkyrimVMSingletonPtr;
+inline constexpr auto kSkyrimVM_Impl = game::papyrus::SkyrimVM_Impl;
+
 // ---- re-exported from game::ui ----
 inline constexpr auto kUI_ctor              = game::ui::UI_ctor;
 inline constexpr auto kUI_singleton_ptr     = game::ui::UI_SingletonPtr;
