@@ -9,15 +9,17 @@ Sanguinare Vampiris:
 PlayerVampireQuestScript.VampireChange(Game.GetPlayer())
 ```
 
-The mod does not use `cqf`. It uses HagLoader's queue-only loader API to advance the vanilla vampire
-quest to its transformation stage and receive an optional async result callback:
+The mod uses HagLoader's queue-only loader API to run the vanilla quest script function and receive
+an optional async result callback:
 
 ```text
-setstage PlayerVampireQuest 10
+cqf PlayerVampireQuest VampireChange player
 ```
 
-That function handles the transform effects, race mapping, disease cleanup, vampire spells,
-`PlayerIsVampire`, feeding timers, cure quest restart, and `SendVampirismStateChanged(true)`.
+That preserves the Papyrus path, including any additional scripts or modded behavior attached to
+the vampire quest, while still letting Bethesda's function handle the effects, race mapping,
+disease cleanup, vampire spells, `PlayerIsVampire`, feeding timers, cure quest restart, and
+`SendVampirismStateChanged(true)`.
 
 Build/deploy:
 
