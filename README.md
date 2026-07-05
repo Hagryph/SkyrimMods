@@ -8,7 +8,7 @@ This follows the `SoWMods` layout, adapted for Skyrim and Mod Organizer 2:
 
 | Path | Purpose |
 |------|---------|
-| `HagUI/` | Main SKSE plugin: loader, shared UI host, HagUI panel, external mod discovery. |
+| `HagLoader/` | Main SKSE plugin: loader, shared UI host, HagUI panel, external mod discovery, generic services. |
 | `mods/` | External feature mods. Each folder is its own CMake project. |
 | `mods/HagGeneral/` | Ported General settings mod. HagUI creates its page and calls `SkyrimMod_Init`. |
 | `mods/HagVampire/` | Vampire page. Adds a button that calls vanilla `PlayerVampireQuest.VampireChange`. |
@@ -19,26 +19,26 @@ This follows the `SoWMods` layout, adapted for Skyrim and Mod Organizer 2:
 
 ## Runtime Model
 
-- `HagUI.dll` is the main loader/UI mod.
+- `HagLoader.dll` is the main loader/UI mod.
 - Feature DLLs still deploy as normal Skyrim/MO2 mods:
   `<MO2 mods>\<ModName>\SKSE\Plugins\<ModName>.dll`.
-- At runtime, MO2 merges those into `Data\SKSE\Plugins`. HagUI scans that normal plugin folder,
+- At runtime, MO2 merges those into `Data\SKSE\Plugins`. HagLoader scans that normal plugin folder,
   skips itself, ignores DLLs without the `SkyrimMod_*` contract, creates one page per contract mod,
   and calls `SkyrimMod_Init(page)`.
 - External mods may also expose harmless SKSE exports so SKSE accepts them when it scans the normal
-  plugin folder. HagUI still owns page creation.
+  plugin folder. HagLoader still owns page creation.
 
 ## Build
 
 - Build/deploy the loader/UI:
-  `HagUI\build.ps1`
+  `HagLoader\build.ps1`
 - Build/deploy all external mods:
   `mods\build_mods.ps1`
 - Build/deploy one external mod:
   `mods\build_mods.ps1 -Only HagGeneral`
 
 Build scripts deploy to Mod Organizer 2 by default and automatically commit + push the repo after a
-successful build unless `-NoCommit` is passed. This applies to the loader (`HagUI\build.ps1`), the
+successful build unless `-NoCommit` is passed. This applies to the loader (`HagLoader\build.ps1`), the
 dev IPC plugin (`HagIPC\build.ps1`), individual external mod scripts, and `mods\build_mods.ps1`.
 
 ## Conventions

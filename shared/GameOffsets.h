@@ -7,7 +7,7 @@
 // All values are RVAs off the image base 0x140000000; add the live module base
 // (offsets::FromRVA / GetModuleHandle(NULL) + rva) before use.
 //
-// Single source of truth for EVERY project in SkyrimMods (HagIPC, HagUI, ...).
+// Single source of truth for EVERY project in SkyrimMods (HagIPC, HagLoader, external mods, ...).
 // If an offset is wrong, fix it here once. Grouped by subsystem; each entry has
 // the Ghidra symbol it came from so it can be re-verified.
 // ============================================================================
@@ -229,7 +229,7 @@ inline constexpr std::uint32_t AV_Stamina = 0x1A;
 // ============================================================================
 // Render / Scaleform img:// virtual images (used by HagUI's Model3D widget, Route A =
 // reuse the engine's menu-3D renderer + bind its render target as an img:// image).
-// Full RE notes + roadmap: HagUI/docs/Model3D-RE.md.
+// Full RE notes + roadmap: HagLoader/docs/Model3D-RE.md.
 // ============================================================================
 namespace render {
 

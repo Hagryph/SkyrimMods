@@ -10,6 +10,8 @@
 #include "SettingsHook.h"
 #include "SkyrimModAPI.h"
 
+#include <stdexcept>
+
 namespace hag {
 
 Plugin& Plugin::Get() {
@@ -18,11 +20,14 @@ Plugin& Plugin::Get() {
 }
 
 void Plugin::Init(void* page) {
+    if (!::GetModuleHandleW(L"HagLoader.dll")) {
+        throw std::runtime_error("HagGeneral requires HagLoader.dll");
+    }
     if (initialized_) return;
     initialized_ = true;
 
     Log::Init("HagGeneral");
-    HAG_INFO("HagGeneral loading as external HagUI mod - base {:#x}", offsets::Base());
+    HAG_INFO("HagGeneral loading as external HagLoader mod - base {:#x}", offsets::Base());
 
     Config::Get().Load();
 

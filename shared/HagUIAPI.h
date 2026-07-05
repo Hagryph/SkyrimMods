@@ -4,18 +4,18 @@
 // ============================================================================
 // HagUI cross-plugin option-page API — a stable, versioned, flat C ABI.
 //
-// HagUI.dll (the host) owns the option-page model (hag::api::HagUI). OTHER SKSE
+// HagLoader.dll (the host) owns the option-page model (hag::api::HagUI). OTHER SKSE
 // plugins register pages/checkboxes through THIS interface so their settings
 // appear in the HagUI panel. Deliberately a flat C ABI — no C++ types, no
 // std::function / std::variant across the DLL boundary — so it stays stable
 // regardless of compiler/STL differences between plugins.
 //
-// Host export (compiled into HagUI.dll, see HagUI/src/api/HagApiExport.cpp):
+// Host export (compiled into HagLoader.dll, see HagLoader/src/api/HagApiExport.cpp):
 //     extern "C" __declspec(dllexport) const HagUIAPI* HagUI_GetAPI(uint32_t abiVersion);
 //
 // Consumer (any plugin), resolved AFTER SKSE kPostPostLoad so load order can't
 // race the host being present:
-//     HMODULE h = GetModuleHandleW(L"HagUI.dll");
+//     HMODULE h = GetModuleHandleW(L"HagLoader.dll");
 //     auto fn = reinterpret_cast<HagUI_GetAPIFn>(h ? GetProcAddress(h, "HagUI_GetAPI") : nullptr);
 //     const HagUIAPI* api = fn ? fn(HAGUI_ABI_VERSION) : nullptr;
 //     if (api) {

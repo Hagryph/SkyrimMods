@@ -1,6 +1,6 @@
 # HagGeneral
 
-General settings mod for HagUI. It lives under `mods/HagGeneral` in the monorepo and deploys as a
+General settings mod for HagLoader/HagUI. It lives under `mods/HagGeneral` in the monorepo and deploys as a
 normal Mod Organizer 2 mod:
 
 `<MO2 mods>\HagGeneral\SKSE\Plugins\HagGeneral.dll`
@@ -8,7 +8,7 @@ normal Mod Organizer 2 mod:
 ## Runtime
 
 - SKSE accepts the DLL through harmless `SKSEPlugin_*` exports.
-- HagUI scans `Data\SKSE\Plugins`, finds the `SkyrimMod_*` exports, creates the `General` page, then
+- HagLoader scans `Data\SKSE\Plugins`, finds the `SkyrimMod_*` exports, creates the `General` page, then
   calls `SkyrimMod_Init(page)`.
 - `HagGeneral` fills that supplied page with its controls and applies settings from `HagGeneral.ini`.
 

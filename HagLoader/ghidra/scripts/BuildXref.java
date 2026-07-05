@@ -18,7 +18,7 @@ public class BuildXref extends GhidraScript {
     public void run() throws Exception {
         String[] args = getScriptArgs();
         String outPath = (args != null && args.length > 0) ? args[0]
-            : "C:\\Users\\Yannis\\Desktop\\Desktop\\projects\\SkyrimMods\\HagUI\\ghidra\\ui_xref.txt";
+            : "C:\\Users\\Yannis\\Desktop\\Desktop\\projects\\SkyrimMods\\HagLoader\\ghidra\\ui_xref.txt";
         File f = new File(outPath);
         if (f.getParentFile() != null) f.getParentFile().mkdirs();
         PrintWriter out = new PrintWriter(new FileWriter(outPath));

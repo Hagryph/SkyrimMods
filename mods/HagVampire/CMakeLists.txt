@@ -9,7 +9,6 @@ find_package(spdlog CONFIG REQUIRED)
 add_library(HagVampire SHARED
     src/Plugin.cpp
     src/Log.cpp
-    src/ConsoleExec.cpp
 )
 
 target_include_directories(HagVampire PRIVATE src "${CMAKE_CURRENT_SOURCE_DIR}/../../shared")

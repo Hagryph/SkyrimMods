@@ -1,4 +1,4 @@
-# build_mods.ps1 - build every external HagUI mod under mods/ and deploy each DLL as a normal
+# build_mods.ps1 - build every external HagLoader mod under mods/ and deploy each DLL as a normal
 # Mod Organizer 2 mod:
 #   <MO2 mods>\<ModName>\SKSE\Plugins\<ModName>.dll
 #

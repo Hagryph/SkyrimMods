@@ -16,7 +16,7 @@ public class DumpUI extends GhidraScript {
     public void run() throws Exception {
         String[] args = getScriptArgs();
         String outPath = (args != null && args.length > 0) ? args[0]
-            : "C:\\Users\\Yannis\\Desktop\\Desktop\\projects\\SkyrimMods\\HagUI\\ghidra\\ui_dump.txt";
+            : "C:\\Users\\Yannis\\Desktop\\Desktop\\projects\\SkyrimMods\\HagLoader\\ghidra\\ui_dump.txt";
         File outFile = new File(outPath);
         if (outFile.getParentFile() != null) outFile.getParentFile().mkdirs();
         PrintWriter out = new PrintWriter(new FileWriter(outFile));

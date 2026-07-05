@@ -156,8 +156,8 @@ letter-spacing, glow on hover. Radius 10px (6px small).
 
 ## 9. Build / deploy
 
-- CMake + vcpkg (`minhook`, `spdlog`), MSVC x64 → `HagUI.dll`.
-- `deploy.ps1` → `…/Skyrim Special Edition/Data/SKSE/Plugins/HagUI.dll` (+ `Data/Interface/HagUI.swf` if path A).
+- CMake + vcpkg (`minhook`, `spdlog`), MSVC x64 -> `HagLoader.dll`.
+- `deploy.ps1` -> `.../Skyrim Special Edition/Data/SKSE/Plugins/HagLoader.dll` (+ `Data/Interface/HagUI.swf` if path A).
 
 ## 10. Runtime, SkyUI-compatible menu-entry injection — RE findings & plan
 
@@ -244,4 +244,4 @@ str, 0) · Invoke `…InvalidateData`. Result: arraySize 10→11, row visible. A
 **Phase 2 (click) — native only.** Dispatch is positional; our appended index hits vanilla
 `onCategoryButtonPress`'s `default` (harmless), so the click needs a real `GFxFunctionHandler`
 attached as the list's `itemPress` listener (CreateFunction +0x78). That persistent C++ object must
-live in HagUI.dll — build it there (native, main-thread, correct timing), replacing the SWF edit.
+live in HagLoader.dll - build it there (native, main-thread, correct timing), replacing the SWF edit.

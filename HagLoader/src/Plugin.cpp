@@ -43,8 +43,8 @@ void RegisterTestPage() {
 }  // namespace
 
 bool Plugin::OnLoad(const skse::Interface* skse) {
-    Log::Init("HagUI");
-    HAG_INFO("HagUI loading - SKSE {} runtime {:#x} base {:#x}",
+    Log::Init("HagLoader");
+    HAG_INFO("HagLoader loading - SKSE {} runtime {:#x} base {:#x}",
              skse ? skse->skseVersion : 0u,
              skse ? skse->runtimeVersion : 0u,
              offsets::Base());
@@ -76,7 +76,7 @@ bool Plugin::OnLoad(const skse::Interface* skse) {
         return false;
     }
 
-    HAG_INFO("HagUI loaded.");
+    HAG_INFO("HagLoader loaded.");
     return true;
 }
 
@@ -91,7 +91,7 @@ bool Plugin::OnLoad(const skse::Interface* skse) {
 extern "C" __declspec(dllexport) constinit skse::PluginVersionData SKSEPlugin_Version = {
     skse::PluginVersionData::kVersion,   // dataVersion
     1,                                    // pluginVersion
-    "HagUI",                              // name
+    "HagLoader",                          // name
     "Hagryph",                            // author
     "",                                   // supportEmail
     0,                                    // versionIndependenceEx

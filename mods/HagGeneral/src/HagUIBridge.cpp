@@ -5,6 +5,8 @@
 #include "SettingsHook.h"
 #include "Log.h"
 
+#include <stdexcept>
+
 namespace hag {
 namespace {
 
@@ -68,21 +70,20 @@ void OnAlwaysActive(void*, HagUI_Value v) {
 }  // namespace
 
 void HagUIBridge::Register(HagUI_PageHandle* page) {
-    HMODULE h = ::GetModuleHandleW(L"HagUI.dll");
-    if (!h) { HAG_WARN("HagUI.dll not loaded - General settings still apply, but no UI page is shown"); return; }
+    HMODULE h = ::GetModuleHandleW(L"HagLoader.dll");
+    if (!h) { throw std::runtime_error("HagGeneral requires HagLoader.dll"); }
 
     auto getApi = reinterpret_cast<HagUI_GetAPIFn>(::GetProcAddress(h, "HagUI_GetAPI"));
-    if (!getApi) { HAG_WARN("HagUI_GetAPI export not found - update HagUI to a build with the option-page API"); return; }
+    if (!getApi) { throw std::runtime_error("HagGeneral requires HagLoader.dll to export HagUI_GetAPI"); }
 
     const HagUIAPI* api = getApi(HAGUI_ABI_VERSION);
-    if (!api) { HAG_WARN("HagUI_GetAPI returned null (ABI version mismatch - rebuild HagUI for v{})", HAGUI_ABI_VERSION); return; }
+    if (!api) { throw std::runtime_error("HagGeneral HagUI API version mismatch"); }
 
     const Config& c = Config::Get();
     g_api  = api;
     g_page = page;
     if (!g_page) {
-        HAG_WARN("HagGeneral received a null HagUI page");
-        return;
+        throw std::runtime_error("HagGeneral received a null HagUI page");
     }
     api->AddToggle(g_page, "fullscreen",   "Fullscreen",    c.fullscreen,   &OnFullscreen,   nullptr);
     api->AddToggle(g_page, "borderless",   "Borderless",    c.borderless,   &OnBorderless,   nullptr);

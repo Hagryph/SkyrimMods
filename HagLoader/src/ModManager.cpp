@@ -21,7 +21,7 @@ namespace {
 
 std::wstring PluginDir() {
     wchar_t path[MAX_PATH]{};
-    HMODULE self = ::GetModuleHandleW(L"HagUI.dll");
+    HMODULE self = ::GetModuleHandleW(L"HagLoader.dll");
     ::GetModuleFileNameW(self, path, MAX_PATH);
 
     std::wstring p = path;
@@ -31,7 +31,7 @@ std::wstring PluginDir() {
 
 std::wstring SelfPath() {
     wchar_t path[MAX_PATH]{};
-    HMODULE self = ::GetModuleHandleW(L"HagUI.dll");
+    HMODULE self = ::GetModuleHandleW(L"HagLoader.dll");
     ::GetModuleFileNameW(self, path, MAX_PATH);
     return path;
 }
@@ -65,7 +65,7 @@ void ModManager::LoadAll() {
     std::sort(dlls.begin(), dlls.end());
 
     const std::string ndir = Narrow(dir);
-    HAG_INFO("scanning external HagUI mods in {}", ndir);
+    HAG_INFO("scanning external HagLoader mods in {}", ndir);
 
     int idx = 0;
     for (const auto& name : dlls) {
@@ -120,7 +120,7 @@ void ModManager::LoadAll() {
     }
 
     if (idx == 0) {
-        HAG_WARN("no external HagUI contract mods found in {}", ndir);
+        HAG_WARN("no external HagLoader contract mods found in {}", ndir);
     }
 }
 

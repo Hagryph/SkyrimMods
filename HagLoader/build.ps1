@@ -1,7 +1,7 @@
-# build.ps1 - build HagUI.dll and deploy it as a Mod Organizer 2 mod.
+# build.ps1 - build HagLoader.dll and deploy it as a Mod Organizer 2 mod.
 # MO2 mod folders mirror the game's Data/ root, so:
-#   <mods>\HagUI\SKSE\Plugins\HagUI.dll
-#   <mods>\HagUI\Interface\HagUI.swf   (once the SWF exists)
+#   <mods>\HagLoader\SKSE\Plugins\HagLoader.dll
+#   <mods>\HagLoader\Interface\HagUI.swf   (once the SWF exists)
 [CmdletBinding()]
 param(
     [switch]$NoBuild,
@@ -22,17 +22,17 @@ if (-not $NoBuild) {
     if ($LASTEXITCODE -ne 0) { throw "build failed (exit $LASTEXITCODE)" }
 }
 
-$dll = Get-ChildItem "$root\build" -Recurse -Filter HagUI.dll -ErrorAction SilentlyContinue | Select-Object -First 1
-if (-not $dll) { throw 'HagUI.dll not found - build first (omit -NoBuild).' }
+$dll = Get-ChildItem "$root\build" -Recurse -Filter HagLoader.dll -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $dll) { throw 'HagLoader.dll not found - build first (omit -NoBuild).' }
 
 # --- create the MO2 mod folder architecture ---
-$mod     = Join-Path $Mo2Mods 'HagUI'
+$mod     = Join-Path $Mo2Mods 'HagLoader'
 $plugins = Join-Path $mod 'SKSE\Plugins'
 $iface   = Join-Path $mod 'Interface'
 New-Item -ItemType Directory -Force $plugins, $iface | Out-Null
 
-Copy-Item $dll.FullName (Join-Path $plugins 'HagUI.dll') -Force
-Write-Host "deployed HagUI.dll  -> $plugins"
+Copy-Item $dll.FullName (Join-Path $plugins 'HagLoader.dll') -Force
+Write-Host "deployed HagLoader.dll  -> $plugins"
 
 $swf = Join-Path $root 'assets\HagUI.swf'
 if (Test-Path $swf) {

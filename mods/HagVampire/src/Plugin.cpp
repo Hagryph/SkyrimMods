@@ -1,26 +1,31 @@
 #include "PCH.h"
 
-#include "ConsoleExec.h"
+#include "HagLoaderAPI.h"
 #include "HagUIAPI.h"
 #include "Log.h"
 #include "SKSE_Min.h"
 #include "SkyrimModAPI.h"
+
+#include <stdexcept>
 
 namespace hag {
 
 namespace {
 
 bool g_initialized = false;
+const HagLoaderAPI* g_loaderApi = nullptr;
 
 void RunVampireChange() {
     HAG_INFO("Vampire button pressed: calling PlayerVampireQuestScript.VampireChange(Game.GetPlayer())");
 
     constexpr const char* kQuestFunctionCommand = "cqf PlayerVampireQuest VampireChange player";
-    console::Result result = console::Run(kQuestFunctionCommand);
+    HagLoader_ConsoleResult result{};
+    bool ok = g_loaderApi && g_loaderApi->RunConsoleCommand(kQuestFunctionCommand, &result);
 
-    if (!result.compiled) {
+    if (!ok || !result.compiled) {
         HAG_WARN("primary vampire change command did not compile; trying form-id fallback");
-        result = console::Run("cqf 000EAFD5 VampireChange player");
+        result = {};
+        ok = g_loaderApi && g_loaderApi->RunConsoleCommand("cqf 000EAFD5 VampireChange player", &result);
     }
 
     if (result.faulted) {
@@ -31,12 +36,13 @@ void RunVampireChange() {
         HAG_ERR("vampire change command could not run: ScriptCompiler is not available yet");
         return;
     }
-    if (!result.compiled) {
-        HAG_ERR("vampire change command did not compile; output='{}'", result.output);
+    if (!ok || !result.compiled) {
+        HAG_ERR("vampire change command did not compile; output='{}'", result.output ? result.output : "");
         return;
     }
 
-    HAG_INFO("vampire change command compiled ({} bytes). output='{}'", result.compiledSize, result.output);
+    HAG_INFO("vampire change command compiled ({} bytes). output='{}'",
+             result.compiledSize, result.output ? result.output : "");
 }
 
 void OnTransformClicked(void*) {
@@ -46,18 +52,25 @@ void OnTransformClicked(void*) {
 }  // namespace
 
 void Init(HagUI_PageHandle* page) {
+    HMODULE h = ::GetModuleHandleW(L"HagLoader.dll");
+    if (!h) { throw std::runtime_error("HagVampire requires HagLoader.dll"); }
+
     if (g_initialized) return;
     g_initialized = true;
 
     Log::Init("HagVampire");
     HAG_INFO("HagVampire loading");
 
-    HMODULE h = ::GetModuleHandleW(L"HagUI.dll");
+    auto getLoaderApi = reinterpret_cast<HagLoader_GetAPIFn>(::GetProcAddress(h, "HagLoader_GetAPI"));
+    g_loaderApi = getLoaderApi ? getLoaderApi(HAGLOADER_ABI_VERSION) : nullptr;
+    if (!g_loaderApi || !g_loaderApi->RunConsoleCommand) {
+        throw std::runtime_error("HagVampire requires HagLoader console API");
+    }
+
     auto getApi = reinterpret_cast<HagUI_GetAPIFn>(h ? ::GetProcAddress(h, "HagUI_GetAPI") : nullptr);
     const HagUIAPI* api = getApi ? getApi(HAGUI_ABI_VERSION) : nullptr;
     if (!api || !page) {
-        HAG_ERR("HagVampire could not resolve HagUI API/page");
-        return;
+        throw std::runtime_error("HagVampire requires HagLoader HagUI API/page");
     }
 
     api->AddButton(page, "transform_vampire", "Become Vampire", &OnTransformClicked, nullptr);

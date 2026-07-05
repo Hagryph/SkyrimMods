@@ -1,9 +1,9 @@
 #pragma once
 #include <cstdint>
 
-// SkyrimModAPI.h - contract between HagUI (loader + UI host) and external mod DLLs.
+// SkyrimModAPI.h - contract between HagLoader (loader + UI host) and external mod DLLs.
 //
-// HagUI.dll owns the HagUI panel, enumerates the normal Skyrim SKSE plugin folder
+// HagLoader.dll owns the HagUI panel, enumerates the normal Skyrim SKSE plugin folder
 // (Data\SKSE\Plugins, merged by MO2), creates one HagUI page per DLL that exports this contract,
 // then calls the mod's optional SkyrimMod_Init export with that page handle. External mods keep
 // DllMain trivial and put real startup work in SkyrimMod_Init, which runs after LoadLibrary returns.
