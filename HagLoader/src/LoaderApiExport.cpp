@@ -5,6 +5,7 @@
 #include "Log.h"
 #include "NativeTaskQueue.h"
 #include "PapyrusCall.h"
+#include "SaveStorage.h"
 
 namespace {
 
@@ -89,6 +90,25 @@ bool C_QueueMainThreadTask(HagLoader_MainThreadTaskCb callback, void* user) {
     return queued;
 }
 
+bool C_SaveStorageAvailable() {
+    return hag::save_storage::Available();
+}
+
+bool C_SaveFormIDSetContainsForModule(void* moduleHandle, const char* setName, std::uint32_t formID) {
+    return hag::save_storage::ContainsFormIDForModule(
+        static_cast<HMODULE>(moduleHandle), setName ? setName : "", formID);
+}
+
+bool C_SaveFormIDSetAddForModule(void* moduleHandle, const char* setName, std::uint32_t formID, std::uint32_t maxEntries) {
+    return hag::save_storage::AddFormIDForModule(
+        static_cast<HMODULE>(moduleHandle), setName ? setName : "", formID, maxEntries);
+}
+
+std::uint32_t C_SaveFormIDSetCountForModule(void* moduleHandle, const char* setName) {
+    return hag::save_storage::CountFormIDsForModule(
+        static_cast<HMODULE>(moduleHandle), setName ? setName : "");
+}
+
 const HagLoaderAPI g_loaderApi = {
     HAGLOADER_ABI_VERSION,
     &C_QueueConsoleCommand,
@@ -104,6 +124,10 @@ const HagLoaderAPI g_loaderApi = {
     &C_SetConfigInt,
     &C_GetConfigIntForModule,
     &C_SetConfigIntForModule,
+    &C_SaveStorageAvailable,
+    &C_SaveFormIDSetContainsForModule,
+    &C_SaveFormIDSetAddForModule,
+    &C_SaveFormIDSetCountForModule,
 };
 
 }  // namespace

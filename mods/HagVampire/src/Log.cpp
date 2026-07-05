@@ -12,6 +12,12 @@ namespace hag {
 std::shared_ptr<spdlog::logger> Log::s_logger;
 
 void Log::Init(const char* pluginName) {
+    if (s_logger) return;
+    if (auto existing = spdlog::get(pluginName)) {
+        s_logger = std::move(existing);
+        return;
+    }
+
     std::filesystem::path dir;
     PWSTR docs = nullptr;
     if (SUCCEEDED(::SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &docs))) {

@@ -9,7 +9,7 @@
 
 extern "C" {
 
-#define HAGLOADER_ABI_VERSION 6u
+#define HAGLOADER_ABI_VERSION 7u
 
 #define HAGLOADER_CONFIG_GLOBAL 0
 #define HAGLOADER_CONFIG_PERSAVE 1
@@ -48,6 +48,10 @@ typedef struct HagLoaderAPI {
     bool (*SetConfigInt)(int32_t scope, const char* modName, const char* key, int64_t value);
     int64_t (*GetConfigIntForModule)(void* moduleHandle, int32_t scope, const char* configName, const char* key, int64_t defaultValue);
     bool (*SetConfigIntForModule)(void* moduleHandle, int32_t scope, const char* configName, const char* key, int64_t value);
+    bool (*SaveStorageAvailable)();
+    bool (*SaveFormIDSetContainsForModule)(void* moduleHandle, const char* setName, uint32_t formID);
+    bool (*SaveFormIDSetAddForModule)(void* moduleHandle, const char* setName, uint32_t formID, uint32_t maxEntries);
+    uint32_t (*SaveFormIDSetCountForModule)(void* moduleHandle, const char* setName);
 } HagLoaderAPI;
 
 typedef const HagLoaderAPI* (*HagLoader_GetAPIFn)(uint32_t abiVersion);

@@ -33,7 +33,9 @@ std::atomic_bool g_nativeFeedDebug{true};
 std::atomic_int g_animationMode{0};
 
 constexpr const char* kConfigName = "HagVampire";
+constexpr const char* kFedCorpseSet = "fed_corpses";
 constexpr std::int32_t kConfigScope = HAGLOADER_CONFIG_PERSAVE;
+constexpr std::uint32_t kMaxFedCorpseEntries = 65536;
 constexpr std::uint32_t kFormFlagDeleted = 1u << 5;
 constexpr std::uint32_t kFormFlagDisabled = 1u << 11;
 constexpr std::uint8_t kFormTypeActorCharacter = 0x3E;
@@ -260,10 +262,40 @@ void RunNativeFeedTask(void*) {
         return;
     }
 
+    if (!g_loaderApi->SaveStorageAvailable || !g_loaderApi->SaveStorageAvailable()) {
+        HAG_ERR("native corpse-feed debug aborted: HagLoader SKSE save storage unavailable");
+        return;
+    }
+
+    if (!g_loaderApi->SaveFormIDSetContainsForModule || !g_loaderApi->SaveFormIDSetAddForModule ||
+        !g_loaderApi->SaveFormIDSetCountForModule) {
+        HAG_ERR("native corpse-feed debug aborted: HagLoader save form-ID set API unavailable");
+        return;
+    }
+
+    if (g_loaderApi->SaveFormIDSetContainsForModule(g_selfModule, kFedCorpseSet, target.formID)) {
+        HAG_INFO("native corpse-feed debug rejected form={:#x}: corpse already fed in this save",
+                 target.formID);
+        return;
+    }
+
+    const std::uint32_t fedCount =
+        g_loaderApi->SaveFormIDSetCountForModule(g_selfModule, kFedCorpseSet);
+    if (fedCount >= kMaxFedCorpseEntries) {
+        HAG_ERR("native corpse-feed debug aborted: fed corpse ledger full ({} entries)",
+                fedCount);
+        return;
+    }
+
     HAG_INFO("native corpse-feed debug invoking feed: target handle={:#x} form={:#x}",
              target.handle, target.formID);
     if (!CallNativeVampireFeedGuarded(player, target.actor)) {
         HAG_ERR("native corpse-feed debug failed: native feed call faulted");
+        return;
+    }
+    if (!g_loaderApi->SaveFormIDSetAddForModule(g_selfModule, kFedCorpseSet, target.formID, kMaxFedCorpseEntries)) {
+        HAG_ERR("native corpse-feed debug completed native call but failed to record fed corpse form={:#x}; refusing future unsafe repeats depends on save storage",
+                target.formID);
         return;
     }
     HAG_INFO("native corpse-feed debug native feed call completed");
@@ -374,7 +406,9 @@ void Init(HagUI_PageHandle* page) {
 
     auto getLoaderApi = reinterpret_cast<HagLoader_GetAPIFn>(::GetProcAddress(h, "HagLoader_GetAPI"));
     g_loaderApi = getLoaderApi ? getLoaderApi(HAGLOADER_ABI_VERSION) : nullptr;
-    if (!g_loaderApi || !g_loaderApi->QueuePapyrusStaticCallWithCallback || !g_loaderApi->QueueMainThreadTask) {
+    if (!g_loaderApi || !g_loaderApi->QueuePapyrusStaticCallWithCallback || !g_loaderApi->QueueMainThreadTask ||
+        !g_loaderApi->SaveStorageAvailable || !g_loaderApi->SaveFormIDSetContainsForModule ||
+        !g_loaderApi->SaveFormIDSetAddForModule || !g_loaderApi->SaveFormIDSetCountForModule) {
         throw std::runtime_error("HagVampire requires HagLoader Papyrus API");
     }
     LoadConfig();

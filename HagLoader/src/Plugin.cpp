@@ -11,6 +11,7 @@
 #include "GameState.h"
 #include "NativeTaskQueue.h"
 #include "PapyrusCall.h"
+#include "SaveStorage.h"
 
 #include <variant>
 
@@ -73,6 +74,9 @@ bool Plugin::OnLoad(const skse::Interface* skse) {
         console_queue::SetTaskInterface(task);
         papyrus_call::SetTaskInterface(task);
         native_task_queue::SetTaskInterface(task);
+        auto* serialization = reinterpret_cast<skse::SerializationInterface*>(
+            skse->QueryInterface(skse::kInterface_Serialization));
+        save_storage::SetSerializationInterface(serialization, skse->GetPluginHandle());
 
         auto* msg = reinterpret_cast<skse::MessagingInterface*>(
             skse->QueryInterface(skse::kInterface_Messaging));

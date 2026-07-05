@@ -48,8 +48,25 @@ struct Interface {
 };
 
 // QueryInterface(id) ids
-constexpr std::uint32_t kInterface_Task      = 4;
-constexpr std::uint32_t kInterface_Messaging = 5;
+constexpr std::uint32_t kInterface_Serialization = 3;
+constexpr std::uint32_t kInterface_Task          = 4;
+constexpr std::uint32_t kInterface_Messaging     = 5;
+
+struct SerializationInterface {
+    std::uint32_t interfaceVersion;
+    void (*SetUniqueID)(std::uint32_t pluginHandle, std::uint32_t uid);
+    void (*SetRevertCallback)(std::uint32_t pluginHandle, void* callback);
+    void (*SetSaveCallback)(std::uint32_t pluginHandle, void* callback);
+    void (*SetLoadCallback)(std::uint32_t pluginHandle, void* callback);
+    void (*SetFormDeleteCallback)(std::uint32_t pluginHandle, void* callback);
+    bool (*WriteRecord)(std::uint32_t type, std::uint32_t version, const void* data, std::uint32_t length);
+    bool (*OpenRecord)(std::uint32_t type, std::uint32_t version);
+    bool (*WriteRecordData)(const void* data, std::uint32_t length);
+    bool (*GetNextRecordInfo)(std::uint32_t* type, std::uint32_t* version, std::uint32_t* length);
+    std::uint32_t (*ReadRecordData)(void* data, std::uint32_t length);
+    bool (*ResolveHandle)(std::uint64_t oldHandle, std::uint64_t* newHandle);
+    bool (*ResolveFormId)(std::uint32_t oldFormID, std::uint32_t* newFormID);
+};
 
 // SKSE -> plugin messages (sender == "SKSE")
 enum : std::uint32_t {
