@@ -35,12 +35,19 @@ std::atomic_int g_animationMode{0};
 std::atomic_int g_feedHotkey{'V'};
 std::atomic<std::uint32_t> g_lastCorpseLevel{0};
 std::atomic<std::uint32_t> g_lastCorpseLevelForm{0};
+std::atomic_int g_bloodExtract{0};
+std::atomic_int g_lastFeedExtract{0};
 
 constexpr const char* kConfigName = "HagVampire";
 constexpr const char* kFedCorpseSet = "fed_corpses_v2";
 constexpr const char* kFeedHotkeyName = "feed_corpse";
 constexpr std::int32_t kConfigScope = HAGLOADER_CONFIG_PERSAVE;
 constexpr std::uint32_t kMaxFedCorpseEntries = 65536;
+constexpr int kBloodStrengthMinLevel = 1;
+constexpr int kBloodStrengthMaxLevel = 100;
+constexpr int kBloodStrengthLevel50Extract = 5369;
+constexpr int kBloodStrengthMaxExtract = 84000;
+constexpr int kBloodStrengthLateExtract = kBloodStrengthMaxExtract - kBloodStrengthLevel50Extract;
 constexpr std::uint32_t kFormFlagDeleted = 1u << 5;
 constexpr std::uint32_t kFormFlagDisabled = 1u << 11;
 constexpr std::uint8_t kFormTypeActorCharacter = 0x3E;
@@ -63,8 +70,97 @@ struct TargetInfo {
     std::uint8_t formType = 0;
 };
 
+struct VampireRank {
+    const char* name;
+    int level;
+};
+
+constexpr VampireRank kVampireRanks[] = {
+    {"Fledgling", 1},
+    {"Stalker", 10},
+    {"Baron", 20},
+    {"Viscount", 30},
+    {"Count", 40},
+    {"Marquis", 50},
+    {"Duke", 60},
+    {"Elder", 70},
+    {"Ancient", 80},
+    {"Progenitor", 100},
+};
+
 std::uintptr_t SkyrimBase() {
     return reinterpret_cast<std::uintptr_t>(::GetModuleHandleW(nullptr));
+}
+
+void ConfigSetInt(const char* key, int value);
+
+int BloodStrengthTotalExtractForLevel(int level) {
+    level = std::clamp(level, kBloodStrengthMinLevel, kBloodStrengthMaxLevel);
+    if (level <= kBloodStrengthMinLevel) return 0;
+
+    const double n = static_cast<double>(level - 1);
+    const int baseExtract = static_cast<int>(std::llround((10.0 * std::pow(n, 1.58)) + (14.0 * n)));
+    if (level <= 50) return baseExtract;
+
+    const double t = static_cast<double>(level - 50) / 50.0;
+    const int lateExtract = static_cast<int>(std::llround(static_cast<double>(kBloodStrengthLateExtract) * std::pow(t, 3.0)));
+    return std::min(kBloodStrengthMaxExtract, baseExtract + lateExtract);
+}
+
+int BloodStrengthLevelForExtract(int extract) {
+    extract = std::clamp(extract, 0, kBloodStrengthMaxExtract);
+    int level = kBloodStrengthMinLevel;
+    for (int candidate = kBloodStrengthMinLevel + 1; candidate <= kBloodStrengthMaxLevel; ++candidate) {
+        if (extract < BloodStrengthTotalExtractForLevel(candidate)) break;
+        level = candidate;
+    }
+    return level;
+}
+
+int BloodExtractForCorpseLevel(std::uint16_t corpseLevel) {
+    const double level = static_cast<double>(std::max<std::uint16_t>(corpseLevel, 1));
+    const int extract = 4 + static_cast<int>(std::floor(level * 0.30)) +
+                        static_cast<int>(std::floor(2.0 * std::sqrt(level)));
+    return std::clamp(extract, 6, 42);
+}
+
+const char* VampireRankNameForLevel(int level) {
+    const char* rank = kVampireRanks[0].name;
+    for (const auto& candidate : kVampireRanks) {
+        if (level < candidate.level) break;
+        rank = candidate.name;
+    }
+    return rank;
+}
+
+void SaveBloodExtract(int extract) {
+    ConfigSetInt("blood_extract", std::clamp(extract, 0, kBloodStrengthMaxExtract));
+}
+
+void AwardBloodExtract(std::uint16_t corpseLevel, std::uint32_t corpseFormID) {
+    const int feedExtract = BloodExtractForCorpseLevel(corpseLevel);
+    const int previousExtract = std::clamp(g_bloodExtract.load(), 0, kBloodStrengthMaxExtract);
+    const int previousLevel = BloodStrengthLevelForExtract(previousExtract);
+    const int nextExtract = std::min(kBloodStrengthMaxExtract, previousExtract + feedExtract);
+    const int nextLevel = BloodStrengthLevelForExtract(nextExtract);
+    g_bloodExtract.store(nextExtract);
+    g_lastFeedExtract.store(feedExtract);
+    SaveBloodExtract(nextExtract);
+
+    HAG_INFO("bloodstrength feed awarded: form={:#x} corpseLevel={} bloodExtract={} totalBloodExtract={}/{} level={} rank={}",
+             corpseFormID,
+             corpseLevel,
+             feedExtract,
+             nextExtract,
+             kBloodStrengthMaxExtract,
+             nextLevel,
+             VampireRankNameForLevel(nextLevel));
+    if (nextLevel > previousLevel) {
+        HAG_INFO("bloodstrength level advanced: {} -> {} ({})",
+                 previousLevel,
+                 nextLevel,
+                 VampireRankNameForLevel(nextLevel));
+    }
 }
 
 bool IsPlayerVampire() {
@@ -111,8 +207,14 @@ void LoadConfig() {
     g_corpseFeedingEnabled.store(ConfigGetBool("enable_corpse_feeding", true));
     g_animationMode.store(ConfigGetInt("animation_mode", 0, 0, 2));
     g_feedHotkey.store(ConfigGetInt("feed_hotkey", 'V', 1, 255));
-    HAG_INFO("config loaded: enable_corpse_feeding={} animation_mode={} feed_hotkey={:#x}",
-             g_corpseFeedingEnabled.load(), g_animationMode.load(), g_feedHotkey.load());
+    g_bloodExtract.store(ConfigGetInt("blood_extract", 0, 0, kBloodStrengthMaxExtract));
+    HAG_INFO("config loaded: enable_corpse_feeding={} animation_mode={} feed_hotkey={:#x} blood_extract={} level={} rank={}",
+             g_corpseFeedingEnabled.load(),
+             g_animationMode.load(),
+             g_feedHotkey.load(),
+             g_bloodExtract.load(),
+             BloodStrengthLevelForExtract(g_bloodExtract.load()),
+             VampireRankNameForLevel(BloodStrengthLevelForExtract(g_bloodExtract.load())));
 }
 
 void PushConfigToUI() {
@@ -510,6 +612,7 @@ void RunNativeFeedTask(void*) {
     }
     g_lastCorpseLevelForm.store(target.formID);
     g_lastCorpseLevel.store(hasCorpseLevel ? corpseLevel : 0);
+    AwardBloodExtract(hasCorpseLevel ? corpseLevel : 1, target.formID);
     if (g_uiApi && g_uiApi->Refresh) {
         g_uiApi->Refresh();
     }
@@ -597,6 +700,36 @@ const char* LastCorpseLevelText(void*) {
         std::snprintf(text, sizeof(text), "Unknown");
     } else {
         std::snprintf(text, sizeof(text), "Level %u", level);
+    }
+    return text;
+}
+
+const char* VampireRankText(void*) {
+    const int level = BloodStrengthLevelForExtract(g_bloodExtract.load());
+    return VampireRankNameForLevel(level);
+}
+
+const char* BloodStrengthText(void*) {
+    static thread_local char text[64];
+    const int level = BloodStrengthLevelForExtract(g_bloodExtract.load());
+    std::snprintf(text, sizeof(text), "Level %d / %d", level, kBloodStrengthMaxLevel);
+    return text;
+}
+
+const char* BloodExtractText(void*) {
+    static thread_local char text[64];
+    const int extract = std::clamp(g_bloodExtract.load(), 0, kBloodStrengthMaxExtract);
+    std::snprintf(text, sizeof(text), "%d / %d", extract, kBloodStrengthMaxExtract);
+    return text;
+}
+
+const char* LastFeedExtractText(void*) {
+    static thread_local char text[64];
+    const int extract = g_lastFeedExtract.load();
+    if (extract <= 0) {
+        std::snprintf(text, sizeof(text), "None");
+    } else {
+        std::snprintf(text, sizeof(text), "+%d", extract);
     }
     return text;
 }
@@ -702,6 +835,26 @@ void Init(HagUI_PageHandle* page) {
                               &VampireActionLabel,
                               &OnVampireActionClicked,
                               nullptr);
+    g_uiApi->AddCounter(page,
+                        "vampire_rank",
+                        "Vampire rank",
+                        &VampireRankText,
+                        nullptr);
+    g_uiApi->AddCounter(page,
+                        "bloodstrength",
+                        "Bloodstrength",
+                        &BloodStrengthText,
+                        nullptr);
+    g_uiApi->AddCounter(page,
+                        "blood_extract",
+                        "Blood Extract",
+                        &BloodExtractText,
+                        nullptr);
+    g_uiApi->AddCounter(page,
+                        "last_feed_extract",
+                        "Last feed extract",
+                        &LastFeedExtractText,
+                        nullptr);
     g_uiApi->AddToggle(page,
                        "enable_corpse_feeding",
                        "Enable corpse feeding",
@@ -734,6 +887,10 @@ void Init(HagUI_PageHandle* page) {
                         &OnAnimationModeChanged,
                         nullptr);
     g_uiApi->SetGridCell(page, "vampire_action", 0, 0);
+    g_uiApi->SetGridCell(page, "vampire_rank", 0, 1);
+    g_uiApi->SetGridCell(page, "bloodstrength", 0, 2);
+    g_uiApi->SetGridCell(page, "blood_extract", 0, 3);
+    g_uiApi->SetGridCell(page, "last_feed_extract", 0, 4);
     g_uiApi->SetGridCell(page, "enable_corpse_feeding", 1, 0);
     g_uiApi->SetGridCell(page, "feed_hotkey", 1, 1);
     g_uiApi->SetGridCell(page, "feeding_counter", 1, 2);
