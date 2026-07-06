@@ -127,12 +127,16 @@ std::atomic<std::uint32_t> g_freshBloodGeneration{0};
 std::atomic<std::uint32_t> g_feedCleanupGeneration{0};
 std::mutex g_bloodScentMutex;
 BloodScentTargetMap g_bloodScentActiveTargets;
+BloodScentTargetMap g_bloodScentCandidateTargets;
 std::mutex g_bloodScentMovementMutex;
 NiPoint3 g_lastBloodScentScanPosition{};
 bool g_hasLastBloodScentScanPosition = false;
 using ModActorValueInternalFn = void (*)(void*, std::int32_t, std::uint32_t, float, void*);
 ModActorValueInternalFn g_origModActorValueInternal = nullptr;
 std::atomic_bool g_damageHookInstalled{false};
+using ActorSetDeadStateFn = void (*)(void*, bool);
+ActorSetDeadStateFn g_origActorSetDeadState = nullptr;
+std::atomic_bool g_actorDeathHookInstalled{false};
 using SetReferenceLocationFn = void (*)(void*, const NiPoint3*);
 SetReferenceLocationFn g_origSetReferenceLocation = nullptr;
 std::atomic_bool g_bloodScentMovementHookInstalled{false};
@@ -160,6 +164,8 @@ std::uintptr_t SkyrimBase() {
 void* GetProcessListsGuarded() noexcept;
 void ConfigSetInt(const char* key, int value);
 void ApplyUnlockedRankRewards(const char* reason);
+void QueueBloodScentGateRefresh(const char* reason);
+void TrackBloodScentCandidateFromActor(void* actor, const char* reason);
 
 int BloodStrengthTotalExtractForLevel(int level) {
     level = std::clamp(level, kBloodStrengthMinLevel, kBloodStrengthMaxLevel);
@@ -725,6 +731,19 @@ void Detour_ModActorValueInternal(void* actor,
     }
 }
 
+void Detour_ActorSetDeadState(void* actor, bool dead) {
+    bool wasDead = false;
+    const bool hadPreDeathState = IsDeadGuarded(actor, &wasDead);
+
+    if (g_origActorSetDeadState) {
+        g_origActorSetDeadState(actor, dead);
+    }
+
+    if (dead && (!hadPreDeathState || !wasDead)) {
+        TrackBloodScentCandidateFromActor(actor, "actor death");
+    }
+}
+
 bool InstallDamageHook() {
     if (g_damageHookInstalled.load()) return true;
 
@@ -755,6 +774,40 @@ bool InstallDamageHook() {
 
     g_damageHookInstalled.store(true);
     HAG_INFO("Fresh Blood damage hook installed: ActorValueModifierInternal @{:#x}", target);
+    return true;
+}
+
+bool InstallActorDeathHook() {
+    if (g_actorDeathHookInstalled.load()) return true;
+
+    const auto initStatus = MH_Initialize();
+    if (initStatus != MH_OK && initStatus != MH_ERROR_ALREADY_INITIALIZED) {
+        HAG_ERR("Blood Scent actor-death hook failed: MH_Initialize status={}", static_cast<int>(initStatus));
+        return false;
+    }
+
+    const auto target = SkyrimBase() + game::actor::Actor_SetDeadState;
+    const auto createStatus = MH_CreateHook(reinterpret_cast<LPVOID>(target),
+                                            reinterpret_cast<LPVOID>(&Detour_ActorSetDeadState),
+                                            reinterpret_cast<LPVOID*>(&g_origActorSetDeadState));
+    if (createStatus != MH_OK) {
+        HAG_ERR("Blood Scent actor-death hook failed: MH_CreateHook target={} status={}",
+                reinterpret_cast<void*>(target),
+                static_cast<int>(createStatus));
+        return false;
+    }
+
+    const auto enableStatus = MH_EnableHook(reinterpret_cast<LPVOID>(target));
+    if (enableStatus != MH_OK && enableStatus != MH_ERROR_ENABLED) {
+        HAG_ERR("Blood Scent actor-death hook failed: MH_EnableHook target={} status={}",
+                reinterpret_cast<void*>(target),
+                static_cast<int>(enableStatus));
+        return false;
+    }
+
+    g_actorDeathHookInstalled.store(true);
+    HAG_INFO("Blood Scent actor-death hook installed: Actor_SetDeadState @{}",
+             reinterpret_cast<void*>(target));
     return true;
 }
 
@@ -1334,9 +1387,28 @@ bool IsFormFed(std::uint32_t formID) {
            g_loaderApi->SaveFormIDSetContainsForModule(g_selfModule, kFedCorpseSet, formID);
 }
 
-bool IsBloodScentCandidate(void* player, const TargetInfo& target, float* outDistance) {
-    if (outDistance) *outDistance = 0.0f;
-    if (!player || !target.actor || target.formID == 0) return false;
+bool BuildBloodScentTargetFromHandle(std::uint32_t handle,
+                                     std::uint32_t expectedFormID,
+                                     TargetInfo* out) {
+    if (!out || handle == 0) return false;
+
+    void* actor = ResolveRefHandleRawGuarded(handle);
+    if (!actor) return false;
+
+    TargetInfo target{};
+    target.handle = handle;
+    target.actor = actor;
+    target.formID = ReadU32Guarded(actor, 0x14);
+    target.formType = ReadU8Guarded(actor, game::form::FormType);
+    if (target.formID == 0) return false;
+    if (expectedFormID != 0 && target.formID != expectedFormID) return false;
+
+    *out = target;
+    return true;
+}
+
+bool IsBloodScentBaseCandidate(const TargetInfo& target) {
+    if (!target.actor || target.formID == 0) return false;
     if (target.formType != kFormTypeActorCharacter || target.formID == kPlayerRefID) return false;
 
     const std::uint32_t flags = ReadU32Guarded(target.actor, 0x10);
@@ -1355,6 +1427,12 @@ bool IsBloodScentCandidate(void* player, const TargetInfo& target, float* outDis
     }
 
     if (IsFormFed(target.formID)) return false;
+    return true;
+}
+
+bool IsBloodScentCandidateInRange(void* player, const TargetInfo& target, float* outDistance) {
+    if (outDistance) *outDistance = 0.0f;
+    if (!player || !IsBloodScentBaseCandidate(target)) return false;
 
     float distance = 0.0f;
     if (!DistanceBetweenRefsGuarded(player, target.actor, &distance)) {
@@ -1368,12 +1446,12 @@ bool IsBloodScentCandidate(void* player, const TargetInfo& target, float* outDis
     return true;
 }
 
-BloodScentTargetMap FindBloodScentTargets(void* player, std::uint32_t* scannedCount) {
+BloodScentTargetMap RebuildBloodScentCandidateCache(std::uint32_t* scannedCount) {
     if (scannedCount) *scannedCount = 0;
 
-    BloodScentTargetMap desired;
-    if (!player || !g_loaderApi || !g_loaderApi->SaveStorageAvailable || !g_loaderApi->SaveStorageAvailable()) {
-        return desired;
+    BloodScentTargetMap candidates;
+    if (!g_loaderApi || !g_loaderApi->SaveStorageAvailable || !g_loaderApi->SaveStorageAvailable()) {
+        return candidates;
     }
 
     std::unordered_set<std::uint32_t> seenForms;
@@ -1381,18 +1459,51 @@ BloodScentTargetMap FindBloodScentTargets(void* player, std::uint32_t* scannedCo
     if (scannedCount) *scannedCount = static_cast<std::uint32_t>(handles.size());
 
     for (const auto handle : handles) {
-        void* actor = ResolveRefHandleRawGuarded(handle);
-        if (!actor) continue;
-
         TargetInfo target{};
-        target.handle = handle;
-        target.actor = actor;
-        target.formID = ReadU32Guarded(actor, 0x14);
-        target.formType = ReadU8Guarded(actor, game::form::FormType);
+        if (!BuildBloodScentTargetFromHandle(handle, 0, &target)) continue;
         if (target.formID == 0 || !seenForms.insert(target.formID).second) continue;
 
+        if (IsBloodScentBaseCandidate(target)) {
+            candidates.emplace(target.formID, target.handle);
+        }
+    }
+
+    {
+        std::lock_guard lock(g_bloodScentMutex);
+        g_bloodScentCandidateTargets = candidates;
+    }
+    return candidates;
+}
+
+BloodScentTargetMap CopyBloodScentCandidateCache() {
+    std::lock_guard lock(g_bloodScentMutex);
+    return g_bloodScentCandidateTargets;
+}
+
+BloodScentTargetMap FindBloodScentTargetsFromCandidates(void* player,
+                                                        const BloodScentTargetMap& candidates,
+                                                        std::uint32_t* evaluatedCount,
+                                                        std::uint32_t* staleCount) {
+    if (evaluatedCount) *evaluatedCount = 0;
+    if (staleCount) *staleCount = 0;
+
+    BloodScentTargetMap desired;
+    if (!player || !g_loaderApi || !g_loaderApi->SaveStorageAvailable || !g_loaderApi->SaveStorageAvailable()) {
+        return desired;
+    }
+
+    std::vector<std::uint32_t> staleForms;
+    for (const auto& [formID, handle] : candidates) {
+        if (evaluatedCount) ++(*evaluatedCount);
+
+        TargetInfo target{};
+        if (!BuildBloodScentTargetFromHandle(handle, formID, &target) || !IsBloodScentBaseCandidate(target)) {
+            staleForms.push_back(formID);
+            continue;
+        }
+
         float distance = 0.0f;
-        if (IsBloodScentCandidate(player, target, &distance)) {
+        if (IsBloodScentCandidateInRange(player, target, &distance)) {
             desired.emplace(target.formID, target.handle);
             HAG_INFO("Blood Scent target: form={:#x} handle={:#x} distance={}",
                      target.formID,
@@ -1401,7 +1512,60 @@ BloodScentTargetMap FindBloodScentTargets(void* player, std::uint32_t* scannedCo
         }
     }
 
+    if (!staleForms.empty()) {
+        std::lock_guard lock(g_bloodScentMutex);
+        for (const auto formID : staleForms) {
+            g_bloodScentCandidateTargets.erase(formID);
+        }
+        if (staleCount) *staleCount = static_cast<std::uint32_t>(staleForms.size());
+    }
+
     return desired;
+}
+
+std::uint32_t FindProcessListHandleForActor(void* actor, std::uint32_t formID) {
+    if (!actor && formID == 0) return 0;
+
+    const auto handles = CollectProcessListActorHandles();
+    for (const auto handle : handles) {
+        void* candidate = ResolveRefHandleRawGuarded(handle);
+        if (!candidate) continue;
+        if (candidate == actor) return handle;
+        if (formID != 0 && ReadU32Guarded(candidate, 0x14) == formID) return handle;
+    }
+    return 0;
+}
+
+void TrackBloodScentCandidateFromActor(void* actor, const char* reason) {
+    if (!actor || !g_corpseFeedingEnabled.load()) return;
+
+    TargetInfo target{};
+    target.actor = actor;
+    target.formID = ReadU32Guarded(actor, 0x14);
+    target.formType = ReadU8Guarded(actor, game::form::FormType);
+    if (!IsBloodScentBaseCandidate(target)) return;
+
+    target.handle = FindProcessListHandleForActor(actor, target.formID);
+    if (target.handle == 0) {
+        HAG_WARN("Blood Scent candidate add skipped ({}): no process-list handle for form={:#x}",
+                 reason ? reason : "unspecified",
+                 target.formID);
+        return;
+    }
+
+    bool inserted = false;
+    {
+        std::lock_guard lock(g_bloodScentMutex);
+        inserted = !g_bloodScentCandidateTargets.contains(target.formID);
+        g_bloodScentCandidateTargets[target.formID] = target.handle;
+    }
+
+    HAG_INFO("Blood Scent candidate {} ({}): form={:#x} handle={:#x}",
+             inserted ? "added" : "updated",
+             reason ? reason : "unspecified",
+             target.formID,
+             target.handle);
+    QueueBloodScentGateRefresh(reason ? reason : "actor death");
 }
 
 void ApplyBloodScentSet(const BloodScentTargetMap& desired, const char* reason) {
@@ -1467,7 +1631,7 @@ void ClearBloodScentHighlights(const char* reason) {
     ApplyBloodScentSet(empty, reason);
 }
 
-void RefreshBloodScentHighlights(const char* reason) {
+void RefreshBloodScentHighlights(const char* reason, bool rebuildCandidates = true) {
     if (!g_corpseFeedingEnabled.load()) {
         ClearBloodScentHighlights("corpse feeding disabled");
         return;
@@ -1485,7 +1649,12 @@ void RefreshBloodScentHighlights(const char* reason) {
     }
 
     std::uint32_t scanned = 0;
-    auto desired = FindBloodScentTargets(player, &scanned);
+    std::uint32_t evaluated = 0;
+    std::uint32_t stale = 0;
+    BloodScentTargetMap candidates = rebuildCandidates
+        ? RebuildBloodScentCandidateCache(&scanned)
+        : CopyBloodScentCandidateCache();
+    auto desired = FindBloodScentTargetsFromCandidates(player, candidates, &evaluated, &stale);
     {
         NiPoint3 position{};
         if (ReadPoint3Guarded(player, game::refr::DataLocation, &position)) {
@@ -1494,21 +1663,40 @@ void RefreshBloodScentHighlights(const char* reason) {
             g_hasLastBloodScentScanPosition = true;
         }
     }
-    HAG_INFO("Blood Scent scan ({}): scannedActorHandles={} desired={}",
+    if (rebuildCandidates) {
+        HAG_INFO("Blood Scent candidate rebuild ({}): scannedActorHandles={} candidates={}",
+                 reason ? reason : "unspecified",
+                 scanned,
+                 candidates.size());
+    }
+    HAG_INFO("Blood Scent gate eval ({}): cachedCandidates={} evaluated={} stale={} desired={}",
              reason ? reason : "unspecified",
-             scanned,
+             candidates.size(),
+             evaluated,
+             stale,
              desired.size());
     ApplyBloodScentSet(desired, reason);
 }
 
 void RefreshBloodScentTask(void* user) {
-    RefreshBloodScentHighlights(static_cast<const char*>(user));
+    RefreshBloodScentHighlights(static_cast<const char*>(user), true);
+}
+
+void RefreshBloodScentGateTask(void* user) {
+    RefreshBloodScentHighlights(static_cast<const char*>(user), false);
 }
 
 void QueueBloodScentRefresh(const char* reason) {
     if (!g_loaderApi || !g_loaderApi->QueueMainThreadTask) return;
     if (!g_loaderApi->QueueMainThreadTask(&RefreshBloodScentTask, const_cast<char*>(reason))) {
         HAG_WARN("Blood Scent refresh queue failed ({})", reason ? reason : "unspecified");
+    }
+}
+
+void QueueBloodScentGateRefresh(const char* reason) {
+    if (!g_loaderApi || !g_loaderApi->QueueMainThreadTask) return;
+    if (!g_loaderApi->QueueMainThreadTask(&RefreshBloodScentGateTask, const_cast<char*>(reason))) {
+        HAG_WARN("Blood Scent gate refresh queue failed ({})", reason ? reason : "unspecified");
     }
 }
 
@@ -1555,7 +1743,7 @@ void Detour_SetReferenceLocation(void* ref, const NiPoint3* position) {
     }
 
     if (playerMoved && ShouldRefreshBloodScentForMovement(nextPosition)) {
-        QueueBloodScentRefresh("player movement");
+        QueueBloodScentGateRefresh("player movement");
     }
 }
 
@@ -1709,7 +1897,7 @@ void RunNativeFeedTask(void*) {
         return;
     }
     CleanupCorpseFeedState(player, "pre feed");
-    RefreshBloodScentHighlights("feed task start");
+    RefreshBloodScentHighlights("feed task start", false);
 
     TargetInfo target{};
     if (!GetCrosshairTargetActorGuarded(&target)) {
@@ -1782,7 +1970,7 @@ void RunNativeFeedTask(void*) {
     }
     AwardBloodExtract(hasCorpseLevel ? corpseLevel : 1, target.formID);
     ApplyFreshBloodBuff(player, target.formID);
-    RefreshBloodScentHighlights("after feed");
+    RefreshBloodScentHighlights("after feed", false);
     const auto cleanupGeneration = g_feedCleanupGeneration.fetch_add(1) + 1;
     if (!ScheduleFeedCleanup(cleanupGeneration, target.formID)) {
         HAG_WARN("native corpse-feed cleanup timer failed; clearing feed state immediately");
@@ -1956,6 +2144,9 @@ void Init(HagUI_PageHandle* page) {
     if (!InstallDamageHook()) {
         HAG_WARN("Fresh Blood lifesteal unavailable: damage hook did not install");
     }
+    if (!InstallActorDeathHook()) {
+        HAG_WARN("Blood Scent actor-death candidate tracking unavailable");
+    }
     if (!InstallBloodScentMovementHook()) {
         HAG_WARN("Blood Scent will only refresh on save load/cell change/feed events");
     }
@@ -2029,6 +2220,7 @@ void Init(HagUI_PageHandle* page) {
 
 void OnSaveLoaded() {
     ReloadSaveConfig("SKSE save context ready");
+    InstallActorDeathHook();
     RegisterFeedHotkey();
     ApplyUnlockedRankRewards("save loaded");
     QueueBloodScentRefresh("save loaded");
