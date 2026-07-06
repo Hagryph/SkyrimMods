@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace hag {
@@ -95,22 +96,18 @@ struct FreshBloodTimerContext {
     std::uint32_t generation = 0;
 };
 
-struct BloodScentEffect {
-    void* effect = nullptr;
-    void* controller = nullptr;
-};
-
 struct BSSpinLockRaw {
     volatile LONG owningThread = 0;
     volatile LONG lockCount = 0;
 };
 
+using BloodScentTargetMap = std::unordered_map<std::uint32_t, std::uint32_t>;  // form ID -> ObjectRefHandle
+
 std::mutex g_freshBloodMutex;
 FreshBloodState g_freshBlood{};
 std::atomic<std::uint32_t> g_freshBloodGeneration{0};
 std::mutex g_bloodScentMutex;
-std::unordered_set<std::uint32_t> g_bloodScentActiveForms;
-std::unordered_map<std::uint32_t, BloodScentEffect> g_bloodScentEffects;
+BloodScentTargetMap g_bloodScentActiveTargets;
 
 constexpr VampireRank kVampireRanks[] = {
     {"Fledgling", 1},
@@ -630,17 +627,8 @@ void ApplyFreshBloodBuff(void* player, std::uint32_t sourceFormID) {
              generation);
 }
 
-bool QueueConsoleCommand(const char* command) {
-    if (!command || !*command || !g_loaderApi || !g_loaderApi->QueueConsoleCommand) return false;
-    const bool queued = g_loaderApi->QueueConsoleCommand(command);
-    if (!queued) {
-        HAG_WARN("Blood Scent console command could not be queued: {}", command);
-    }
-    return queued;
-}
-
-bool ApplyEffectShaderGuarded(void* target, std::uint32_t shaderFormID, float duration, void** effectOut) noexcept {
-    if (effectOut) *effectOut = nullptr;
+bool ApplyEffectShaderGuarded(void* target, std::uint32_t shaderFormID, float duration, std::uintptr_t* resultOut) noexcept {
+    if (resultOut) *resultOut = 0;
     if (!target || shaderFormID == 0) return false;
 
     void* shader = LookupFormByIDGuarded(shaderFormID);
@@ -658,12 +646,12 @@ bool ApplyEffectShaderGuarded(void* target, std::uint32_t shaderFormID, float du
     }
 
     __try {
-        using ApplyEffectShaderFn = void* (*)(void*, void*, float, void*, bool, bool, void*, bool);
+        using ApplyEffectShaderFn = std::uintptr_t (*)(void*, void*, float, void*, bool, bool, void*, bool);
         auto applyEffectShader = reinterpret_cast<ApplyEffectShaderFn>(
             SkyrimBase() + game::refr::ApplyEffectShader);
-        void* effect = applyEffectShader(target, shader, duration, nullptr, false, false, nullptr, false);
-        if (effectOut) *effectOut = effect;
-        return effect != nullptr;
+        const auto result = applyEffectShader(target, shader, duration, nullptr, false, false, nullptr, false);
+        if (resultOut) *resultOut = result;
+        return result != 0;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return false;
     }
@@ -678,8 +666,8 @@ bool ApplyBloodScentShader(std::uint32_t formID) {
         return false;
     }
 
-    void* effect = nullptr;
-    const bool ok = ApplyEffectShaderGuarded(target, kBloodScentEffectShader, kBloodScentShaderDuration, &effect);
+    std::uintptr_t result = 0;
+    const bool ok = ApplyEffectShaderGuarded(target, kBloodScentEffectShader, kBloodScentShaderDuration, &result);
     if (!ok) {
         HAG_WARN("Blood Scent shader apply failed: target={:#x} shader={:#x}",
                  formID,
@@ -687,20 +675,10 @@ bool ApplyBloodScentShader(std::uint32_t formID) {
         return false;
     }
 
-    const BloodScentEffect tracked{
-        effect,
-        ReadPtrGuarded(effect, game::effect::ReferenceEffect_Controller)
-    };
-    {
-        std::lock_guard lock(g_bloodScentMutex);
-        g_bloodScentEffects[formID] = tracked;
-    }
-
-    HAG_INFO("Blood Scent shader applied: target={:#x} shader={:#x} effect={} controller={}",
+    HAG_INFO("Blood Scent shader applied: target={:#x} shader={:#x} result={:#x}",
              formID,
              kBloodScentEffectShader,
-             tracked.effect,
-             tracked.controller);
+             result);
     return true;
 }
 
@@ -737,25 +715,6 @@ void UnlockBSSpinLock(BSSpinLockRaw* lock) noexcept {
     }
 }
 
-bool DecNiRefObjectGuarded(void* object) noexcept {
-    if (!object) return false;
-    __try {
-        auto* refCount = reinterpret_cast<volatile LONG*>(
-            static_cast<std::uint8_t*>(object) + game::effect::NiRefObject_RefCount);
-        const LONG remaining = ::InterlockedDecrement(refCount);
-        if (remaining == 0) {
-            auto** vtbl = *reinterpret_cast<void***>(object);
-            using DeleteThisFn = void (*)(void*);
-            auto deleteThis = reinterpret_cast<DeleteThisFn>(
-                vtbl[game::effect::NiRefObject_VSlot_DeleteThis]);
-            deleteThis(object);
-        }
-        return true;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;
-    }
-}
-
 bool ReadBSTPointerArrayHeaderGuarded(void* array, void*** data, std::uint32_t* size) noexcept {
     if (data) *data = nullptr;
     if (size) *size = 0;
@@ -775,52 +734,50 @@ bool ReadBSTPointerArrayHeaderGuarded(void* array, void*** data, std::uint32_t* 
     }
 }
 
-std::uint32_t ClearTrackedMagicEffectsGuarded(void** effects,
-                                              std::uint32_t size,
-                                              const BloodScentEffect& tracked,
-                                              std::uint32_t* releaseFailures) noexcept {
-    if (releaseFailures) *releaseFailures = 0;
-    if (!effects || (!tracked.effect && !tracked.controller)) return 0;
+std::uint32_t MarkBloodScentEffectsFinishedGuarded(void** effects,
+                                                   std::uint32_t size,
+                                                   std::uint32_t targetHandle,
+                                                   void* shader,
+                                                   std::uint32_t* targetMatches,
+                                                   std::uint32_t* shaderMatches) noexcept {
+    if (targetMatches) *targetMatches = 0;
+    if (shaderMatches) *shaderMatches = 0;
+    if (!effects || targetHandle == 0 || !shader) return 0;
 
     __try {
-        std::uint32_t removed = 0;
-        std::uint32_t failedReleases = 0;
+        std::uint32_t marked = 0;
+        std::uint32_t matchedTarget = 0;
+        std::uint32_t matchedShader = 0;
         for (std::uint32_t i = 0; i < size; ++i) {
             void* effect = effects[i];
             if (!effect) continue;
-            const bool matchByEffect = tracked.effect && effect == tracked.effect;
-            const bool matchByController = tracked.controller &&
-                ReadPtrGuarded(effect, game::effect::ReferenceEffect_Controller) == tracked.controller;
-            if (matchByEffect || matchByController) {
-                effects[i] = nullptr;
-                if (!DecNiRefObjectGuarded(effect)) {
-                    ++failedReleases;
-                }
-                ++removed;
-            }
+            if (ReadU32Guarded(effect, game::effect::ReferenceEffect_Target) != targetHandle) continue;
+            ++matchedTarget;
+            if (ReadPtrGuarded(effect, game::effect::ShaderReferenceEffect_EffectData) != shader) continue;
+            ++matchedShader;
+            *reinterpret_cast<std::uint8_t*>(
+                static_cast<std::uint8_t*>(effect) + game::effect::ReferenceEffect_Finished) = 1;
+            ++marked;
         }
-        if (releaseFailures) *releaseFailures = failedReleases;
-        return removed;
+        if (targetMatches) *targetMatches = matchedTarget;
+        if (shaderMatches) *shaderMatches = matchedShader;
+        return marked;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return UINT32_MAX;
     }
 }
 
-bool ClearBloodScentShaderNative(std::uint32_t formID) {
-    BloodScentEffect tracked{};
-    {
-        std::lock_guard lock(g_bloodScentMutex);
-        const auto it = g_bloodScentEffects.find(formID);
-        if (it == g_bloodScentEffects.end()) {
-            HAG_WARN("Blood Scent native clear had no tracked effect: target={:#x}", formID);
-            return false;
-        }
-        tracked = it->second;
-        g_bloodScentEffects.erase(it);
+bool ClearBloodScentShaderNative(std::uint32_t formID, std::uint32_t targetHandle) {
+    if (formID == 0 || targetHandle == 0) {
+        HAG_WARN("Blood Scent native clear had no tracked handle: target={:#x} handle={:#x}",
+                 formID,
+                 targetHandle);
+        return false;
     }
 
-    if (!tracked.effect && !tracked.controller) {
-        HAG_WARN("Blood Scent native clear had empty tracked effect: target={:#x}", formID);
+    void* shader = LookupFormByIDGuarded(kBloodScentEffectShader);
+    if (!shader) {
+        HAG_WARN("Blood Scent native clear failed: shader form {:#x} was not found", kBloodScentEffectShader);
         return false;
     }
 
@@ -841,40 +798,28 @@ bool ClearBloodScentShaderNative(std::uint32_t formID) {
 
     auto* lock = reinterpret_cast<BSSpinLockRaw*>(base + game::process::ProcessLists_MagicEffectsLock);
     LockBSSpinLock(lock);
-    std::uint32_t releaseFailures = 0;
-    const auto removed = ClearTrackedMagicEffectsGuarded(effects, size, tracked, &releaseFailures);
+    std::uint32_t targetMatches = 0;
+    std::uint32_t shaderMatches = 0;
+    const auto marked = MarkBloodScentEffectsFinishedGuarded(effects,
+                                                             size,
+                                                             targetHandle,
+                                                             shader,
+                                                             &targetMatches,
+                                                             &shaderMatches);
     UnlockBSSpinLock(lock);
 
-    if (removed == UINT32_MAX) {
+    if (marked == UINT32_MAX) {
         HAG_WARN("Blood Scent native clear faulted while scanning effects: target={:#x}", formID);
         return false;
     }
-    if (releaseFailures != 0) {
-        HAG_WARN("Blood Scent native clear removed {} effect(s) but {} refcount release(s) failed: target={:#x}",
-                 removed,
-                 releaseFailures,
-                 formID);
-    }
 
-    HAG_INFO("Blood Scent native clear: target={:#x} removed={} trackedEffect={} trackedController={}",
+    HAG_INFO("Blood Scent native clear: target={:#x} handle={:#x} markedFinished={} targetMatches={} shaderMatches={}",
              formID,
-             removed,
-             tracked.effect,
-             tracked.controller);
-    return removed != 0;
-}
-
-bool QueueTargetEffectShaderStopCommand(std::uint32_t formID) {
-    if (formID == 0) return false;
-
-    char prid[32];
-    char sms[32];
-    std::snprintf(prid, sizeof(prid), "prid %08X", formID);
-    std::snprintf(sms, sizeof(sms), "sms %08X", kBloodScentEffectShader);
-
-    bool ok = QueueConsoleCommand(prid);
-    ok = QueueConsoleCommand(sms) && ok;
-    return ok;
+             targetHandle,
+             marked,
+             targetMatches,
+             shaderMatches);
+    return marked != 0;
 }
 
 bool ReadBSTActorHandleArrayHeaderGuarded(void* array, std::uint32_t** data, std::uint32_t* size) noexcept {
@@ -981,10 +926,10 @@ bool IsBloodScentCandidate(void* player, const TargetInfo& target, float* outDis
     return true;
 }
 
-std::unordered_set<std::uint32_t> FindBloodScentTargets(void* player, std::uint32_t* scannedCount) {
+BloodScentTargetMap FindBloodScentTargets(void* player, std::uint32_t* scannedCount) {
     if (scannedCount) *scannedCount = 0;
 
-    std::unordered_set<std::uint32_t> desired;
+    BloodScentTargetMap desired;
     if (!player || !g_loaderApi || !g_loaderApi->SaveStorageAvailable || !g_loaderApi->SaveStorageAvailable()) {
         return desired;
     }
@@ -1006,55 +951,77 @@ std::unordered_set<std::uint32_t> FindBloodScentTargets(void* player, std::uint3
 
         float distance = 0.0f;
         if (IsBloodScentCandidate(player, target, &distance)) {
-            desired.insert(target.formID);
-            HAG_INFO("Blood Scent target: form={:#x} distance={}", target.formID, distance);
+            desired.emplace(target.formID, target.handle);
+            HAG_INFO("Blood Scent target: form={:#x} handle={:#x} distance={}",
+                     target.formID,
+                     target.handle,
+                     distance);
         }
     }
 
     return desired;
 }
 
-void ApplyBloodScentSet(const std::unordered_set<std::uint32_t>& desired, const char* reason) {
-    std::vector<std::uint32_t> toApply;
-    std::vector<std::uint32_t> toClear;
+void ApplyBloodScentSet(const BloodScentTargetMap& desired, const char* reason) {
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> toApply;
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> toClear;
+    BloodScentTargetMap previous;
 
     {
         std::lock_guard lock(g_bloodScentMutex);
-        for (const auto formID : desired) {
-            if (!g_bloodScentActiveForms.contains(formID)) {
-                toApply.push_back(formID);
-            }
-        }
-        for (const auto formID : g_bloodScentActiveForms) {
-            if (!desired.contains(formID)) {
-                toClear.push_back(formID);
-            }
-        }
-        g_bloodScentActiveForms = desired;
+        previous = g_bloodScentActiveTargets;
     }
 
-    for (const auto formID : toApply) {
-        ApplyBloodScentShader(formID);
+    for (const auto& [formID, handle] : desired) {
+        if (!previous.contains(formID)) {
+            toApply.emplace_back(formID, handle);
+        }
     }
-    for (const auto formID : toClear) {
-        if (!ClearBloodScentShaderNative(formID)) {
-            QueueTargetEffectShaderStopCommand(formID);
+    for (const auto& [formID, handle] : previous) {
+        if (!desired.contains(formID)) {
+            toClear.emplace_back(formID, handle);
         }
     }
 
-    if (!toApply.empty() || !toClear.empty()) {
-        QueueConsoleCommand("prid 00000014");
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> applied;
+    std::vector<std::uint32_t> cleared;
+    for (const auto& [formID, handle] : toApply) {
+        if (ApplyBloodScentShader(formID)) {
+            applied.emplace_back(formID, handle);
+        }
+    }
+    for (const auto& [formID, handle] : toClear) {
+        if (ClearBloodScentShaderNative(formID, handle)) {
+            cleared.push_back(formID);
+        }
+    }
+
+    std::size_t activeCount = 0;
+    {
+        std::lock_guard lock(g_bloodScentMutex);
+        for (const auto& [formID, handle] : desired) {
+            if (previous.contains(formID)) {
+                g_bloodScentActiveTargets[formID] = handle;
+            }
+        }
+        for (const auto& [formID, handle] : applied) {
+            g_bloodScentActiveTargets[formID] = handle;
+        }
+        for (const auto formID : cleared) {
+            g_bloodScentActiveTargets.erase(formID);
+        }
+        activeCount = g_bloodScentActiveTargets.size();
     }
 
     HAG_INFO("Blood Scent refreshed ({}): active={} applied={} cleared={}",
              reason ? reason : "unspecified",
-             desired.size(),
-             toApply.size(),
-             toClear.size());
+             activeCount,
+             applied.size(),
+             cleared.size());
 }
 
 void ClearBloodScentHighlights(const char* reason) {
-    const std::unordered_set<std::uint32_t> empty;
+    const BloodScentTargetMap empty;
     ApplyBloodScentSet(empty, reason);
 }
 
@@ -1434,7 +1401,7 @@ void Init(HagUI_PageHandle* page) {
 
     auto getLoaderApi = reinterpret_cast<HagLoader_GetAPIFn>(::GetProcAddress(h, "HagLoader_GetAPI"));
     g_loaderApi = getLoaderApi ? getLoaderApi(HAGLOADER_ABI_VERSION) : nullptr;
-    if (!g_loaderApi || !g_loaderApi->QueueConsoleCommand ||
+    if (!g_loaderApi ||
         !g_loaderApi->QueuePapyrusStaticCallWithCallback || !g_loaderApi->QueueMainThreadTask ||
         !g_loaderApi->SaveStorageAvailable || !g_loaderApi->SaveFormIDSetContainsForModule ||
         !g_loaderApi->SaveFormIDSetAddForModule || !g_loaderApi->SaveFormIDSetCountForModule ||

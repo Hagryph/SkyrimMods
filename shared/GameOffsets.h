@@ -298,9 +298,9 @@ inline constexpr std::uint32_t MaxMagicEffects = 16384;
 
 namespace effect {
 
-inline constexpr std::size_t ReferenceEffect_Controller = 0x30;  // RE::ReferenceEffect::controller
-inline constexpr std::size_t NiRefObject_RefCount = 0x08;        // RE::NiRefObject::_refCount
-inline constexpr int NiRefObject_VSlot_DeleteThis = 1;           // RE::NiRefObject::DeleteThis()
+inline constexpr std::size_t ReferenceEffect_Target = 0x38;       // RE::ReferenceEffect::target ObjectRefHandle
+inline constexpr std::size_t ReferenceEffect_Finished = 0x40;     // RE::ReferenceEffect::finished bool
+inline constexpr std::size_t ShaderReferenceEffect_EffectData = 0x108;  // RE::ShaderReferenceEffect::effectData
 
 }  // namespace effect
 
