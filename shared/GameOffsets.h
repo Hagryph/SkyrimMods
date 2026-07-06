@@ -245,6 +245,7 @@ inline constexpr int VSlot_InitiateVampireFeedPackage = 0x0C0;   // live-victim 
 namespace refr {
 
 inline constexpr int VSlot_GetCurrent3D = 0x08D;  // TESObjectREFR::GetCurrent3D()
+inline constexpr std::uintptr_t GetCalcLevel = 0x2FA590;  // Address Library 1.6.1170 id 20205: TESObjectREFR::GetCalcLevel(bool)
 inline constexpr std::uintptr_t MoveToImpl = 0xA447F0;  // Address Library 1.6.1170 id 56626
 inline constexpr std::size_t DataAngle = 0x48;          // TESObjectREFR::data.angle
 inline constexpr std::size_t DataLocation = 0x54;       // TESObjectREFR::data.location

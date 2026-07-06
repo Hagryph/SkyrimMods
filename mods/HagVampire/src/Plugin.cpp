@@ -33,6 +33,8 @@ VampireAction g_actionAtPageBuild = VampireAction::Transform;
 std::atomic_bool g_corpseFeedingEnabled{true};
 std::atomic_int g_animationMode{0};
 std::atomic_int g_feedHotkey{'V'};
+std::atomic<std::uint32_t> g_lastCorpseLevel{0};
+std::atomic<std::uint32_t> g_lastCorpseLevelForm{0};
 
 constexpr const char* kConfigName = "HagVampire";
 constexpr const char* kFedCorpseSet = "fed_corpses_v2";
@@ -263,6 +265,19 @@ bool IsDeadGuarded(void* actor, bool* dead) noexcept {
     }
 }
 
+bool GetReferenceCalcLevelGuarded(void* ref, bool adjustLevel, std::uint16_t* level) noexcept {
+    if (level) *level = 0;
+    if (!ref || !level) return false;
+    __try {
+        using GetCalcLevelFn = std::uint16_t (*)(void*, bool);
+        auto getCalcLevel = reinterpret_cast<GetCalcLevelFn>(SkyrimBase() + game::refr::GetCalcLevel);
+        *level = getCalcLevel(ref, adjustLevel);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 const char* ValidateFeedTarget(const TargetInfo& target) {
     if (!target.actor) return "no crosshair actor target";
     if (target.formType != kFormTypeActorCharacter) return "crosshair target is not an actor";
@@ -438,6 +453,16 @@ void RunNativeFeedTask(void*) {
         return;
     }
 
+    std::uint16_t corpseLevel = 0;
+    const bool hasCorpseLevel = GetReferenceCalcLevelGuarded(target.actor, true, &corpseLevel);
+    if (hasCorpseLevel) {
+        HAG_INFO("native corpse-feed target accepted: handle={:#x} form={:#x} level={}",
+                 target.handle, target.formID, corpseLevel);
+    } else {
+        HAG_WARN("native corpse-feed target accepted but level lookup failed: handle={:#x} form={:#x}",
+                 target.handle, target.formID);
+    }
+
     if (!g_loaderApi->SaveStorageAvailable || !g_loaderApi->SaveStorageAvailable()) {
         HAG_ERR("native corpse-feed aborted: HagLoader SKSE save storage unavailable");
         return;
@@ -482,6 +507,11 @@ void RunNativeFeedTask(void*) {
         HAG_ERR("native corpse-feed action started but failed to record fed corpse form={:#x}; refusing future unsafe repeats depends on save storage",
                 target.formID);
         return;
+    }
+    g_lastCorpseLevelForm.store(target.formID);
+    g_lastCorpseLevel.store(hasCorpseLevel ? corpseLevel : 0);
+    if (g_uiApi && g_uiApi->Refresh) {
+        g_uiApi->Refresh();
     }
     HAG_INFO("native corpse-feed completed: form={:#x} playerMovedTo=({}, {}, {})",
              target.formID, movedTo.x, movedTo.y, movedTo.z);
@@ -554,6 +584,20 @@ const char* FeedingCounterText(void*) {
     }
     const char* noun = (count == 1) ? "corpse" : "corpses";
     std::snprintf(text, sizeof(text), "%u %s fed", count, noun);
+    return text;
+}
+
+const char* LastCorpseLevelText(void*) {
+    static thread_local char text[64];
+    const auto formID = g_lastCorpseLevelForm.load();
+    const auto level = g_lastCorpseLevel.load();
+    if (formID == 0) {
+        std::snprintf(text, sizeof(text), "None");
+    } else if (level == 0) {
+        std::snprintf(text, sizeof(text), "Unknown");
+    } else {
+        std::snprintf(text, sizeof(text), "Level %u", level);
+    }
     return text;
 }
 
@@ -647,8 +691,9 @@ void Init(HagUI_PageHandle* page) {
         throw std::runtime_error("HagVampire requires HagLoader HagUI API/page");
     }
 
-    if (!g_uiApi->AddDynamicButton || !g_uiApi->SetIntState || !g_uiApi->AddHotkey || !g_uiApi->AddCounter) {
-        throw std::runtime_error("HagVampire requires HagUI dynamic button/state/hotkey/counter API");
+    if (!g_uiApi->AddDynamicButton || !g_uiApi->SetIntState || !g_uiApi->AddHotkey ||
+        !g_uiApi->AddCounter || !g_uiApi->SetGridCell) {
+        throw std::runtime_error("HagVampire requires HagUI dynamic button/state/hotkey/counter/grid API");
     }
 
     g_uiApi->AddDynamicButton(page,
@@ -674,6 +719,11 @@ void Init(HagUI_PageHandle* page) {
                         "Feeding counter",
                         &FeedingCounterText,
                         nullptr);
+    g_uiApi->AddCounter(page,
+                        "last_corpse_level",
+                        "Last corpse level",
+                        &LastCorpseLevelText,
+                        nullptr);
     g_uiApi->AddStepper(page,
                         "animation_mode",
                         "Animation mode (0 Crouch / 1 Bedroll / 2 Custom)",
@@ -683,6 +733,11 @@ void Init(HagUI_PageHandle* page) {
                         static_cast<double>(g_animationMode.load()),
                         &OnAnimationModeChanged,
                         nullptr);
+    g_uiApi->SetGridCell(page, "vampire_action", 0, 0);
+    g_uiApi->SetGridCell(page, "enable_corpse_feeding", 1, 0);
+    g_uiApi->SetGridCell(page, "feed_hotkey", 1, 1);
+    g_uiApi->SetGridCell(page, "feeding_counter", 1, 2);
+    g_uiApi->SetGridCell(page, "last_corpse_level", 1, 3);
     PushConfigToUI();
     g_uiApi->Refresh();
 
