@@ -534,16 +534,6 @@ bool IsSneakingStateGuarded(void* actor, bool* sneaking) noexcept {
     return true;
 }
 
-bool IsWeaponDrawnStateGuarded(void* actor, bool* weaponDrawn) noexcept {
-    if (weaponDrawn) *weaponDrawn = false;
-    std::uint32_t state = 0;
-    if (!GetActorStateWordGuarded(actor, game::actor::ActorState_State2, &state)) return false;
-    const auto weaponState = (state & game::actor::ActorState2_WeaponStateMask) >>
-                             game::actor::ActorState2_WeaponStateShift;
-    if (weaponDrawn) *weaponDrawn = weaponState == 3 || weaponState == 4 || weaponState == 5;
-    return true;
-}
-
 bool IsBleedingOutStateGuarded(void* actor, bool* bleedingOut) noexcept {
     if (bleedingOut) *bleedingOut = false;
     std::uint32_t state = 0;
@@ -572,6 +562,20 @@ bool HasLineOfSightGuarded(void* requester, void* target, bool* hasLOS) noexcept
         auto hasLOSFn = reinterpret_cast<HasLOSFN>(SkyrimBase() + game::actor::Actor_HasLineOfSight);
         bool targetIsActor = false;
         *hasLOS = hasLOSFn(requester, target, &targetIsActor);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool IsInCombatGuarded(void* actor, bool* inCombat) noexcept {
+    if (inCombat) *inCombat = false;
+    if (!actor || !inCombat) return false;
+    __try {
+        using IsInCombatFn = bool (*)(void*);
+        auto** vtbl = *reinterpret_cast<void***>(actor);
+        auto isInCombat = reinterpret_cast<IsInCombatFn>(vtbl[game::actor::VSlot_IsInCombat]);
+        *inCombat = isInCombat(actor);
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return false;
@@ -712,9 +716,9 @@ const char* ValidateSneakFeedTarget(const TargetInfo& target, void* player) {
     if (!IsSneakingStateGuarded(player, &playerSneaking)) return "player sneak state check faulted";
     if (!playerSneaking) return "player is not sneaking";
 
-    bool playerWeaponDrawn = false;
-    if (!IsWeaponDrawnStateGuarded(player, &playerWeaponDrawn)) return "player weapon state check faulted";
-    if (playerWeaponDrawn) return "player weapon is drawn";
+    bool playerInCombat = false;
+    if (!IsInCombatGuarded(player, &playerInCombat)) return "player combat state check faulted";
+    if (playerInCombat) return "player is in combat";
 
     bool dead = false;
     if (!IsDeadGuarded(target.actor, &dead)) return "crosshair actor death check faulted";

@@ -270,6 +270,7 @@ inline constexpr int VSlot_GetVampireFeed = 0x0BE;               // bool Actor::
 inline constexpr int VSlot_SetVampireFeed = 0x0BF;               // void Actor::SetVampireFeed(bool)
 inline constexpr int VSlot_InitiateVampireFeedPackage = 0x0C0;   // live-victim package; Papyrus StartVampireFeed rejects dead targets before this
 inline constexpr int VSlot_InitiateCannibalPackage = 0x0C1;      // corpse-feed package; Papyrus Actor.StartCannibal routes here
+inline constexpr int VSlot_IsInCombat = 0x0E3;                   // bool Actor::IsInCombat()
 inline constexpr int VSlot_CalculateCachedOwnerIsUndead = 0x115; // bool Actor::CalculateCachedOwnerIsUndead()
 inline constexpr int VSlot_CalculateCachedOwnerIsNPC = 0x116;    // bool Actor::CalculateCachedOwnerIsNPC()
 
