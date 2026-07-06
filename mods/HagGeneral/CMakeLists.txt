@@ -11,6 +11,7 @@ add_library(HagGeneral SHARED
     src/Plugin.cpp
     src/Log.cpp
     src/Hooking.cpp
+    src/ChildHostilityUnblocker.cpp
     src/Config.cpp
     src/Display.cpp
     src/SettingsHook.cpp

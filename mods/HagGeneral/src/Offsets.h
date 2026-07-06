@@ -28,4 +28,8 @@ inline constexpr auto kBorderlessRead = game::display::BorderlessRead;
 inline constexpr auto kFullScreenDisp = game::display::FullScreenDisp;
 inline constexpr auto kBorderlessDisp = game::display::BorderlessDisp;
 
+// ---- Character child gate ----
+inline constexpr auto kCharacterVtable = game::vtable::Character;
+inline constexpr auto kVSlotIsChild = game::actor::VSlot_IsChild;
+
 }  // namespace hag::offsets

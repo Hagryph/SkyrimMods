@@ -10,6 +10,7 @@ public:
     bool fullscreen   = false;   // exclusive fullscreen (else windowed)
     bool borderless   = true;    // borderless windowed (only when not fullscreen)
     bool alwaysActive = false;   // keep the game running/unpaused when the window loses focus
+    bool childHostilityUnblocker = false;  // make engine child checks return false while enabled
 
     static Config& Get();        // process-wide singleton
     void Load();                 // (re)read the INI; write defaults if the file is missing

@@ -42,9 +42,14 @@ void Config::Load() {
     fullscreen = api->GetConfigBoolForModule(owner, HAGLOADER_CONFIG_GLOBAL, kModName, "Fullscreen", fullscreen);
     borderless = api->GetConfigBoolForModule(owner, HAGLOADER_CONFIG_GLOBAL, kModName, "Borderless", borderless);
     alwaysActive = api->GetConfigBoolForModule(owner, HAGLOADER_CONFIG_GLOBAL, kModName, "AlwaysActive", alwaysActive);
+    childHostilityUnblocker = api->GetConfigBoolForModule(owner,
+                                                           HAGLOADER_CONFIG_GLOBAL,
+                                                           kModName,
+                                                           "ChildHostilityUnblocker",
+                                                           childHostilityUnblocker);
 
-    HAG_INFO("loader config: Fullscreen={} Borderless={} AlwaysActive={}",
-             fullscreen, borderless, alwaysActive);
+    HAG_INFO("loader config: Fullscreen={} Borderless={} AlwaysActive={} ChildHostilityUnblocker={}",
+             fullscreen, borderless, alwaysActive, childHostilityUnblocker);
 }
 
 void Config::Save() const {
@@ -58,8 +63,13 @@ void Config::Save() const {
     api->SetConfigBoolForModule(owner, HAGLOADER_CONFIG_GLOBAL, kModName, "Fullscreen", fullscreen);
     api->SetConfigBoolForModule(owner, HAGLOADER_CONFIG_GLOBAL, kModName, "Borderless", borderless);
     api->SetConfigBoolForModule(owner, HAGLOADER_CONFIG_GLOBAL, kModName, "AlwaysActive", alwaysActive);
-    HAG_INFO("loader config saved: Fullscreen={} Borderless={} AlwaysActive={}",
-             fullscreen, borderless, alwaysActive);
+    api->SetConfigBoolForModule(owner,
+                                HAGLOADER_CONFIG_GLOBAL,
+                                kModName,
+                                "ChildHostilityUnblocker",
+                                childHostilityUnblocker);
+    HAG_INFO("loader config saved: Fullscreen={} Borderless={} AlwaysActive={} ChildHostilityUnblocker={}",
+             fullscreen, borderless, alwaysActive, childHostilityUnblocker);
 }
 
 }  // namespace hag

@@ -1,5 +1,6 @@
 #include "PCH.h"
 #include "HagUIBridge.h"
+#include "ChildHostilityUnblocker.h"
 #include "Config.h"
 #include "Display.h"
 #include "SettingsHook.h"
@@ -23,6 +24,7 @@ bool AsBool(const HagUI_Value& v) {
 //   Borderless  -> greyed + forced ON while Fullscreen is checked (irrelevant under fullscreen);
 //                  "applies after restart" only when THIS session booted fullscreen (can't switch live).
 //   AlwaysActive-> live, no note.
+//   ChildHostilityUnblocker -> live; hook exists only while enabled.
 void PushGeneralStates() {
     if (!g_api || !g_api->SetToggleState || !g_api->Refresh || !g_page) return;   // HagUI too old for v2
     const Config& c = Config::Get();
@@ -36,6 +38,7 @@ void PushGeneralStates() {
     g_api->SetToggleState(g_page, "borderless", bdValue, bdEnabled, bdNote);
 
     g_api->SetToggleState(g_page, "alwaysActive", c.alwaysActive, true, "");
+    g_api->SetToggleState(g_page, "childHostilityUnblocker", c.childHostilityUnblocker, true, "");
     g_api->Refresh();
 }
 
@@ -66,6 +69,16 @@ void OnAlwaysActive(void*, HagUI_Value v) {
     SettingsHook::Apply();   // the game's pause check reads this flag every frame
     HAG_INFO("General: AlwaysActive = {}", c.alwaysActive);
 }
+void OnChildHostilityUnblocker(void*, HagUI_Value v) {
+    Config& c = Config::Get();
+    c.childHostilityUnblocker = AsBool(v);
+    c.Save();
+    if (!ChildHostilityUnblocker::Apply()) {
+        HAG_ERR("General: Child hostility unblocker failed to apply");
+    }
+    PushGeneralStates();
+    HAG_INFO("General: ChildHostilityUnblocker = {}", c.childHostilityUnblocker);
+}
 
 }  // namespace
 
@@ -88,10 +101,16 @@ void HagUIBridge::Register(HagUI_PageHandle* page) {
     api->AddToggle(g_page, "fullscreen",   "Fullscreen",    c.fullscreen,   &OnFullscreen,   nullptr);
     api->AddToggle(g_page, "borderless",   "Borderless",    c.borderless,   &OnBorderless,   nullptr);
     api->AddToggle(g_page, "alwaysActive", "Always Active", c.alwaysActive, &OnAlwaysActive, nullptr);
+    api->AddToggle(g_page,
+                   "childHostilityUnblocker",
+                   "Child hostility unblocker",
+                   c.childHostilityUnblocker,
+                   &OnChildHostilityUnblocker,
+                   nullptr);
     PushGeneralStates();   // initial greyed state + restart notes
 
-    HAG_INFO("registered 'General' page with HagUI (fullscreen={} borderless={} alwaysActive={})",
-             c.fullscreen, c.borderless, c.alwaysActive);
+    HAG_INFO("registered 'General' page with HagUI (fullscreen={} borderless={} alwaysActive={} childHostilityUnblocker={})",
+             c.fullscreen, c.borderless, c.alwaysActive, c.childHostilityUnblocker);
 }
 
 }  // namespace hag

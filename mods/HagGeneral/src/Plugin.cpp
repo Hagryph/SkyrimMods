@@ -1,6 +1,7 @@
 #include "PCH.h"
 #include "Plugin.h"
 
+#include "ChildHostilityUnblocker.h"
 #include "Config.h"
 #include "Display.h"
 #include "HagUIBridge.h"
@@ -35,6 +36,7 @@ void Plugin::Init(void* page) {
     Display::CaptureSessionMode();
     // Repoint the game's setting reads (bAlwaysActive + display) to our own flag bytes.
     SettingsHook::Install();
+    ChildHostilityUnblocker::Apply();
 
     HagUIBridge::Register(reinterpret_cast<HagUI_PageHandle*>(page));
 
@@ -45,6 +47,7 @@ void Plugin::OnDataLoaded() {
     if (!initialized_) return;
     // Re-assert our flag bytes after the game's startup has fully settled.
     SettingsHook::Apply();
+    ChildHostilityUnblocker::Apply();
 }
 
 }  // namespace hag

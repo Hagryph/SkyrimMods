@@ -276,6 +276,14 @@ inline constexpr int VSlot_CalculateCachedOwnerIsNPC = 0x116;    // bool Actor::
 
 }  // namespace actor
 
+namespace vtable {
+
+// CommonLibSSE-NG Offsets_VTABLE.h for Skyrim SE 1.6.1170. Character is the concrete
+// non-player actor class used by child NPCs; slot 0x05E is Character/Actor::IsChild().
+inline constexpr std::uintptr_t Character = 0x16D6DE0;
+
+}  // namespace vtable
+
 namespace refr {
 
 inline constexpr int VSlot_GetCurrent3D = 0x08D;  // TESObjectREFR::GetCurrent3D()
