@@ -434,12 +434,14 @@ function makeHotkey(parent, name, depth, x, y, w, op)
 
    var bw = 84;
    var bh = 30;
+   var by = 2;
+   var gap = 24;
    var lw = lbl.textWidth;
    if (!(lw > 10)) { lw = op.label.length * 8; }
-   var bx = Math.round(lw + 24);
+   var bx = Math.round(lw + gap);
    if (bx > w - bw) { bx = w - bw; }
    var b = row.createEmptyMovieClip("btn", 2);
-   b._x = bx; b._y = 0; b._baseX = bx; b._bw = bw; b._bh = bh; b._op = op;
+   b._x = bx; b._y = by; b._baseX = bx; b._baseY = by; b._bw = bw; b._bh = bh; b._op = op;
    _root.paintActionButton(b, false, en, false);
    var txt = _root.mkText(b, "text", 1, 0, 0, bw, 24, _root.hotkeyHtml(op.value, false, en));
    txt._y = Math.round((bh - txt.textHeight) / 2) - 2;
@@ -452,12 +454,12 @@ function makeHotkey(parent, name, depth, x, y, w, op)
    if (en)
    {
       b.onRollOver = function() { _root.paintActionButton(this, true, true, false); };
-      b.onRollOut = function() { this._x = this._baseX; this._y = 0; _root.paintActionButton(this, false, true, false); };
-      b.onPress = function() { this._x = this._baseX + 1; this._y = 1; _root.paintActionButton(this, true, true, true); };
-      b.onReleaseOutside = function() { this._x = this._baseX; this._y = 0; _root.paintActionButton(this, false, true, false); };
+      b.onRollOut = function() { this._x = this._baseX; this._y = this._baseY; _root.paintActionButton(this, false, true, false); };
+      b.onPress = function() { this._x = this._baseX + 1; this._y = this._baseY + 1; _root.paintActionButton(this, true, true, true); };
+      b.onReleaseOutside = function() { this._x = this._baseX; this._y = this._baseY; _root.paintActionButton(this, false, true, false); };
       b.onRelease = function()
       {
-         this._x = this._baseX; this._y = 0; _root.paintActionButton(this, true, true, false);
+         this._x = this._baseX; this._y = this._baseY; _root.paintActionButton(this, true, true, false);
          _root.hagHotkeyCapture = this;
          this.text.htmlText = _root.hotkeyHtml(this._op.value, true, true);
       };
@@ -521,15 +523,23 @@ function buildCounter(parent, name, depth, x, y, w, op)
 {
    var row = parent.createEmptyMovieClip(name, depth);
    row._x = x; row._y = y;
-   _root.mkText(row, "lbl", 1, 0, 3, w - 150, 24,
+   var lbl = _root.mkText(row, "lbl", 1, 0, 5, w - 150, 24,
       "<font face='$EverywhereFont' size='17' color='#ECE6DA'>" + op.label + "</font>");
    var vw = 126;
+   var vh = 30;
+   var vy = 2;
+   var gap = 24;
+   var lw = lbl.textWidth;
+   if (!(lw > 10)) { lw = op.label.length * 8; }
+   var vx = Math.round(lw + gap);
+   if (vx > w - vw) { vx = w - vw; }
    var pill = row.createEmptyMovieClip("pill", 2);
-   pill._x = w - vw; pill._y = 0;
-   _root.paintCounterPill(pill, vw, 30);
+   pill._x = vx; pill._y = vy;
+   _root.paintCounterPill(pill, vw, vh);
    var bt = (op.bartext == undefined || op.bartext == "undefined") ? "" : op.bartext;
-   var val = _root.mkText(pill, "val", 1, 0, 4, vw, 22,
+   var val = _root.mkText(pill, "val", 1, 0, 0, vw, 22,
       "<p align='center'><font face='$EverywhereBoldFont' size='13' color='#E0B34A'>" + bt + "</font></p>");
+   val._y = Math.round((vh - val.textHeight) / 2) - 2;
    if (!_root.HAG_COUNTERS) { _root.HAG_COUNTERS = new Array(); }
    var crec = new Object();
    crec.val = val; crec.i = op.pageIdx; crec.j = op.optIdx;
