@@ -39,6 +39,7 @@ std::atomic_bool g_corpseFeedingEnabled{true};
 std::atomic_int g_animationMode{0};
 std::atomic_int g_feedHotkey{'V'};
 std::atomic_int g_bloodExtract{0};
+std::atomic_int g_permanentHealthBonusAppliedLevel{0};
 
 constexpr const char* kConfigName = "HagVampire";
 constexpr const char* kFedCorpseSet = "fed_corpses_v2";
@@ -52,6 +53,9 @@ constexpr int kBloodStrengthMaxExtract = 84000;
 constexpr int kBloodStrengthLateExtract = kBloodStrengthMaxExtract - kBloodStrengthLevel50Extract;
 constexpr int kBloodScentMinLevel = 1;
 constexpr int kFreshBloodMinLevel = 1;
+constexpr int kStalkerLevel = 10;
+constexpr float kStalkerPermanentHealthBonus = 20.0f;
+constexpr float kStalkerFreshBloodSpeedBonus = 5.0f;
 constexpr std::uint32_t kFormFlagDeleted = 1u << 5;
 constexpr std::uint32_t kFormFlagDisabled = 1u << 11;
 constexpr std::uint8_t kFormTypeActorCharacter = 0x3E;
@@ -89,6 +93,7 @@ struct FreshBloodState {
     bool active = false;
     float magickaRateBonus = 0.0f;
     float staminaRateBonus = 0.0f;
+    float speedMultBonus = 0.0f;
 };
 
 struct FreshBloodTimerContext {
@@ -128,6 +133,7 @@ std::uintptr_t SkyrimBase() {
 
 void* GetProcessListsGuarded() noexcept;
 void ConfigSetInt(const char* key, int value);
+void ApplyUnlockedRankRewards(const char* reason);
 
 int BloodStrengthTotalExtractForLevel(int level) {
     level = std::clamp(level, kBloodStrengthMinLevel, kBloodStrengthMaxLevel);
@@ -195,6 +201,7 @@ void AwardBloodExtract(std::uint16_t corpseLevel, std::uint32_t corpseFormID) {
                  nextLevel,
                  VampireRankNameForLevel(nextLevel));
     }
+    ApplyUnlockedRankRewards(nextLevel > previousLevel ? "bloodstrength level up" : "bloodstrength feed");
 }
 
 bool IsPlayerVampire() {
@@ -250,13 +257,15 @@ void LoadConfig() {
     g_animationMode.store(ConfigGetInt("animation_mode", 0, 0, 2));
     g_feedHotkey.store(ConfigGetInt("feed_hotkey", 'V', 1, 255));
     g_bloodExtract.store(ConfigGetInt("blood_extract", 0, 0, kBloodStrengthMaxExtract));
-    HAG_INFO("config loaded: enable_corpse_feeding={} animation_mode={} feed_hotkey={:#x} blood_extract={} level={} rank={}",
+    g_permanentHealthBonusAppliedLevel.store(ConfigGetInt("permanent_health_bonus_applied_level", 0, 0, kBloodStrengthMaxLevel));
+    HAG_INFO("config loaded: enable_corpse_feeding={} animation_mode={} feed_hotkey={:#x} blood_extract={} level={} rank={} permanentHealthBonusAppliedLevel={}",
              g_corpseFeedingEnabled.load(),
              g_animationMode.load(),
              g_feedHotkey.load(),
              g_bloodExtract.load(),
              BloodStrengthLevelForExtract(g_bloodExtract.load()),
-             VampireRankNameForLevel(BloodStrengthLevelForExtract(g_bloodExtract.load())));
+             VampireRankNameForLevel(BloodStrengthLevelForExtract(g_bloodExtract.load())),
+             g_permanentHealthBonusAppliedLevel.load());
 }
 
 void PushConfigToUI() {
@@ -458,6 +467,37 @@ bool GetActorValueGuarded(void* actor, std::uint32_t actorValue, float* out) noe
     }
 }
 
+bool GetBaseActorValueGuarded(void* actor, std::uint32_t actorValue, float* out) noexcept {
+    if (out) *out = 0.0f;
+    if (!actor || !out) return false;
+    __try {
+        auto* avOwner = static_cast<std::uint8_t*>(actor) + game::actor::ActorValueOwnerOffset;
+        auto** vtbl = *reinterpret_cast<void***>(avOwner);
+        using GetBaseActorValueFn = float (*)(void*, std::uint32_t);
+        auto getBaseActorValue = reinterpret_cast<GetBaseActorValueFn>(
+            vtbl[game::actor::AVOwner_GetBaseActorValue]);
+        *out = getBaseActorValue(avOwner, actorValue);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool SetBaseActorValueGuarded(void* actor, std::uint32_t actorValue, float value) noexcept {
+    if (!actor) return false;
+    __try {
+        auto* avOwner = static_cast<std::uint8_t*>(actor) + game::actor::ActorValueOwnerOffset;
+        auto** vtbl = *reinterpret_cast<void***>(avOwner);
+        using SetBaseActorValueFn = void (*)(void*, std::uint32_t, float);
+        auto setBaseActorValue = reinterpret_cast<SetBaseActorValueFn>(
+            vtbl[game::actor::AVOwner_SetBaseActorValue]);
+        setBaseActorValue(avOwner, actorValue, value);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 bool SetActorValueGuarded(void* actor, std::uint32_t actorValue, float value) noexcept {
     if (!actor) return false;
     __try {
@@ -497,6 +537,64 @@ bool ChangeActorValueByDeltaGuarded(void* actor, std::uint32_t actorValue, float
     return SetActorValueGuarded(actor, actorValue, current + delta);
 }
 
+bool ApplyPermanentHealthBonus(void* player, float amount, const char* label) {
+    if (!player || amount <= 0.0f) return false;
+
+    float baseHealth = 0.0f;
+    if (!GetBaseActorValueGuarded(player, game::actor::AV_Health, &baseHealth)) {
+        HAG_WARN("{} skipped: could not read player base health", label ? label : "permanent health bonus");
+        return false;
+    }
+
+    const float nextBaseHealth = baseHealth + amount;
+    if (!SetBaseActorValueGuarded(player, game::actor::AV_Health, nextBaseHealth)) {
+        HAG_WARN("{} skipped: could not set player base health {} -> {}",
+                 label ? label : "permanent health bonus",
+                 baseHealth,
+                 nextBaseHealth);
+        return false;
+    }
+
+    HAG_INFO("{} applied: baseHealth {} -> {} (+{})",
+             label ? label : "permanent health bonus",
+             baseHealth,
+             nextBaseHealth,
+             amount);
+    return true;
+}
+
+void ApplyUnlockedRankRewards(const char* reason) {
+    const int level = CurrentBloodStrengthLevel();
+    int appliedLevel = g_permanentHealthBonusAppliedLevel.load();
+    if (level < kStalkerLevel || appliedLevel >= kStalkerLevel) {
+        return;
+    }
+    if (!IsPlayerVampire()) {
+        HAG_INFO("Stalker permanent health reward deferred ({}): player is not currently a vampire",
+                 reason ? reason : "unspecified");
+        return;
+    }
+
+    void* player = GetPlayerActorGuarded();
+    if (!player) {
+        HAG_WARN("Stalker permanent health reward deferred ({}): player actor unavailable",
+                 reason ? reason : "unspecified");
+        return;
+    }
+
+    if (!ApplyPermanentHealthBonus(player, kStalkerPermanentHealthBonus, "Stalker permanent health")) {
+        return;
+    }
+
+    appliedLevel = kStalkerLevel;
+    g_permanentHealthBonusAppliedLevel.store(appliedLevel);
+    ConfigSetInt("permanent_health_bonus_applied_level", appliedLevel);
+    HAG_INFO("rank reward recorded: permanentHealthBonusAppliedLevel={} ({}) reason={}",
+             appliedLevel,
+             VampireRankNameForLevel(appliedLevel),
+             reason ? reason : "unspecified");
+}
+
 bool RemoveFreshBloodBonusesLocked(void* player) {
     if (!g_freshBlood.active) return true;
 
@@ -506,6 +604,9 @@ bool RemoveFreshBloodBonusesLocked(void* player) {
     }
     if (g_freshBlood.staminaRateBonus != 0.0f) {
         ok = ChangeActorValueByDeltaGuarded(player, game::actor::AV_StaminaRate, -g_freshBlood.staminaRateBonus) && ok;
+    }
+    if (g_freshBlood.speedMultBonus != 0.0f) {
+        ok = ChangeActorValueByDeltaGuarded(player, game::actor::AV_SpeedMult, -g_freshBlood.speedMultBonus) && ok;
     }
 
     g_freshBlood = {};
@@ -597,6 +698,7 @@ void ApplyFreshBloodBuff(void* player, std::uint32_t sourceFormID) {
 
     const float magickaBonus = std::max(std::fabs(magickaRate) * kFreshBloodBonusFraction, kFreshBloodMinBonus);
     const float staminaBonus = std::max(std::fabs(staminaRate) * kFreshBloodBonusFraction, kFreshBloodMinBonus);
+    const float speedBonus = HasVampireBonusLevel(kStalkerLevel) ? kStalkerFreshBloodSpeedBonus : 0.0f;
 
     if (!ChangeActorValueByDeltaGuarded(player, game::actor::AV_MagickaRate, magickaBonus)) {
         HAG_WARN("Fresh Blood skipped: could not apply magicka regen bonus");
@@ -607,11 +709,19 @@ void ApplyFreshBloodBuff(void* player, std::uint32_t sourceFormID) {
         HAG_WARN("Fresh Blood skipped: could not apply stamina regen bonus");
         return;
     }
+    if (speedBonus != 0.0f &&
+        !ChangeActorValueByDeltaGuarded(player, game::actor::AV_SpeedMult, speedBonus)) {
+        ChangeActorValueByDeltaGuarded(player, game::actor::AV_StaminaRate, -staminaBonus);
+        ChangeActorValueByDeltaGuarded(player, game::actor::AV_MagickaRate, -magickaBonus);
+        HAG_WARN("Fresh Blood skipped: could not apply Stalker speed bonus");
+        return;
+    }
 
     const auto generation = g_freshBloodGeneration.fetch_add(1) + 1;
     g_freshBlood.active = true;
     g_freshBlood.magickaRateBonus = magickaBonus;
     g_freshBlood.staminaRateBonus = staminaBonus;
+    g_freshBlood.speedMultBonus = speedBonus;
 
     if (!ScheduleFreshBloodRevert(generation)) {
         RemoveFreshBloodBonusesLocked(player);
@@ -619,12 +729,15 @@ void ApplyFreshBloodBuff(void* player, std::uint32_t sourceFormID) {
         return;
     }
 
-    HAG_INFO("Fresh Blood applied: sourceForm={:#x} magickaRate +{} staminaRate +{} durationMs={} generation={}",
+    HAG_INFO("Fresh Blood applied: sourceForm={:#x} magickaRate +{} staminaRate +{} speedMult +{} durationMs={} generation={} level={} rank={}",
              sourceFormID,
              magickaBonus,
              staminaBonus,
+             speedBonus,
              kFreshBloodDurationMs,
-             generation);
+             generation,
+             CurrentBloodStrengthLevel(),
+             VampireRankNameForLevel(CurrentBloodStrengthLevel()));
 }
 
 bool ApplyEffectShaderGuarded(void* target, std::uint32_t shaderFormID, float duration, std::uintptr_t* resultOut) noexcept {
@@ -1478,6 +1591,7 @@ void Init(HagUI_PageHandle* page) {
 void OnSaveLoaded() {
     ReloadSaveConfig("SKSE save context ready");
     RegisterFeedHotkey();
+    ApplyUnlockedRankRewards("save loaded");
     QueueBloodScentRefresh("save loaded");
 }
 

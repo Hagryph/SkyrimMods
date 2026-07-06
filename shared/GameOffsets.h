@@ -222,6 +222,7 @@ inline constexpr std::size_t    ActorValueOwnerOffset = 0xB8;       // Actor -> 
 inline constexpr int AVOwner_GetActorValue          = 1;  // +0x08 current value (base+permanent+temporary+damage)
 inline constexpr int AVOwner_GetPermanentActorValue = 2;  // +0x10 max (base+permanent modifiers, excludes damage)
 inline constexpr int AVOwner_GetBaseActorValue      = 3;  // +0x18 base
+inline constexpr int AVOwner_SetBaseActorValue      = 4;  // +0x20 base value; CommonLib ActorValueOwner::SetBaseActorValue
 inline constexpr int AVOwner_SetActorValue          = 7;  // +0x38
 
 // ActorValue indices
@@ -230,6 +231,7 @@ inline constexpr std::uint32_t AV_Magicka = 0x19;
 inline constexpr std::uint32_t AV_Stamina = 0x1A;
 inline constexpr std::uint32_t AV_MagickaRate = 0x1C;
 inline constexpr std::uint32_t AV_StaminaRate = 0x1D;
+inline constexpr std::uint32_t AV_SpeedMult = 0x1E;
 inline constexpr std::uint32_t AV_Variable08 = 75;
 
 // Actor layout / process helpers.
