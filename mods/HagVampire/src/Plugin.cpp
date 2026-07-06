@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <mutex>
 #include <stdexcept>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -94,11 +95,22 @@ struct FreshBloodTimerContext {
     std::uint32_t generation = 0;
 };
 
+struct BloodScentEffect {
+    void* effect = nullptr;
+    void* controller = nullptr;
+};
+
+struct BSSpinLockRaw {
+    volatile LONG owningThread = 0;
+    volatile LONG lockCount = 0;
+};
+
 std::mutex g_freshBloodMutex;
 FreshBloodState g_freshBlood{};
 std::atomic<std::uint32_t> g_freshBloodGeneration{0};
 std::mutex g_bloodScentMutex;
 std::unordered_set<std::uint32_t> g_bloodScentActiveForms;
+std::unordered_map<std::uint32_t, BloodScentEffect> g_bloodScentEffects;
 
 constexpr VampireRank kVampireRanks[] = {
     {"Fledgling", 1},
@@ -117,6 +129,7 @@ std::uintptr_t SkyrimBase() {
     return reinterpret_cast<std::uintptr_t>(::GetModuleHandleW(nullptr));
 }
 
+void* GetProcessListsGuarded() noexcept;
 void ConfigSetInt(const char* key, int value);
 
 int BloodStrengthTotalExtractForLevel(int level) {
@@ -626,7 +639,8 @@ bool QueueConsoleCommand(const char* command) {
     return queued;
 }
 
-bool ApplyEffectShaderGuarded(void* target, std::uint32_t shaderFormID, float duration) noexcept {
+bool ApplyEffectShaderGuarded(void* target, std::uint32_t shaderFormID, float duration, void** effectOut) noexcept {
+    if (effectOut) *effectOut = nullptr;
     if (!target || shaderFormID == 0) return false;
 
     void* shader = LookupFormByIDGuarded(shaderFormID);
@@ -648,6 +662,7 @@ bool ApplyEffectShaderGuarded(void* target, std::uint32_t shaderFormID, float du
         auto applyEffectShader = reinterpret_cast<ApplyEffectShaderFn>(
             SkyrimBase() + game::refr::ApplyEffectShader);
         void* effect = applyEffectShader(target, shader, duration, nullptr, false, false, nullptr, false);
+        if (effectOut) *effectOut = effect;
         return effect != nullptr;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return false;
@@ -663,7 +678,8 @@ bool ApplyBloodScentShader(std::uint32_t formID) {
         return false;
     }
 
-    const bool ok = ApplyEffectShaderGuarded(target, kBloodScentEffectShader, kBloodScentShaderDuration);
+    void* effect = nullptr;
+    const bool ok = ApplyEffectShaderGuarded(target, kBloodScentEffectShader, kBloodScentShaderDuration, &effect);
     if (!ok) {
         HAG_WARN("Blood Scent shader apply failed: target={:#x} shader={:#x}",
                  formID,
@@ -671,10 +687,181 @@ bool ApplyBloodScentShader(std::uint32_t formID) {
         return false;
     }
 
-    HAG_INFO("Blood Scent shader applied: target={:#x} shader={:#x}",
+    const BloodScentEffect tracked{
+        effect,
+        ReadPtrGuarded(effect, game::effect::ReferenceEffect_Controller)
+    };
+    {
+        std::lock_guard lock(g_bloodScentMutex);
+        g_bloodScentEffects[formID] = tracked;
+    }
+
+    HAG_INFO("Blood Scent shader applied: target={:#x} shader={:#x} effect={} controller={}",
              formID,
-             kBloodScentEffectShader);
+             kBloodScentEffectShader,
+             tracked.effect,
+             tracked.controller);
     return true;
+}
+
+void LockBSSpinLock(BSSpinLockRaw* lock) noexcept {
+    if (!lock) return;
+    const auto threadID = static_cast<LONG>(::GetCurrentThreadId());
+    if (lock->owningThread == threadID) {
+        ::InterlockedIncrement(&lock->lockCount);
+        return;
+    }
+
+    std::uint32_t spins = 0;
+    while (::InterlockedCompareExchange(&lock->lockCount, 1, 0) != 0) {
+        if (++spins < 10000) {
+            YieldProcessor();
+        } else {
+            ::Sleep(spins < 20000 ? 0 : 1);
+        }
+    }
+    lock->owningThread = threadID;
+}
+
+void UnlockBSSpinLock(BSSpinLockRaw* lock) noexcept {
+    if (!lock) return;
+    const auto threadID = static_cast<LONG>(::GetCurrentThreadId());
+    if (lock->owningThread != threadID) return;
+
+    if (lock->lockCount == 1) {
+        lock->owningThread = 0;
+        ::MemoryBarrier();
+        ::InterlockedCompareExchange(&lock->lockCount, 0, 1);
+    } else {
+        ::InterlockedDecrement(&lock->lockCount);
+    }
+}
+
+bool DecNiRefObjectGuarded(void* object) noexcept {
+    if (!object) return false;
+    __try {
+        auto* refCount = reinterpret_cast<volatile LONG*>(
+            static_cast<std::uint8_t*>(object) + game::effect::NiRefObject_RefCount);
+        const LONG remaining = ::InterlockedDecrement(refCount);
+        if (remaining == 0) {
+            auto** vtbl = *reinterpret_cast<void***>(object);
+            using DeleteThisFn = void (*)(void*);
+            auto deleteThis = reinterpret_cast<DeleteThisFn>(
+                vtbl[game::effect::NiRefObject_VSlot_DeleteThis]);
+            deleteThis(object);
+        }
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool ReadBSTPointerArrayHeaderGuarded(void* array, void*** data, std::uint32_t* size) noexcept {
+    if (data) *data = nullptr;
+    if (size) *size = 0;
+    if (!array || !data || !size) return false;
+
+    __try {
+        auto* bytes = static_cast<std::uint8_t*>(array);
+        auto* rawData = *reinterpret_cast<void***>(bytes + game::process::BSTArray_Data);
+        const auto capacity = *reinterpret_cast<std::uint32_t*>(bytes + game::process::BSTArray_Capacity);
+        const auto rawSize = *reinterpret_cast<std::uint32_t*>(bytes + game::process::BSTArray_Size);
+        if (rawSize > capacity || rawSize > game::process::MaxMagicEffects) return false;
+        *data = rawData;
+        *size = rawSize;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+std::uint32_t ClearTrackedMagicEffectsGuarded(void** effects,
+                                              std::uint32_t size,
+                                              const BloodScentEffect& tracked,
+                                              std::uint32_t* releaseFailures) noexcept {
+    if (releaseFailures) *releaseFailures = 0;
+    if (!effects || (!tracked.effect && !tracked.controller)) return 0;
+
+    __try {
+        std::uint32_t removed = 0;
+        std::uint32_t failedReleases = 0;
+        for (std::uint32_t i = 0; i < size; ++i) {
+            void* effect = effects[i];
+            if (!effect) continue;
+            const bool matchByEffect = tracked.effect && effect == tracked.effect;
+            const bool matchByController = tracked.controller &&
+                ReadPtrGuarded(effect, game::effect::ReferenceEffect_Controller) == tracked.controller;
+            if (matchByEffect || matchByController) {
+                effects[i] = nullptr;
+                if (!DecNiRefObjectGuarded(effect)) {
+                    ++failedReleases;
+                }
+                ++removed;
+            }
+        }
+        if (releaseFailures) *releaseFailures = failedReleases;
+        return removed;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return UINT32_MAX;
+    }
+}
+
+bool ClearBloodScentShaderNative(std::uint32_t formID) {
+    BloodScentEffect tracked{};
+    {
+        std::lock_guard lock(g_bloodScentMutex);
+        const auto it = g_bloodScentEffects.find(formID);
+        if (it == g_bloodScentEffects.end()) {
+            HAG_WARN("Blood Scent native clear had no tracked effect: target={:#x}", formID);
+            return false;
+        }
+        tracked = it->second;
+        g_bloodScentEffects.erase(it);
+    }
+
+    if (!tracked.effect && !tracked.controller) {
+        HAG_WARN("Blood Scent native clear had empty tracked effect: target={:#x}", formID);
+        return false;
+    }
+
+    void* processLists = GetProcessListsGuarded();
+    if (!processLists) {
+        HAG_WARN("Blood Scent native clear failed: ProcessLists unavailable target={:#x}", formID);
+        return false;
+    }
+
+    auto* base = static_cast<std::uint8_t*>(processLists);
+    void** effects = nullptr;
+    std::uint32_t size = 0;
+    if (!ReadBSTPointerArrayHeaderGuarded(base + game::process::ProcessLists_MagicEffects, &effects, &size) ||
+        !effects) {
+        HAG_WARN("Blood Scent native clear failed: magic effects array unavailable target={:#x}", formID);
+        return false;
+    }
+
+    auto* lock = reinterpret_cast<BSSpinLockRaw*>(base + game::process::ProcessLists_MagicEffectsLock);
+    LockBSSpinLock(lock);
+    std::uint32_t releaseFailures = 0;
+    const auto removed = ClearTrackedMagicEffectsGuarded(effects, size, tracked, &releaseFailures);
+    UnlockBSSpinLock(lock);
+
+    if (removed == UINT32_MAX) {
+        HAG_WARN("Blood Scent native clear faulted while scanning effects: target={:#x}", formID);
+        return false;
+    }
+    if (releaseFailures != 0) {
+        HAG_WARN("Blood Scent native clear removed {} effect(s) but {} refcount release(s) failed: target={:#x}",
+                 removed,
+                 releaseFailures,
+                 formID);
+    }
+
+    HAG_INFO("Blood Scent native clear: target={:#x} removed={} trackedEffect={} trackedController={}",
+             formID,
+             removed,
+             tracked.effect,
+             tracked.controller);
+    return removed != 0;
 }
 
 bool QueueTargetEffectShaderStopCommand(std::uint32_t formID) {
@@ -850,7 +1037,9 @@ void ApplyBloodScentSet(const std::unordered_set<std::uint32_t>& desired, const 
         ApplyBloodScentShader(formID);
     }
     for (const auto formID : toClear) {
-        QueueTargetEffectShaderStopCommand(formID);
+        if (!ClearBloodScentShaderNative(formID)) {
+            QueueTargetEffectShaderStopCommand(formID);
+        }
     }
 
     if (!toApply.empty() || !toClear.empty()) {

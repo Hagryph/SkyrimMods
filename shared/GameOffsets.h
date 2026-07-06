@@ -289,9 +289,20 @@ inline constexpr std::size_t ProcessLists_HighActorHandles = 0x30;
 inline constexpr std::size_t ProcessLists_LowActorHandles = 0x48;
 inline constexpr std::size_t ProcessLists_MiddleHighActorHandles = 0x60;
 inline constexpr std::size_t ProcessLists_MiddleLowActorHandles = 0x78;
+inline constexpr std::size_t ProcessLists_MagicEffects = 0x108;
+inline constexpr std::size_t ProcessLists_MagicEffectsLock = 0x120;
 inline constexpr std::uint32_t MaxActorHandlesPerList = 4096;
+inline constexpr std::uint32_t MaxMagicEffects = 16384;
 
 }  // namespace process
+
+namespace effect {
+
+inline constexpr std::size_t ReferenceEffect_Controller = 0x30;  // RE::ReferenceEffect::controller
+inline constexpr std::size_t NiRefObject_RefCount = 0x08;        // RE::NiRefObject::_refCount
+inline constexpr int NiRefObject_VSlot_DeleteThis = 1;           // RE::NiRefObject::DeleteThis()
+
+}  // namespace effect
 
 namespace crosshair {
 
