@@ -59,6 +59,7 @@ constexpr int kStalkerLevel = 10;
 constexpr float kStalkerPermanentHealthBonus = 20.0f;
 constexpr float kStalkerFreshBloodSpeedBonus = 5.0f;
 constexpr float kStalkerFreshBloodLifestealFraction = 0.05f;
+constexpr int kLifestealHealScale = 1'000'000;
 constexpr std::uint32_t kFormFlagDeleted = 1u << 5;
 constexpr std::uint32_t kFormFlagDisabled = 1u << 11;
 constexpr std::uint8_t kFormTypeActorCharacter = 0x3E;
@@ -120,6 +121,8 @@ BloodScentTargetMap g_bloodScentActiveTargets;
 using ModActorValueInternalFn = void (*)(void*, std::int32_t, std::uint32_t, float, void*);
 ModActorValueInternalFn g_origModActorValueInternal = nullptr;
 std::atomic_bool g_damageHookInstalled{false};
+std::atomic_int g_lifestealHealRemainderMicro{0};
+std::mutex g_lifestealAccumulatorMutex;
 thread_local bool g_lifestealHealInProgress = false;
 
 constexpr VampireRank kVampireRanks[] = {
@@ -266,14 +269,16 @@ void LoadConfig() {
     g_feedHotkey.store(ConfigGetInt("feed_hotkey", 'V', 1, 255));
     g_bloodExtract.store(ConfigGetInt("blood_extract", 0, 0, kBloodStrengthMaxExtract));
     g_permanentHealthBonusAppliedLevel.store(ConfigGetInt("permanent_health_bonus_applied_level", 0, 0, kBloodStrengthMaxLevel));
-    HAG_INFO("config loaded: enable_corpse_feeding={} animation_mode={} feed_hotkey={:#x} blood_extract={} level={} rank={} permanentHealthBonusAppliedLevel={}",
+    g_lifestealHealRemainderMicro.store(ConfigGetInt("lifesteal_heal_remainder_micro", 0, 0, kLifestealHealScale - 1));
+    HAG_INFO("config loaded: enable_corpse_feeding={} animation_mode={} feed_hotkey={:#x} blood_extract={} level={} rank={} permanentHealthBonusAppliedLevel={} lifestealRemainder={}",
              g_corpseFeedingEnabled.load(),
              g_animationMode.load(),
              g_feedHotkey.load(),
              g_bloodExtract.load(),
              BloodStrengthLevelForExtract(g_bloodExtract.load()),
              VampireRankNameForLevel(BloodStrengthLevelForExtract(g_bloodExtract.load())),
-             g_permanentHealthBonusAppliedLevel.load());
+             g_permanentHealthBonusAppliedLevel.load(),
+             static_cast<double>(g_lifestealHealRemainderMicro.load()) / static_cast<double>(kLifestealHealScale));
 }
 
 void PushConfigToUI() {
@@ -569,11 +574,33 @@ float CurrentFreshBloodLifestealFraction() {
 bool HealPlayerFromLifesteal(void* player, void* target, float appliedDamage, float fraction) {
     if (!player || !target || appliedDamage <= 0.0f || fraction <= 0.0f) return false;
 
+    const float requestedHeal = appliedDamage * fraction;
+    if (!std::isfinite(requestedHeal) || requestedHeal <= 0.0f) return false;
+
+    const auto requestedMicro = static_cast<std::int64_t>(
+        std::llround(static_cast<double>(requestedHeal) * static_cast<double>(kLifestealHealScale)));
+    if (requestedMicro <= 0) return false;
+
+    int previousRemainderMicro = 0;
+    int nextRemainderMicro = 0;
+    int wholeHeal = 0;
+    {
+        std::lock_guard lock(g_lifestealAccumulatorMutex);
+        previousRemainderMicro = std::clamp(g_lifestealHealRemainderMicro.load(), 0, kLifestealHealScale - 1);
+        const auto totalMicro = static_cast<std::int64_t>(previousRemainderMicro) + requestedMicro;
+        wholeHeal = static_cast<int>(totalMicro / kLifestealHealScale);
+        nextRemainderMicro = static_cast<int>(totalMicro % kLifestealHealScale);
+        g_lifestealHealRemainderMicro.store(nextRemainderMicro);
+        ConfigSetInt("lifesteal_heal_remainder_micro", nextRemainderMicro);
+    }
+
+    if (wholeHeal <= 0) return false;
+
     float playerHealth = 0.0f;
     float playerMaxHealth = 0.0f;
     if (!GetActorValueGuarded(player, game::actor::AV_Health, &playerHealth) ||
         !GetPermanentActorValueGuarded(player, game::actor::AV_Health, &playerMaxHealth)) {
-        HAG_WARN("Fresh Blood lifesteal skipped: could not read player health");
+        HAG_WARN("Fresh Blood lifesteal saved fractional remainder but skipped whole heal: could not read player health");
         return false;
     }
 
@@ -581,8 +608,7 @@ bool HealPlayerFromLifesteal(void* player, void* target, float appliedDamage, fl
         return false;
     }
 
-    const float requestedHeal = appliedDamage * fraction;
-    const float appliedHeal = std::min(requestedHeal, playerMaxHealth - playerHealth);
+    const float appliedHeal = std::min(static_cast<float>(wholeHeal), playerMaxHealth - playerHealth);
     if (appliedHeal <= 0.0f) return false;
 
     g_lifestealHealInProgress = true;
@@ -590,16 +616,20 @@ bool HealPlayerFromLifesteal(void* player, void* target, float appliedDamage, fl
     g_lifestealHealInProgress = false;
 
     if (!healed) {
-        HAG_WARN("Fresh Blood lifesteal skipped: could not write player health");
+        HAG_WARN("Fresh Blood lifesteal saved fractional remainder but skipped whole heal: could not write player health");
         return false;
     }
 
     const std::uint32_t targetFormID = ReadU32Guarded(target, 0x14);
-    HAG_INFO("Fresh Blood lifesteal: target={:#x} damage={} heal={} fraction={}",
+    HAG_INFO("Fresh Blood lifesteal: target={:#x} damage={} requestedHeal={} wholeHeal={} appliedHeal={} fraction={} savedRemainder={} previousRemainder={}",
              targetFormID,
              appliedDamage,
+             requestedHeal,
+             wholeHeal,
              appliedHeal,
-             fraction);
+             fraction,
+             static_cast<double>(nextRemainderMicro) / static_cast<double>(kLifestealHealScale),
+             static_cast<double>(previousRemainderMicro) / static_cast<double>(kLifestealHealScale));
     return true;
 }
 
