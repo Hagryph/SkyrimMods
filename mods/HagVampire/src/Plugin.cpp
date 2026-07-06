@@ -38,9 +38,11 @@ enum class VampireAction {
 std::atomic_bool g_pageActionConsumed{false};
 VampireAction g_actionAtPageBuild = VampireAction::Transform;
 std::atomic_bool g_corpseFeedingEnabled{true};
+std::atomic_bool g_satiationSystemEnabled{true};
 std::atomic_int g_animationMode{0};
 std::atomic_int g_feedHotkey{'V'};
 std::atomic_int g_bloodExtract{0};
+std::atomic_int g_satiation{0};
 std::atomic_int g_permanentHealthBonusAppliedLevel{0};
 
 constexpr const char* kConfigName = "HagVampire";
@@ -53,6 +55,9 @@ constexpr int kBloodStrengthMaxLevel = 100;
 constexpr int kBloodStrengthLevel50Extract = 5369;
 constexpr int kBloodStrengthMaxExtract = 84000;
 constexpr int kBloodStrengthLateExtract = kBloodStrengthMaxExtract - kBloodStrengthLevel50Extract;
+constexpr int kSatiationMax = 100;
+constexpr int kLiveBloodSatiationGain = 35;
+constexpr int kCorpseBloodSatiationGain = 20;
 constexpr int kBloodScentMinLevel = 1;
 constexpr int kFreshBloodMinLevel = 1;
 constexpr int kStalkerLevel = 10;
@@ -213,6 +218,31 @@ void SaveBloodExtract(int extract) {
     ConfigSetInt("blood_extract", std::clamp(extract, 0, kBloodStrengthMaxExtract));
 }
 
+void SaveSatiation(int satiation) {
+    ConfigSetInt("satiation", std::clamp(satiation, 0, kSatiationMax));
+}
+
+// Blood-only meter: food, drink, potions, and alchemy effects must not call this.
+void AwardSatiationFromBloodFeed(std::uint32_t sourceFormID, int amount, const char* source) {
+    if (!g_satiationSystemEnabled.load()) {
+        HAG_INFO("satiation skipped: system disabled source={} form={:#x}",
+                 source ? source : "blood",
+                 sourceFormID);
+        return;
+    }
+
+    const int previous = std::clamp(g_satiation.load(), 0, kSatiationMax);
+    const int next = std::clamp(previous + amount, 0, kSatiationMax);
+    g_satiation.store(next);
+    SaveSatiation(next);
+    HAG_INFO("satiation blood feed awarded: source={} form={:#x} amount={} total={}/{}",
+             source ? source : "blood",
+             sourceFormID,
+             amount,
+             next,
+             kSatiationMax);
+}
+
 void AwardBloodExtract(std::uint16_t targetLevel, std::uint32_t sourceFormID) {
     const int feedExtract = BloodExtractForCorpseLevel(targetLevel);
     const int previousExtract = std::clamp(g_bloodExtract.load(), 0, kBloodStrengthMaxExtract);
@@ -293,16 +323,21 @@ void ConfigSetInt(const char* key, int value) {
 
 void LoadConfig() {
     g_corpseFeedingEnabled.store(ConfigGetBool("enable_corpse_feeding", true));
+    g_satiationSystemEnabled.store(ConfigGetBool("enable_satiation_system", true));
     g_animationMode.store(ConfigGetInt("animation_mode", 0, 0, 2));
     g_feedHotkey.store(ConfigGetInt("feed_hotkey", 'V', 1, 255));
     g_bloodExtract.store(ConfigGetInt("blood_extract", 0, 0, kBloodStrengthMaxExtract));
+    g_satiation.store(ConfigGetInt("satiation", 0, 0, kSatiationMax));
     g_permanentHealthBonusAppliedLevel.store(ConfigGetInt("permanent_health_bonus_applied_level", 0, 0, kBloodStrengthMaxLevel));
     g_lifestealHealRemainderMicro.store(ConfigGetInt("lifesteal_heal_remainder_micro", 0, 0, kLifestealHealScale - 1));
-    HAG_INFO("config loaded: enable_corpse_feeding={} animation_mode={} feed_hotkey={:#x} blood_extract={} level={} rank={} permanentHealthBonusAppliedLevel={} lifestealRemainder={}",
+    HAG_INFO("config loaded: enable_corpse_feeding={} enable_satiation_system={} animation_mode={} feed_hotkey={:#x} blood_extract={} satiation={}/{} level={} rank={} permanentHealthBonusAppliedLevel={} lifestealRemainder={}",
              g_corpseFeedingEnabled.load(),
+             g_satiationSystemEnabled.load(),
              g_animationMode.load(),
              g_feedHotkey.load(),
              g_bloodExtract.load(),
+             g_satiation.load(),
+             kSatiationMax,
              BloodStrengthLevelForExtract(g_bloodExtract.load()),
              VampireRankNameForLevel(BloodStrengthLevelForExtract(g_bloodExtract.load())),
              g_permanentHealthBonusAppliedLevel.load(),
@@ -315,6 +350,11 @@ void PushConfigToUI() {
         g_uiApi->SetToggleState(g_page,
                                 "enable_corpse_feeding",
                                 g_corpseFeedingEnabled.load(),
+                                true,
+                                "");
+        g_uiApi->SetToggleState(g_page,
+                                "enable_satiation_system",
+                                g_satiationSystemEnabled.load(),
                                 true,
                                 "");
     }
@@ -2243,6 +2283,7 @@ void RunNativeCorpseFeedTarget(void* player, const TargetInfo& target, int mode)
         return;
     }
     AwardBloodExtract(hasCorpseLevel ? corpseLevel : 1, target.formID);
+    AwardSatiationFromBloodFeed(target.formID, kCorpseBloodSatiationGain, "corpse");
     ApplyFreshBloodBuff(player, target.formID);
     RefreshBloodScentHighlights("after feed", false);
     const auto cleanupGeneration = g_feedCleanupGeneration.fetch_add(1) + 1;
@@ -2285,6 +2326,7 @@ void RunNativeSneakFeedTarget(void* player, const TargetInfo& target) {
     }
 
     AwardBloodExtract(hasTargetLevel ? targetLevel : 1, target.formID);
+    AwardSatiationFromBloodFeed(target.formID, kLiveBloodSatiationGain, "sneak");
     ApplyFreshBloodBuff(player, target.formID);
     const auto cleanupGeneration = g_feedCleanupGeneration.fetch_add(1) + 1;
     if (!ScheduleFeedCleanup(cleanupGeneration, target.formID)) {
@@ -2328,6 +2370,7 @@ void RunNativeSleepingFeedTarget(void* player, const TargetInfo& target) {
     }
 
     AwardBloodExtract(hasTargetLevel ? targetLevel : 1, target.formID);
+    AwardSatiationFromBloodFeed(target.formID, kLiveBloodSatiationGain, "sleeping");
     ApplyFreshBloodBuff(player, target.formID);
     const auto cleanupGeneration = g_feedCleanupGeneration.fetch_add(1) + 1;
     if (!ScheduleFeedCleanup(cleanupGeneration, target.formID)) {
@@ -2403,6 +2446,16 @@ void OnCorpseFeedingChanged(void*, HagUI_Value value) {
     HAG_INFO("enable_corpse_feeding -> {}", value.b);
 }
 
+void OnSatiationSystemChanged(void*, HagUI_Value value) {
+    if (value.type != HAGUI_VT_BOOL) return;
+    g_satiationSystemEnabled.store(value.b);
+    ConfigSetBool("enable_satiation_system", value.b);
+    HAG_INFO("enable_satiation_system -> {}", value.b);
+    if (g_uiApi && g_uiApi->Refresh) {
+        g_uiApi->Refresh();
+    }
+}
+
 void OnAnimationModeChanged(void*, HagUI_Value value) {
     int next = 0;
     if (value.type == HAGUI_VT_INT) {
@@ -2463,6 +2516,21 @@ const char* FeedingCounterText(void*) {
 const char* VampireRankText(void*) {
     const int level = BloodStrengthLevelForExtract(g_bloodExtract.load());
     return VampireRankNameForLevel(level);
+}
+
+HagUI_BarSample SatiationBarSample(void*) {
+    static thread_local char text[64];
+    if (!g_satiationSystemEnabled.load()) {
+        std::snprintf(text, sizeof(text), "Disabled");
+        return {0.0f, text};
+    }
+
+    const int satiation = std::clamp(g_satiation.load(), 0, kSatiationMax);
+    std::snprintf(text, sizeof(text), "%d / %d", satiation, kSatiationMax);
+    return {
+        static_cast<float>(satiation) / static_cast<float>(kSatiationMax),
+        text,
+    };
 }
 
 void OnFeedHotkeyChanged(void*, HagUI_Value value) {
@@ -2570,9 +2638,9 @@ void Init(HagUI_PageHandle* page) {
         throw std::runtime_error("HagVampire requires HagLoader HagUI API/page");
     }
 
-    if (!g_uiApi->AddDynamicButton || !g_uiApi->SetIntState || !g_uiApi->AddHotkey ||
+    if (!g_uiApi->AddDynamicButton || !g_uiApi->AddProgressBar || !g_uiApi->SetIntState || !g_uiApi->AddHotkey ||
         !g_uiApi->AddCounter || !g_uiApi->SetGridCell || !g_uiApi->SetDoublePage) {
-        throw std::runtime_error("HagVampire requires HagUI dynamic button/state/hotkey/counter/grid/double-page API");
+        throw std::runtime_error("HagVampire requires HagUI dynamic button/progress/state/hotkey/counter/grid/double-page API");
     }
 
     g_uiApi->SetDoublePage(page, true);
@@ -2587,6 +2655,18 @@ void Init(HagUI_PageHandle* page) {
                         "Vampire rank",
                         &VampireRankText,
                         nullptr);
+    g_uiApi->AddToggle(page,
+                       "enable_satiation_system",
+                       "Enable satiation system",
+                       g_satiationSystemEnabled.load(),
+                       &OnSatiationSystemChanged,
+                       nullptr);
+    g_uiApi->AddProgressBar(page,
+                            "satiation_bar",
+                            "Satiation",
+                            0x8B1E1E,
+                            &SatiationBarSample,
+                            nullptr);
     g_uiApi->AddToggle(page,
                        "enable_corpse_feeding",
                        "Enable corpse feeding",
@@ -2614,10 +2694,13 @@ void Init(HagUI_PageHandle* page) {
                         &OnAnimationModeChanged,
                         nullptr);
     g_uiApi->SetGridCell(page, "vampire_action", 0, 0);
-    g_uiApi->SetGridCell(page, "vampire_rank", 0, 1);
-    g_uiApi->SetGridCell(page, "enable_corpse_feeding", 1, 0);
-    g_uiApi->SetGridCell(page, "feed_hotkey", 1, 1);
-    g_uiApi->SetGridCell(page, "feeding_counter", 1, 2);
+    g_uiApi->SetGridCell(page, "vampire_rank", 1, 0);
+    g_uiApi->SetGridCell(page, "enable_satiation_system", 0, 1);
+    g_uiApi->SetGridCell(page, "satiation_bar", 1, 1);
+    g_uiApi->SetGridCell(page, "enable_corpse_feeding", 0, 2);
+    g_uiApi->SetGridCell(page, "feed_hotkey", 1, 2);
+    g_uiApi->SetGridCell(page, "feeding_counter", 0, 3);
+    g_uiApi->SetGridCell(page, "animation_mode", 1, 3);
     PushConfigToUI();
     g_uiApi->Refresh();
 
