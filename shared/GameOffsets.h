@@ -245,8 +245,24 @@ inline constexpr std::int32_t   AVModifier_Damage = 2;
 inline constexpr std::size_t ActorProcessOffset = 0xF8;          // Actor -> AIProcess*
 inline constexpr std::uintptr_t AIProcess_SetupSpecialIdle = 0x6DDE70;  // Address Library 1.6.1170 id 39256
 inline constexpr std::uint32_t DefaultObject_ActionIdle = 64;    // DEFAULT_OBJECT::kActionIdle
+inline constexpr std::size_t ActorStateOffset = 0xC0;            // CommonLib Actor::AsActorState() for 1.6.1170
+inline constexpr std::size_t ActorState_State1 = ActorStateOffset + 0x08;  // ActorState::actorState1
+inline constexpr std::size_t ActorState_State2 = ActorStateOffset + 0x0C;  // ActorState::actorState2
+inline constexpr std::uint32_t ActorState1_SneakingMask = 1u << 9;
+inline constexpr int ActorState1_SitSleepShift = 14;
+inline constexpr std::uint32_t ActorState1_SitSleepMask = 0xFu << ActorState1_SitSleepShift;
+inline constexpr int ActorState1_LifeStateShift = 21;
+inline constexpr std::uint32_t ActorState1_LifeStateMask = 0xFu << ActorState1_LifeStateShift;
+inline constexpr int ActorState2_WeaponStateShift = 5;
+inline constexpr std::uint32_t ActorState2_WeaponStateMask = 0x7u << ActorState2_WeaponStateShift;
+
+// Papyrus Actor.HasLOS wrapper FUN_1409e8af0 calls this exact native helper:
+//   FUN_1409ba120(requester, target, bool* targetIsActorOut)
+// For sneak feed parity with Better Vampires we call it as target.HasLOS(player).
+inline constexpr std::uintptr_t Actor_HasLineOfSight = 0x9BA120;
 
 // Actor virtual slots from CommonLibSSE-NG headers, verified against Skyrim SE 1.6.1170 layout.
+inline constexpr int VSlot_IsChild = 0x05E;                      // bool TESObjectREFR/Actor::IsChild()
 inline constexpr int VSlot_IsDead = 0x099;                       // bool Actor::IsDead(bool notEssential)
 inline constexpr int VSlot_GetCannibal = 0x0BC;                  // bool Actor::GetCannibal()
 inline constexpr int VSlot_SetCannibal = 0x0BD;                  // void Actor::SetCannibal(bool)
@@ -254,6 +270,8 @@ inline constexpr int VSlot_GetVampireFeed = 0x0BE;               // bool Actor::
 inline constexpr int VSlot_SetVampireFeed = 0x0BF;               // void Actor::SetVampireFeed(bool)
 inline constexpr int VSlot_InitiateVampireFeedPackage = 0x0C0;   // live-victim package; Papyrus StartVampireFeed rejects dead targets before this
 inline constexpr int VSlot_InitiateCannibalPackage = 0x0C1;      // corpse-feed package; Papyrus Actor.StartCannibal routes here
+inline constexpr int VSlot_CalculateCachedOwnerIsUndead = 0x115; // bool Actor::CalculateCachedOwnerIsUndead()
+inline constexpr int VSlot_CalculateCachedOwnerIsNPC = 0x116;    // bool Actor::CalculateCachedOwnerIsNPC()
 
 }  // namespace actor
 

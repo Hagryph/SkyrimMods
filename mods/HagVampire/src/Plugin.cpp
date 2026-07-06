@@ -163,6 +163,7 @@ void ConfigSetInt(const char* key, int value);
 void ApplyUnlockedRankRewards(const char* reason);
 void QueueBloodScentGateRefresh(const char* reason);
 void TrackBloodScentCandidateFromActor(void* actor, const char* reason);
+bool GetActorValueGuarded(void* actor, std::uint32_t actorValue, float* out) noexcept;
 
 int BloodStrengthTotalExtractForLevel(int level) {
     level = std::clamp(level, kBloodStrengthMinLevel, kBloodStrengthMaxLevel);
@@ -207,8 +208,8 @@ void SaveBloodExtract(int extract) {
     ConfigSetInt("blood_extract", std::clamp(extract, 0, kBloodStrengthMaxExtract));
 }
 
-void AwardBloodExtract(std::uint16_t corpseLevel, std::uint32_t corpseFormID) {
-    const int feedExtract = BloodExtractForCorpseLevel(corpseLevel);
+void AwardBloodExtract(std::uint16_t targetLevel, std::uint32_t sourceFormID) {
+    const int feedExtract = BloodExtractForCorpseLevel(targetLevel);
     const int previousExtract = std::clamp(g_bloodExtract.load(), 0, kBloodStrengthMaxExtract);
     const int previousLevel = BloodStrengthLevelForExtract(previousExtract);
     const int nextExtract = std::min(kBloodStrengthMaxExtract, previousExtract + feedExtract);
@@ -216,9 +217,9 @@ void AwardBloodExtract(std::uint16_t corpseLevel, std::uint32_t corpseFormID) {
     g_bloodExtract.store(nextExtract);
     SaveBloodExtract(nextExtract);
 
-    HAG_INFO("bloodstrength feed awarded: form={:#x} corpseLevel={} bloodExtract={} totalBloodExtract={}/{} level={} rank={}",
-             corpseFormID,
-             corpseLevel,
+    HAG_INFO("bloodstrength feed awarded: form={:#x} targetLevel={} bloodExtract={} totalBloodExtract={}/{} level={} rank={}",
+             sourceFormID,
+             targetLevel,
              feedExtract,
              nextExtract,
              kBloodStrengthMaxExtract,
@@ -460,6 +461,123 @@ bool IsDeadGuarded(void* actor, bool* dead) noexcept {
     }
 }
 
+bool HasAIProcessGuarded(void* actor, bool* hasProcess) noexcept {
+    if (hasProcess) *hasProcess = false;
+    if (!actor || !hasProcess) return false;
+    __try {
+        *hasProcess = *reinterpret_cast<void**>(
+                          static_cast<std::uint8_t*>(actor) + game::actor::ActorProcessOffset) != nullptr;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool IsChildGuarded(void* actor, bool* isChild) noexcept {
+    if (isChild) *isChild = false;
+    if (!actor || !isChild) return false;
+    __try {
+        using IsChildFn = bool (*)(void*);
+        auto** vtbl = *reinterpret_cast<void***>(actor);
+        auto isChildFn = reinterpret_cast<IsChildFn>(vtbl[game::actor::VSlot_IsChild]);
+        *isChild = isChildFn(actor);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool CalculateCachedOwnerIsNPCGuarded(void* actor, bool* isNPC) noexcept {
+    if (isNPC) *isNPC = false;
+    if (!actor || !isNPC) return false;
+    __try {
+        using IsNPCFn = bool (*)(void*);
+        auto** vtbl = *reinterpret_cast<void***>(actor);
+        auto isNPCFn = reinterpret_cast<IsNPCFn>(vtbl[game::actor::VSlot_CalculateCachedOwnerIsNPC]);
+        *isNPC = isNPCFn(actor);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool CalculateCachedOwnerIsUndeadGuarded(void* actor, bool* isUndead) noexcept {
+    if (isUndead) *isUndead = false;
+    if (!actor || !isUndead) return false;
+    __try {
+        using IsUndeadFn = bool (*)(void*);
+        auto** vtbl = *reinterpret_cast<void***>(actor);
+        auto isUndeadFn = reinterpret_cast<IsUndeadFn>(vtbl[game::actor::VSlot_CalculateCachedOwnerIsUndead]);
+        *isUndead = isUndeadFn(actor);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool GetActorStateWordGuarded(void* actor, std::size_t offset, std::uint32_t* out) noexcept {
+    if (out) *out = 0;
+    if (!actor || !out) return false;
+    __try {
+        *out = *reinterpret_cast<std::uint32_t*>(static_cast<std::uint8_t*>(actor) + offset);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool IsSneakingStateGuarded(void* actor, bool* sneaking) noexcept {
+    if (sneaking) *sneaking = false;
+    std::uint32_t state = 0;
+    if (!GetActorStateWordGuarded(actor, game::actor::ActorState_State1, &state)) return false;
+    if (sneaking) *sneaking = (state & game::actor::ActorState1_SneakingMask) != 0;
+    return true;
+}
+
+bool IsWeaponDrawnStateGuarded(void* actor, bool* weaponDrawn) noexcept {
+    if (weaponDrawn) *weaponDrawn = false;
+    std::uint32_t state = 0;
+    if (!GetActorStateWordGuarded(actor, game::actor::ActorState_State2, &state)) return false;
+    const auto weaponState = (state & game::actor::ActorState2_WeaponStateMask) >>
+                             game::actor::ActorState2_WeaponStateShift;
+    if (weaponDrawn) *weaponDrawn = weaponState == 3 || weaponState == 4 || weaponState == 5;
+    return true;
+}
+
+bool IsBleedingOutStateGuarded(void* actor, bool* bleedingOut) noexcept {
+    if (bleedingOut) *bleedingOut = false;
+    std::uint32_t state = 0;
+    if (!GetActorStateWordGuarded(actor, game::actor::ActorState_State1, &state)) return false;
+    const auto lifeState = (state & game::actor::ActorState1_LifeStateMask) >>
+                           game::actor::ActorState1_LifeStateShift;
+    if (bleedingOut) *bleedingOut = lifeState == 7 || lifeState == 8;
+    return true;
+}
+
+bool IsSleepingStateGuarded(void* actor, bool* sleeping) noexcept {
+    if (sleeping) *sleeping = false;
+    std::uint32_t state = 0;
+    if (!GetActorStateWordGuarded(actor, game::actor::ActorState_State1, &state)) return false;
+    const auto sitSleepState = (state & game::actor::ActorState1_SitSleepMask) >>
+                               game::actor::ActorState1_SitSleepShift;
+    if (sleeping) *sleeping = sitSleepState == 7;
+    return true;
+}
+
+bool HasLineOfSightGuarded(void* requester, void* target, bool* hasLOS) noexcept {
+    if (hasLOS) *hasLOS = false;
+    if (!requester || !target || !hasLOS) return false;
+    __try {
+        using HasLOSFN = bool (*)(void*, void*, bool*);
+        auto hasLOSFn = reinterpret_cast<HasLOSFN>(SkyrimBase() + game::actor::Actor_HasLineOfSight);
+        bool targetIsActor = false;
+        *hasLOS = hasLOSFn(requester, target, &targetIsActor);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 bool GetVampireFeedStateGuarded(void* actor, bool* active) noexcept {
     if (active) *active = false;
     if (!actor || !active) return false;
@@ -532,6 +650,20 @@ bool InitiateCannibalPackageGuarded(void* actor, void* target) noexcept {
     }
 }
 
+bool InitiateVampireFeedPackageGuarded(void* actor, void* target, void* feedRef) noexcept {
+    if (!actor || !target) return false;
+    __try {
+        using InitiateVampireFeedPackageFn = void (*)(void*, void*, void*);
+        auto** vtbl = *reinterpret_cast<void***>(actor);
+        auto initiateVampireFeedPackage = reinterpret_cast<InitiateVampireFeedPackageFn>(
+            vtbl[game::actor::VSlot_InitiateVampireFeedPackage]);
+        initiateVampireFeedPackage(actor, target, feedRef ? feedRef : target);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 bool GetReferenceCalcLevelGuarded(void* ref, bool adjustLevel, std::uint16_t* level) noexcept {
     if (level) *level = 0;
     if (!ref || !level) return false;
@@ -545,7 +677,7 @@ bool GetReferenceCalcLevelGuarded(void* ref, bool adjustLevel, std::uint16_t* le
     }
 }
 
-const char* ValidateFeedTarget(const TargetInfo& target) {
+const char* ValidateBaseFeedTarget(const TargetInfo& target) {
     if (!target.actor) return "no crosshair actor target";
     if (target.formType != kFormTypeActorCharacter) return "crosshair target is not an actor";
     if (target.formID == kPlayerRefID) return "crosshair target is the player";
@@ -558,9 +690,69 @@ const char* ValidateFeedTarget(const TargetInfo& target) {
     if (!HasCurrent3DGuarded(target.actor, &has3D)) return "crosshair actor 3D check faulted";
     if (!has3D) return "crosshair actor has no loaded 3D";
 
+    return nullptr;
+}
+
+const char* ValidateCorpseFeedTarget(const TargetInfo& target) {
+    if (const char* rejection = ValidateBaseFeedTarget(target)) return rejection;
+
     bool dead = false;
     if (!IsDeadGuarded(target.actor, &dead)) return "crosshair actor death check faulted";
     if (!dead) return "crosshair actor is not dead";
+
+    return nullptr;
+}
+
+const char* ValidateSneakFeedTarget(const TargetInfo& target, void* player) {
+    if (!player) return "player actor unavailable";
+    if (const char* rejection = ValidateBaseFeedTarget(target)) return rejection;
+    if (!IsPlayerVampire()) return "player is not a vampire";
+
+    bool playerSneaking = false;
+    if (!IsSneakingStateGuarded(player, &playerSneaking)) return "player sneak state check faulted";
+    if (!playerSneaking) return "player is not sneaking";
+
+    bool playerWeaponDrawn = false;
+    if (!IsWeaponDrawnStateGuarded(player, &playerWeaponDrawn)) return "player weapon state check faulted";
+    if (playerWeaponDrawn) return "player weapon is drawn";
+
+    bool dead = false;
+    if (!IsDeadGuarded(target.actor, &dead)) return "crosshair actor death check faulted";
+    if (dead) return "crosshair actor is dead";
+
+    bool hasProcess = false;
+    if (!HasAIProcessGuarded(target.actor, &hasProcess)) return "crosshair actor AI process check faulted";
+    if (!hasProcess) return "crosshair actor has no AI process";
+
+    float consumedMarker = 0.0f;
+    if (GetActorValueGuarded(target.actor, game::actor::AV_Variable08, &consumedMarker) &&
+        consumedMarker >= 8.5f) {
+        return "actor Variable08 already marks vampire feeding";
+    }
+
+    bool isChild = false;
+    if (!IsChildGuarded(target.actor, &isChild)) return "crosshair actor child check faulted";
+    if (isChild) return "crosshair actor is a child";
+
+    bool isNPC = false;
+    if (!CalculateCachedOwnerIsNPCGuarded(target.actor, &isNPC)) return "crosshair actor NPC cache check faulted";
+    if (!isNPC) return "crosshair actor is not an NPC";
+
+    bool isUndead = false;
+    if (!CalculateCachedOwnerIsUndeadGuarded(target.actor, &isUndead)) return "crosshair actor undead cache check faulted";
+    if (isUndead) return "crosshair actor is undead";
+
+    bool bleedingOut = false;
+    if (!IsBleedingOutStateGuarded(target.actor, &bleedingOut)) return "crosshair actor bleedout check faulted";
+    if (bleedingOut) return "crosshair actor is bleeding out";
+
+    bool sleeping = false;
+    if (!IsSleepingStateGuarded(target.actor, &sleeping)) return "crosshair actor sleep state check faulted";
+    if (sleeping) return "crosshair actor is sleeping";
+
+    bool targetHasLOS = false;
+    if (!HasLineOfSightGuarded(target.actor, player, &targetHasLOS)) return "target line-of-sight check faulted";
+    if (targetHasLOS) return "target has line-of-sight to player";
 
     return nullptr;
 }
@@ -1870,30 +2062,36 @@ bool RunNativeCorpseFeedGuarded(void* player, void* target, int animationMode) n
     return true;
 }
 
-void RunNativeFeedTask(void*) {
-    HAG_INFO("native corpse-feed task started");
+bool RunNativeSneakFeedGuarded(void* player, void* target) noexcept {
+    if (!player || !target) return false;
+
+    if (!InitiateVampireFeedPackageGuarded(player, target, target)) {
+        HAG_ERR("native sneak-feed failed: InitiateVampireFeedPackage faulted");
+        CleanupCorpseFeedState(player, "sneak package start failed");
+        return false;
+    }
+
+    if (!SetActorValueGuarded(target, game::actor::AV_Variable08, 9.0f)) {
+        HAG_ERR("native sneak-feed failed: could not mark target Variable08");
+        CleanupCorpseFeedState(player, "sneak target marker failed");
+        return false;
+    }
+
+    bool vampireFeedActive = false;
+    const bool vampireReadOk = GetVampireFeedStateGuarded(player, &vampireFeedActive);
+    HAG_INFO("native sneak-feed action started: package=InitiateVampireFeedPackage feedRef=target vampireReadOk={} vampireFeedActive={}",
+             vampireReadOk,
+             vampireFeedActive);
+    return true;
+}
+
+void RunNativeCorpseFeedTarget(void* player, const TargetInfo& target, int mode) {
     if (!g_corpseFeedingEnabled.load()) {
         HAG_INFO("native corpse-feed aborted: corpse feeding disabled");
         return;
     }
 
-    const int mode = g_animationMode.load();
-
-    void* player = GetPlayerActorGuarded();
-    if (!player) {
-        HAG_ERR("native corpse-feed aborted: player actor unavailable");
-        return;
-    }
-    CleanupCorpseFeedState(player, "pre feed");
-    RefreshBloodScentHighlights("feed task start", false);
-
-    TargetInfo target{};
-    if (!GetCrosshairTargetActorGuarded(&target)) {
-        HAG_INFO("native corpse-feed aborted: no resolvable crosshair target");
-        return;
-    }
-
-    const char* rejection = ValidateFeedTarget(target);
+    const char* rejection = ValidateCorpseFeedTarget(target);
     if (rejection) {
         HAG_INFO("native corpse-feed rejected handle={:#x} form={:#x} type={:#x}: {}",
                  target.handle, target.formID, target.formType, rejection);
@@ -1970,6 +2168,81 @@ void RunNativeFeedTask(void*) {
              target.formID);
 }
 
+void RunNativeSneakFeedTarget(void* player, const TargetInfo& target) {
+    const char* rejection = ValidateSneakFeedTarget(target, player);
+    if (rejection) {
+        HAG_INFO("native sneak-feed rejected handle={:#x} form={:#x} type={:#x}: {}",
+                 target.handle, target.formID, target.formType, rejection);
+        return;
+    }
+
+    std::uint16_t targetLevel = 0;
+    const bool hasTargetLevel = GetReferenceCalcLevelGuarded(target.actor, true, &targetLevel);
+    if (hasTargetLevel) {
+        HAG_INFO("native sneak-feed target accepted: handle={:#x} form={:#x} level={}",
+                 target.handle, target.formID, targetLevel);
+    } else {
+        HAG_WARN("native sneak-feed target accepted but level lookup failed: handle={:#x} form={:#x}",
+                 target.handle, target.formID);
+    }
+
+    HAG_INFO("native sneak-feed invoking live action: target handle={:#x} form={:#x}",
+             target.handle,
+             target.formID);
+
+    if (!RunNativeSneakFeedGuarded(player, target.actor)) {
+        HAG_ERR("native sneak-feed failed: native live action did not start");
+        return;
+    }
+
+    AwardBloodExtract(hasTargetLevel ? targetLevel : 1, target.formID);
+    ApplyFreshBloodBuff(player, target.formID);
+    const auto cleanupGeneration = g_feedCleanupGeneration.fetch_add(1) + 1;
+    if (!ScheduleFeedCleanup(cleanupGeneration, target.formID)) {
+        HAG_WARN("native sneak-feed cleanup timer failed; clearing feed state immediately");
+        CleanupCorpseFeedState(player, "sneak cleanup timer failed");
+    }
+    if (g_uiApi && g_uiApi->Refresh) {
+        g_uiApi->Refresh();
+    }
+    HAG_INFO("native sneak-feed completed: form={:#x} positioning=engine package",
+             target.formID);
+}
+
+void RunNativeFeedTask(void*) {
+    HAG_INFO("native feed task started");
+
+    void* player = GetPlayerActorGuarded();
+    if (!player) {
+        HAG_ERR("native feed aborted: player actor unavailable");
+        return;
+    }
+    CleanupCorpseFeedState(player, "pre feed");
+    RefreshBloodScentHighlights("feed task start", false);
+
+    TargetInfo target{};
+    if (!GetCrosshairTargetActorGuarded(&target)) {
+        HAG_INFO("native feed aborted: no resolvable crosshair target");
+        return;
+    }
+
+    bool dead = false;
+    if (!IsDeadGuarded(target.actor, &dead)) {
+        HAG_INFO("native feed rejected handle={:#x} form={:#x} type={:#x}: crosshair actor death check faulted",
+                 target.handle,
+                 target.formID,
+                 target.formType);
+        return;
+    }
+
+    if (dead) {
+        RunNativeCorpseFeedTarget(player, target, g_animationMode.load());
+        return;
+    }
+
+    RunNativeSneakFeedTarget(player, target);
+}
+
 const char* VampireActionLabel(void*) {
     g_actionAtPageBuild = IsPlayerVampire() ? VampireAction::Cure : VampireAction::Transform;
     g_pageActionConsumed.store(false);
@@ -2002,14 +2275,14 @@ void OnAnimationModeChanged(void*, HagUI_Value value) {
 
 void QueueNativeFeed(const char* reason) {
     if (!g_loaderApi || !g_loaderApi->QueueMainThreadTask) {
-        HAG_ERR("native corpse-feed failed: HagLoader main-thread task API unavailable");
+        HAG_ERR("native feed failed: HagLoader main-thread task API unavailable");
         return;
     }
     if (!g_loaderApi->QueueMainThreadTask(&RunNativeFeedTask, nullptr)) {
-        HAG_ERR("native corpse-feed failed: could not queue main-thread task");
+        HAG_ERR("native feed failed: could not queue main-thread task");
         return;
     }
-    HAG_INFO("native corpse-feed queued ({})", reason ? reason : "unspecified");
+    HAG_INFO("native feed queued ({})", reason ? reason : "unspecified");
 }
 
 void OnFeedHotkey(void*) {
@@ -2176,7 +2449,7 @@ void Init(HagUI_PageHandle* page) {
                        nullptr);
     g_uiApi->AddHotkey(page,
                        "feed_hotkey",
-                       "Feed corpse hotkey",
+                       "Feed hotkey",
                        g_feedHotkey.load(),
                        &OnFeedHotkeyChanged,
                        nullptr);
