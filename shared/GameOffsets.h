@@ -244,6 +244,11 @@ inline constexpr std::int32_t   AVModifier_Damage = 2;
 // Actor layout / process helpers.
 inline constexpr std::size_t ActorProcessOffset = 0xF8;          // Actor -> AIProcess*
 inline constexpr std::uintptr_t AIProcess_SetupSpecialIdle = 0x6DDE70;  // Address Library 1.6.1170 id 39256
+// Papyrus Actor.StartVampireFeed wrapper FUN_1409eb0f0 calls this on the
+// target actor's AIProcess, then resolves the returned handle as the third
+// InitiateVampireFeedPackage argument. For sleeping victims this is the active
+// bed/bedroll/furniture ref that drives the separate bed-feed animation route.
+inline constexpr std::uintptr_t AIProcess_GetCurrentFurnitureHandle = 0x7127C0;  // FUN_1407127c0(AIProcess*, ObjectRefHandle*)
 inline constexpr std::uint32_t DefaultObject_ActionIdle = 64;    // DEFAULT_OBJECT::kActionIdle
 inline constexpr std::size_t ActorStateOffset = 0xC0;            // CommonLib Actor::AsActorState() for 1.6.1170
 inline constexpr std::size_t ActorState_State1 = ActorStateOffset + 0x08;  // ActorState::actorState1

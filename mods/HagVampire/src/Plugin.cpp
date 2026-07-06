@@ -87,6 +87,11 @@ struct TargetInfo {
     std::uint8_t formType = 0;
 };
 
+struct FeedRefInfo {
+    void* ref = nullptr;
+    std::uint32_t handle = 0;
+};
+
 struct VampireRank {
     const char* name;
     int level;
@@ -410,6 +415,33 @@ void* ResolveRefHandleRawGuarded(std::uint32_t handle) noexcept {
     }
 }
 
+bool ResolveCurrentFurnitureFeedRefGuarded(void* actor, FeedRefInfo* out) noexcept {
+    if (out) *out = {};
+    if (!actor || !out) return false;
+    __try {
+        void* process = *reinterpret_cast<void**>(
+            static_cast<std::uint8_t*>(actor) + game::actor::ActorProcessOffset);
+        if (!process) return false;
+
+        using GetCurrentFurnitureHandleFn = std::uint32_t* (*)(void*, std::uint32_t*);
+        auto getCurrentFurnitureHandle = reinterpret_cast<GetCurrentFurnitureHandleFn>(
+            SkyrimBase() + game::actor::AIProcess_GetCurrentFurnitureHandle);
+        std::uint32_t handle = 0;
+        getCurrentFurnitureHandle(process, &handle);
+        if (handle == 0) return false;
+
+        void* ref = ResolveRefHandleRawGuarded(handle);
+        if (!ref) return false;
+
+        out->handle = handle;
+        out->ref = ref;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        if (out) *out = {};
+        return false;
+    }
+}
+
 bool GetCrosshairTargetActorGuarded(TargetInfo* out) noexcept {
     if (!out) return false;
     __try {
@@ -707,19 +739,7 @@ const char* ValidateCorpseFeedTarget(const TargetInfo& target) {
     return nullptr;
 }
 
-const char* ValidateSneakFeedTarget(const TargetInfo& target, void* player) {
-    if (!player) return "player actor unavailable";
-    if (const char* rejection = ValidateBaseFeedTarget(target)) return rejection;
-    if (!IsPlayerVampire()) return "player is not a vampire";
-
-    bool playerSneaking = false;
-    if (!IsSneakingStateGuarded(player, &playerSneaking)) return "player sneak state check faulted";
-    if (!playerSneaking) return "player is not sneaking";
-
-    bool playerInCombat = false;
-    if (!IsInCombatGuarded(player, &playerInCombat)) return "player combat state check faulted";
-    if (playerInCombat) return "player is in combat";
-
+const char* ValidateLivingFeedCommonTarget(const TargetInfo& target) {
     bool dead = false;
     if (!IsDeadGuarded(target.actor, &dead)) return "crosshair actor death check faulted";
     if (dead) return "crosshair actor is dead";
@@ -750,6 +770,24 @@ const char* ValidateSneakFeedTarget(const TargetInfo& target, void* player) {
     if (!IsBleedingOutStateGuarded(target.actor, &bleedingOut)) return "crosshair actor bleedout check faulted";
     if (bleedingOut) return "crosshair actor is bleeding out";
 
+    return nullptr;
+}
+
+const char* ValidateSneakFeedTarget(const TargetInfo& target, void* player) {
+    if (!player) return "player actor unavailable";
+    if (const char* rejection = ValidateBaseFeedTarget(target)) return rejection;
+    if (!IsPlayerVampire()) return "player is not a vampire";
+
+    bool playerSneaking = false;
+    if (!IsSneakingStateGuarded(player, &playerSneaking)) return "player sneak state check faulted";
+    if (!playerSneaking) return "player is not sneaking";
+
+    bool playerInCombat = false;
+    if (!IsInCombatGuarded(player, &playerInCombat)) return "player combat state check faulted";
+    if (playerInCombat) return "player is in combat";
+
+    if (const char* rejection = ValidateLivingFeedCommonTarget(target)) return rejection;
+
     bool sleeping = false;
     if (!IsSleepingStateGuarded(target.actor, &sleeping)) return "crosshair actor sleep state check faulted";
     if (sleeping) return "crosshair actor is sleeping";
@@ -757,6 +795,28 @@ const char* ValidateSneakFeedTarget(const TargetInfo& target, void* player) {
     bool targetHasLOS = false;
     if (!HasLineOfSightGuarded(target.actor, player, &targetHasLOS)) return "target line-of-sight check faulted";
     if (targetHasLOS) return "target has line-of-sight to player";
+
+    return nullptr;
+}
+
+const char* ValidateSleepingFeedTarget(const TargetInfo& target, void* player, FeedRefInfo* feedRef) {
+    if (!player) return "player actor unavailable";
+    if (const char* rejection = ValidateBaseFeedTarget(target)) return rejection;
+    if (!IsPlayerVampire()) return "player is not a vampire";
+
+    bool playerInCombat = false;
+    if (!IsInCombatGuarded(player, &playerInCombat)) return "player combat state check faulted";
+    if (playerInCombat) return "player is in combat";
+
+    if (const char* rejection = ValidateLivingFeedCommonTarget(target)) return rejection;
+
+    bool sleeping = false;
+    if (!IsSleepingStateGuarded(target.actor, &sleeping)) return "crosshair actor sleep state check faulted";
+    if (!sleeping) return "crosshair actor is not sleeping";
+
+    if (!ResolveCurrentFurnitureFeedRefGuarded(target.actor, feedRef)) {
+        return "sleeping actor has no bed/furniture feed reference";
+    }
 
     return nullptr;
 }
@@ -2089,6 +2149,31 @@ bool RunNativeSneakFeedGuarded(void* player, void* target) noexcept {
     return true;
 }
 
+bool RunNativeSleepingFeedGuarded(void* player, void* target, const FeedRefInfo& feedRef) noexcept {
+    if (!player || !target || !feedRef.ref) return false;
+
+    if (!InitiateVampireFeedPackageGuarded(player, target, feedRef.ref)) {
+        HAG_ERR("native sleeping-feed failed: InitiateVampireFeedPackage faulted feedHandle={:#x}",
+                feedRef.handle);
+        CleanupCorpseFeedState(player, "sleeping package start failed");
+        return false;
+    }
+
+    if (!SetActorValueGuarded(target, game::actor::AV_Variable08, 9.0f)) {
+        HAG_ERR("native sleeping-feed failed: could not mark target Variable08");
+        CleanupCorpseFeedState(player, "sleeping target marker failed");
+        return false;
+    }
+
+    bool vampireFeedActive = false;
+    const bool vampireReadOk = GetVampireFeedStateGuarded(player, &vampireFeedActive);
+    HAG_INFO("native sleeping-feed action started: package=InitiateVampireFeedPackage feedRef=furniture feedHandle={:#x} vampireReadOk={} vampireFeedActive={}",
+             feedRef.handle,
+             vampireReadOk,
+             vampireFeedActive);
+    return true;
+}
+
 void RunNativeCorpseFeedTarget(void* player, const TargetInfo& target, int mode) {
     if (!g_corpseFeedingEnabled.load()) {
         HAG_INFO("native corpse-feed aborted: corpse feeding disabled");
@@ -2213,6 +2298,49 @@ void RunNativeSneakFeedTarget(void* player, const TargetInfo& target) {
              target.formID);
 }
 
+void RunNativeSleepingFeedTarget(void* player, const TargetInfo& target) {
+    FeedRefInfo feedRef{};
+    const char* rejection = ValidateSleepingFeedTarget(target, player, &feedRef);
+    if (rejection) {
+        HAG_INFO("native sleeping-feed rejected handle={:#x} form={:#x} type={:#x}: {}",
+                 target.handle, target.formID, target.formType, rejection);
+        return;
+    }
+
+    std::uint16_t targetLevel = 0;
+    const bool hasTargetLevel = GetReferenceCalcLevelGuarded(target.actor, true, &targetLevel);
+    if (hasTargetLevel) {
+        HAG_INFO("native sleeping-feed target accepted: handle={:#x} form={:#x} level={} feedHandle={:#x}",
+                 target.handle, target.formID, targetLevel, feedRef.handle);
+    } else {
+        HAG_WARN("native sleeping-feed target accepted but level lookup failed: handle={:#x} form={:#x} feedHandle={:#x}",
+                 target.handle, target.formID, feedRef.handle);
+    }
+
+    HAG_INFO("native sleeping-feed invoking live action: target handle={:#x} form={:#x} feedHandle={:#x}",
+             target.handle,
+             target.formID,
+             feedRef.handle);
+
+    if (!RunNativeSleepingFeedGuarded(player, target.actor, feedRef)) {
+        HAG_ERR("native sleeping-feed failed: native live action did not start");
+        return;
+    }
+
+    AwardBloodExtract(hasTargetLevel ? targetLevel : 1, target.formID);
+    ApplyFreshBloodBuff(player, target.formID);
+    const auto cleanupGeneration = g_feedCleanupGeneration.fetch_add(1) + 1;
+    if (!ScheduleFeedCleanup(cleanupGeneration, target.formID)) {
+        HAG_WARN("native sleeping-feed cleanup timer failed; clearing feed state immediately");
+        CleanupCorpseFeedState(player, "sleeping cleanup timer failed");
+    }
+    if (g_uiApi && g_uiApi->Refresh) {
+        g_uiApi->Refresh();
+    }
+    HAG_INFO("native sleeping-feed completed: form={:#x} positioning=engine bed/furniture package",
+             target.formID);
+}
+
 void RunNativeFeedTask(void*) {
     HAG_INFO("native feed task started");
 
@@ -2241,6 +2369,20 @@ void RunNativeFeedTask(void*) {
 
     if (dead) {
         RunNativeCorpseFeedTarget(player, target, g_animationMode.load());
+        return;
+    }
+
+    bool sleeping = false;
+    if (!IsSleepingStateGuarded(target.actor, &sleeping)) {
+        HAG_INFO("native feed rejected handle={:#x} form={:#x} type={:#x}: crosshair actor sleep state check faulted",
+                 target.handle,
+                 target.formID,
+                 target.formType);
+        return;
+    }
+
+    if (sleeping) {
+        RunNativeSleepingFeedTarget(player, target);
         return;
     }
 
