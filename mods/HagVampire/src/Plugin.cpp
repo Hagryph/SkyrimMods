@@ -73,6 +73,7 @@ constexpr float kBloodScentShaderDuration = -1.0f;
 constexpr float kFreshBloodBonusFraction = 0.10f;
 constexpr float kFreshBloodMinBonus = 0.1f;
 constexpr std::uint32_t kFreshBloodDurationMs = 5u * 60u * 1000u;
+constexpr std::uint32_t kCorpseFeedCleanupDelayMs = 5500u;
 constexpr float kPi = 3.14159265358979323846f;
 
 struct NiPoint3 {
@@ -106,6 +107,12 @@ struct FreshBloodTimerContext {
     std::uint32_t generation = 0;
 };
 
+struct FeedCleanupTimerContext {
+    HANDLE timer = nullptr;
+    std::uint32_t generation = 0;
+    std::uint32_t targetFormID = 0;
+};
+
 struct BSSpinLockRaw {
     volatile LONG owningThread = 0;
     volatile LONG lockCount = 0;
@@ -116,6 +123,7 @@ using BloodScentTargetMap = std::unordered_map<std::uint32_t, std::uint32_t>;  /
 std::mutex g_freshBloodMutex;
 FreshBloodState g_freshBlood{};
 std::atomic<std::uint32_t> g_freshBloodGeneration{0};
+std::atomic<std::uint32_t> g_feedCleanupGeneration{0};
 std::mutex g_bloodScentMutex;
 BloodScentTargetMap g_bloodScentActiveTargets;
 using ModActorValueInternalFn = void (*)(void*, std::int32_t, std::uint32_t, float, void*);
@@ -425,6 +433,35 @@ bool IsDeadGuarded(void* actor, bool* dead) noexcept {
         auto** vtbl = *reinterpret_cast<void***>(actor);
         auto isDead = reinterpret_cast<IsDeadFn>(vtbl[game::actor::VSlot_IsDead]);
         if (dead) *dead = isDead(actor, true);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool GetVampireFeedStateGuarded(void* actor, bool* active) noexcept {
+    if (active) *active = false;
+    if (!actor || !active) return false;
+    __try {
+        using GetVampireFeedFn = bool (*)(void*);
+        auto** vtbl = *reinterpret_cast<void***>(actor);
+        auto getVampireFeed = reinterpret_cast<GetVampireFeedFn>(
+            vtbl[game::actor::VSlot_GetVampireFeed]);
+        *active = getVampireFeed(actor);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool SetVampireFeedStateGuarded(void* actor, bool active) noexcept {
+    if (!actor) return false;
+    __try {
+        using SetVampireFeedFn = void (*)(void*, bool);
+        auto** vtbl = *reinterpret_cast<void***>(actor);
+        auto setVampireFeed = reinterpret_cast<SetVampireFeedFn>(
+            vtbl[game::actor::VSlot_SetVampireFeed]);
+        setVampireFeed(actor, active);
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return false;
@@ -847,6 +884,111 @@ void RevertFreshBloodTask(void* user) {
     std::lock_guard lock(g_freshBloodMutex);
     const bool ok = RemoveFreshBloodBonusesLocked(player);
     HAG_INFO("Fresh Blood expired: reverted={} generation={}", ok, ctx->generation);
+}
+
+bool CleanupCorpseFeedState(void* player, const char* reason) {
+    if (!player) return false;
+
+    bool wasFeeding = false;
+    const bool readOk = GetVampireFeedStateGuarded(player, &wasFeeding);
+    const bool clearOk = SetVampireFeedStateGuarded(player, false);
+
+    bool afterFeeding = false;
+    const bool rereadOk = GetVampireFeedStateGuarded(player, &afterFeeding);
+    HAG_INFO("native corpse-feed cleanup ({}): readOk={} wasFeeding={} clearOk={} rereadOk={} nowFeeding={}",
+             reason ? reason : "unspecified",
+             readOk,
+             wasFeeding,
+             clearOk,
+             rereadOk,
+             afterFeeding);
+    return clearOk && (!rereadOk || !afterFeeding);
+}
+
+void FeedCleanupTask(void* user);
+
+void CALLBACK FeedCleanupTimerProc(PVOID user, BOOLEAN) {
+    auto* ctx = static_cast<FeedCleanupTimerContext*>(user);
+    if (!ctx) return;
+
+    const HANDLE timer = ctx->timer;
+    ctx->timer = nullptr;
+    if (timer) {
+        ::DeleteTimerQueueTimer(nullptr, timer, nullptr);
+    }
+
+    if (g_loaderApi && g_loaderApi->QueueMainThreadTask &&
+        g_loaderApi->QueueMainThreadTask(&FeedCleanupTask, ctx)) {
+        return;
+    }
+
+    HAG_WARN("native corpse-feed cleanup could not be queued; dropping cleanup context");
+    delete ctx;
+}
+
+bool ScheduleFeedCleanup(std::uint32_t generation, std::uint32_t targetFormID) {
+    auto* ctx = new FeedCleanupTimerContext();
+    ctx->generation = generation;
+    ctx->targetFormID = targetFormID;
+
+    HANDLE timer = nullptr;
+    if (!::CreateTimerQueueTimer(&timer,
+                                 nullptr,
+                                 &FeedCleanupTimerProc,
+                                 ctx,
+                                 kCorpseFeedCleanupDelayMs,
+                                 0,
+                                 WT_EXECUTEDEFAULT)) {
+        delete ctx;
+        return false;
+    }
+
+    ctx->timer = timer;
+    return true;
+}
+
+void FeedCleanupTask(void* user) {
+    std::unique_ptr<FeedCleanupTimerContext> ctx(static_cast<FeedCleanupTimerContext*>(user));
+    if (!ctx) return;
+
+    if (ctx->generation != g_feedCleanupGeneration.load()) {
+        HAG_INFO("native corpse-feed stale cleanup ignored: generation={} current={} target={:#x}",
+                 ctx->generation,
+                 g_feedCleanupGeneration.load(),
+                 ctx->targetFormID);
+        return;
+    }
+
+    void* player = GetPlayerActorGuarded();
+    if (!player) {
+        HAG_WARN("native corpse-feed cleanup skipped: player actor unavailable target={:#x}",
+                 ctx->targetFormID);
+        return;
+    }
+
+    const bool cleaned = CleanupCorpseFeedState(player, "timer");
+    HAG_INFO("native corpse-feed cleanup completed: cleaned={} target={:#x} generation={}",
+             cleaned,
+             ctx->targetFormID,
+             ctx->generation);
+}
+
+void FeedCleanupNowTask(void* user) {
+    const char* reason = static_cast<const char*>(user);
+    void* player = GetPlayerActorGuarded();
+    if (!player) {
+        HAG_INFO("native corpse-feed cleanup skipped ({}): player actor unavailable",
+                 reason ? reason : "unspecified");
+        return;
+    }
+    CleanupCorpseFeedState(player, reason ? reason : "queued");
+}
+
+void QueueFeedCleanup(const char* reason) {
+    if (!g_loaderApi || !g_loaderApi->QueueMainThreadTask) return;
+    if (!g_loaderApi->QueueMainThreadTask(&FeedCleanupNowTask, const_cast<char*>(reason))) {
+        HAG_WARN("native corpse-feed cleanup queue failed ({})", reason ? reason : "unspecified");
+    }
 }
 
 void ApplyFreshBloodBuff(void* player, std::uint32_t sourceFormID) {
@@ -1431,14 +1573,20 @@ bool RunNativeCorpseFeedGuarded(void* player, void* target, int animationMode, N
         return false;
     }
 
+    if (!SetVampireFeedStateGuarded(player, true)) {
+        HAG_WARN("native corpse-feed warning: could not set player vampire-feed state before idle");
+    }
+
     if (!PlayFeedIdleGuarded(player, target, idleFormID)) {
         HAG_ERR("native corpse-feed failed: PlayIdle {} ({:#x}) returned false/faulted",
                 idleName, idleFormID);
+        CleanupCorpseFeedState(player, "idle start failed");
         return false;
     }
 
     if (!SetActorValueGuarded(target, game::actor::AV_Variable08, 9.0f)) {
         HAG_ERR("native corpse-feed failed: could not mark target Variable08");
+        CleanupCorpseFeedState(player, "target marker failed");
         return false;
     }
 
@@ -1460,6 +1608,7 @@ void RunNativeFeedTask(void*) {
         HAG_ERR("native corpse-feed aborted: player actor unavailable");
         return;
     }
+    CleanupCorpseFeedState(player, "pre feed");
     RefreshBloodScentHighlights("feed task start");
 
     TargetInfo target{};
@@ -1534,6 +1683,11 @@ void RunNativeFeedTask(void*) {
     AwardBloodExtract(hasCorpseLevel ? corpseLevel : 1, target.formID);
     ApplyFreshBloodBuff(player, target.formID);
     RefreshBloodScentHighlights("after feed");
+    const auto cleanupGeneration = g_feedCleanupGeneration.fetch_add(1) + 1;
+    if (!ScheduleFeedCleanup(cleanupGeneration, target.formID)) {
+        HAG_WARN("native corpse-feed cleanup timer failed; clearing feed state immediately");
+        CleanupCorpseFeedState(player, "cleanup timer failed");
+    }
     if (g_uiApi && g_uiApi->Refresh) {
         g_uiApi->Refresh();
     }
@@ -1706,6 +1860,7 @@ void Init(HagUI_PageHandle* page) {
         HAG_WARN("Blood Scent cell-change callback registration failed");
     }
     QueueBloodScentRefresh("init");
+    QueueFeedCleanup("init");
 
     auto getApi = reinterpret_cast<HagUI_GetAPIFn>(h ? ::GetProcAddress(h, "HagUI_GetAPI") : nullptr);
     g_uiApi = getApi ? getApi(HAGUI_ABI_VERSION) : nullptr;
@@ -1773,6 +1928,7 @@ void OnSaveLoaded() {
     RegisterFeedHotkey();
     ApplyUnlockedRankRewards("save loaded");
     QueueBloodScentRefresh("save loaded");
+    QueueFeedCleanup("save loaded");
 }
 
 }  // namespace hag
