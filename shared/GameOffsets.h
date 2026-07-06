@@ -276,6 +276,22 @@ inline constexpr std::uintptr_t LookupReferenceByHandle = 0x179710;
 
 }  // namespace handle
 
+namespace process {
+
+// Address Library 1.6.1170 id 400315 (CommonLib RELOCATION_ID(514167, 400315)):
+// ProcessLists** singleton used by RE::ProcessLists::GetSingleton().
+inline constexpr std::uintptr_t ProcessListsPtr = 0x20F69B0;
+inline constexpr std::size_t BSTArray_Data = 0x00;
+inline constexpr std::size_t BSTArray_Capacity = 0x08;
+inline constexpr std::size_t BSTArray_Size = 0x10;
+inline constexpr std::size_t ProcessLists_HighActorHandles = 0x30;
+inline constexpr std::size_t ProcessLists_LowActorHandles = 0x48;
+inline constexpr std::size_t ProcessLists_MiddleHighActorHandles = 0x60;
+inline constexpr std::size_t ProcessLists_MiddleLowActorHandles = 0x78;
+inline constexpr std::uint32_t MaxActorHandlesPerList = 4096;
+
+}  // namespace process
+
 namespace crosshair {
 
 // Address Library 1.6.1170 id 401585: CrosshairPickData** singleton.

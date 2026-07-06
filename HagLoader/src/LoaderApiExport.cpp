@@ -1,5 +1,6 @@
 #include "PCH.h"
 #include "ConfigStore.h"
+#include "CellChangeHook.h"
 #include "ConsoleQueue.h"
 #include "HagLoaderAPI.h"
 #include "HotkeyManager.h"
@@ -124,6 +125,10 @@ bool C_SetHotkeyForModule(void* moduleHandle, const char* name, std::int32_t vkC
         static_cast<HMODULE>(moduleHandle), name ? name : "", vkCode);
 }
 
+bool C_RegisterCellChangeCallbackForModule(void* moduleHandle, HagLoader_CellChangeCb callback, void* user) {
+    return hag::cell_change::RegisterCallback(moduleHandle, callback, user);
+}
+
 const HagLoaderAPI g_loaderApi = {
     HAGLOADER_ABI_VERSION,
     &C_QueueConsoleCommand,
@@ -145,6 +150,7 @@ const HagLoaderAPI g_loaderApi = {
     &C_SaveFormIDSetCountForModule,
     &C_RegisterHotkeyForModule,
     &C_SetHotkeyForModule,
+    &C_RegisterCellChangeCallbackForModule,
 };
 
 }  // namespace

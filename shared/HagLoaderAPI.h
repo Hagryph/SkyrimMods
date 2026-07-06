@@ -9,7 +9,7 @@
 
 extern "C" {
 
-#define HAGLOADER_ABI_VERSION 8u
+#define HAGLOADER_ABI_VERSION 9u
 
 #define HAGLOADER_CONFIG_GLOBAL 0
 #define HAGLOADER_CONFIG_PERSAVE 1
@@ -33,6 +33,7 @@ typedef struct HagLoader_PapyrusResult {
 typedef void (*HagLoader_PapyrusResultCb)(void* user, const HagLoader_PapyrusResult* result);
 typedef void (*HagLoader_MainThreadTaskCb)(void* user);
 typedef void (*HagLoader_HotkeyCb)(void* user);
+typedef void (*HagLoader_CellChangeCb)(void* user);
 
 typedef struct HagLoaderAPI {
     uint32_t abiVersion;
@@ -55,6 +56,7 @@ typedef struct HagLoaderAPI {
     uint32_t (*SaveFormIDSetCountForModule)(void* moduleHandle, const char* setName);
     bool (*RegisterHotkeyForModule)(void* moduleHandle, const char* name, int32_t vkCode, HagLoader_HotkeyCb callback, void* user);
     bool (*SetHotkeyForModule)(void* moduleHandle, const char* name, int32_t vkCode);
+    bool (*RegisterCellChangeCallbackForModule)(void* moduleHandle, HagLoader_CellChangeCb callback, void* user);
 } HagLoaderAPI;
 
 typedef const HagLoaderAPI* (*HagLoader_GetAPIFn)(uint32_t abiVersion);
