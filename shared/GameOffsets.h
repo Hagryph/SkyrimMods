@@ -228,6 +228,8 @@ inline constexpr int AVOwner_SetActorValue          = 7;  // +0x38
 inline constexpr std::uint32_t AV_Health  = 0x18;
 inline constexpr std::uint32_t AV_Magicka = 0x19;
 inline constexpr std::uint32_t AV_Stamina = 0x1A;
+inline constexpr std::uint32_t AV_MagickaRate = 0x1C;
+inline constexpr std::uint32_t AV_StaminaRate = 0x1D;
 inline constexpr std::uint32_t AV_Variable08 = 75;
 
 // Actor layout / process helpers.

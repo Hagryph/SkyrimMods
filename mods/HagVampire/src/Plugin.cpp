@@ -11,6 +11,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstdio>
+#include <mutex>
 #include <stdexcept>
 
 namespace hag {
@@ -48,6 +49,8 @@ constexpr int kBloodStrengthMaxLevel = 100;
 constexpr int kBloodStrengthLevel50Extract = 5369;
 constexpr int kBloodStrengthMaxExtract = 84000;
 constexpr int kBloodStrengthLateExtract = kBloodStrengthMaxExtract - kBloodStrengthLevel50Extract;
+constexpr int kBloodScentMinLevel = 1;
+constexpr int kFreshBloodMinLevel = 1;
 constexpr std::uint32_t kFormFlagDeleted = 1u << 5;
 constexpr std::uint32_t kFormFlagDisabled = 1u << 11;
 constexpr std::uint8_t kFormTypeActorCharacter = 0x3E;
@@ -55,6 +58,13 @@ constexpr std::uint32_t kPlayerRefID = 0x14;
 constexpr std::uint32_t kIdleCannibalFeedCrouching = 0x000FE09F;
 constexpr std::uint32_t kIdleVampireFeedingBedrollLeft = 0x00023622;
 constexpr float kCorpseFeedDistance = 40.0f;
+constexpr float kBloodScentRange = 700.0f;
+constexpr float kBloodScentRefraction = 0.45f;
+constexpr float kBloodScentFireRefraction = 0.18f;
+constexpr std::uint32_t kBloodScentPulseMs = 8000;
+constexpr float kFreshBloodBonusFraction = 0.10f;
+constexpr float kFreshBloodMinBonus = 0.1f;
+constexpr std::uint32_t kFreshBloodDurationMs = 5u * 60u * 1000u;
 constexpr float kPi = 3.14159265358979323846f;
 
 struct NiPoint3 {
@@ -74,6 +84,26 @@ struct VampireRank {
     const char* name;
     int level;
 };
+
+struct FreshBloodState {
+    bool active = false;
+    float magickaRateBonus = 0.0f;
+    float staminaRateBonus = 0.0f;
+};
+
+struct BloodScentClearContext {
+    HANDLE timer = nullptr;
+    std::uint32_t formID = 0;
+};
+
+struct FreshBloodTimerContext {
+    HANDLE timer = nullptr;
+    std::uint32_t generation = 0;
+};
+
+std::mutex g_freshBloodMutex;
+FreshBloodState g_freshBlood{};
+std::atomic<std::uint32_t> g_freshBloodGeneration{0};
 
 constexpr VampireRank kVampireRanks[] = {
     {"Fledgling", 1},
@@ -176,6 +206,14 @@ bool IsPlayerVampire() {
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return false;
     }
+}
+
+int CurrentBloodStrengthLevel() {
+    return BloodStrengthLevelForExtract(g_bloodExtract.load());
+}
+
+bool HasVampireBonusLevel(int minLevel) {
+    return IsPlayerVampire() && CurrentBloodStrengthLevel() >= minLevel;
 }
 
 bool ConfigGetBool(const char* key, bool defaultValue) {
@@ -431,6 +469,254 @@ bool SetActorValueGuarded(void* actor, std::uint32_t actorValue, float value) no
     }
 }
 
+bool DistanceBetweenRefsGuarded(void* a, void* b, float* distance) noexcept {
+    if (distance) *distance = 0.0f;
+    if (!a || !b || !distance) return false;
+
+    NiPoint3 apos{};
+    NiPoint3 bpos{};
+    if (!ReadPoint3Guarded(a, game::refr::DataLocation, &apos) ||
+        !ReadPoint3Guarded(b, game::refr::DataLocation, &bpos)) {
+        return false;
+    }
+
+    const float dx = apos.x - bpos.x;
+    const float dy = apos.y - bpos.y;
+    const float dz = apos.z - bpos.z;
+    *distance = std::sqrt((dx * dx) + (dy * dy) + (dz * dz));
+    return true;
+}
+
+bool ChangeActorValueByDeltaGuarded(void* actor, std::uint32_t actorValue, float delta) noexcept {
+    float current = 0.0f;
+    if (!GetActorValueGuarded(actor, actorValue, &current)) return false;
+    return SetActorValueGuarded(actor, actorValue, current + delta);
+}
+
+bool RemoveFreshBloodBonusesLocked(void* player) {
+    if (!g_freshBlood.active) return true;
+
+    bool ok = true;
+    if (g_freshBlood.magickaRateBonus != 0.0f) {
+        ok = ChangeActorValueByDeltaGuarded(player, game::actor::AV_MagickaRate, -g_freshBlood.magickaRateBonus) && ok;
+    }
+    if (g_freshBlood.staminaRateBonus != 0.0f) {
+        ok = ChangeActorValueByDeltaGuarded(player, game::actor::AV_StaminaRate, -g_freshBlood.staminaRateBonus) && ok;
+    }
+
+    g_freshBlood = {};
+    return ok;
+}
+
+void RevertFreshBloodTask(void* user);
+
+void CALLBACK FreshBloodTimerProc(PVOID user, BOOLEAN) {
+    auto* ctx = static_cast<FreshBloodTimerContext*>(user);
+    if (!ctx) return;
+
+    const HANDLE timer = ctx->timer;
+    ctx->timer = nullptr;
+    if (timer) {
+        ::DeleteTimerQueueTimer(nullptr, timer, nullptr);
+    }
+
+    if (g_loaderApi && g_loaderApi->QueueMainThreadTask &&
+        g_loaderApi->QueueMainThreadTask(&RevertFreshBloodTask, ctx)) {
+        return;
+    }
+
+    HAG_WARN("Fresh Blood revert could not be queued; clearing timer context without touching actor values");
+    delete ctx;
+}
+
+bool ScheduleFreshBloodRevert(std::uint32_t generation) {
+    auto* ctx = new FreshBloodTimerContext();
+    ctx->generation = generation;
+
+    HANDLE timer = nullptr;
+    if (!::CreateTimerQueueTimer(&timer,
+                                 nullptr,
+                                 &FreshBloodTimerProc,
+                                 ctx,
+                                 kFreshBloodDurationMs,
+                                 0,
+                                 WT_EXECUTEDEFAULT)) {
+        delete ctx;
+        return false;
+    }
+
+    ctx->timer = timer;
+    return true;
+}
+
+void RevertFreshBloodTask(void* user) {
+    std::unique_ptr<FreshBloodTimerContext> ctx(static_cast<FreshBloodTimerContext*>(user));
+    if (!ctx) return;
+
+    if (ctx->generation != g_freshBloodGeneration.load()) {
+        HAG_INFO("Fresh Blood stale revert ignored: generation={} current={}",
+                 ctx->generation,
+                 g_freshBloodGeneration.load());
+        return;
+    }
+
+    void* player = GetPlayerActorGuarded();
+    if (!player) {
+        HAG_WARN("Fresh Blood revert skipped: player actor unavailable");
+        return;
+    }
+
+    std::lock_guard lock(g_freshBloodMutex);
+    const bool ok = RemoveFreshBloodBonusesLocked(player);
+    HAG_INFO("Fresh Blood expired: reverted={} generation={}", ok, ctx->generation);
+}
+
+void ApplyFreshBloodBuff(void* player, std::uint32_t sourceFormID) {
+    if (!player) return;
+    if (!HasVampireBonusLevel(kFreshBloodMinLevel)) {
+        HAG_INFO("Fresh Blood skipped: vampire bonus level unavailable");
+        return;
+    }
+
+    std::lock_guard lock(g_freshBloodMutex);
+    if (g_freshBlood.active && !RemoveFreshBloodBonusesLocked(player)) {
+        HAG_WARN("Fresh Blood refresh could not fully remove previous bonuses");
+    }
+
+    float magickaRate = 0.0f;
+    float staminaRate = 0.0f;
+    if (!GetActorValueGuarded(player, game::actor::AV_MagickaRate, &magickaRate) ||
+        !GetActorValueGuarded(player, game::actor::AV_StaminaRate, &staminaRate)) {
+        HAG_WARN("Fresh Blood skipped: could not read player regen actor values");
+        return;
+    }
+
+    const float magickaBonus = std::max(std::fabs(magickaRate) * kFreshBloodBonusFraction, kFreshBloodMinBonus);
+    const float staminaBonus = std::max(std::fabs(staminaRate) * kFreshBloodBonusFraction, kFreshBloodMinBonus);
+
+    if (!ChangeActorValueByDeltaGuarded(player, game::actor::AV_MagickaRate, magickaBonus)) {
+        HAG_WARN("Fresh Blood skipped: could not apply magicka regen bonus");
+        return;
+    }
+    if (!ChangeActorValueByDeltaGuarded(player, game::actor::AV_StaminaRate, staminaBonus)) {
+        ChangeActorValueByDeltaGuarded(player, game::actor::AV_MagickaRate, -magickaBonus);
+        HAG_WARN("Fresh Blood skipped: could not apply stamina regen bonus");
+        return;
+    }
+
+    const auto generation = g_freshBloodGeneration.fetch_add(1) + 1;
+    g_freshBlood.active = true;
+    g_freshBlood.magickaRateBonus = magickaBonus;
+    g_freshBlood.staminaRateBonus = staminaBonus;
+
+    if (!ScheduleFreshBloodRevert(generation)) {
+        RemoveFreshBloodBonusesLocked(player);
+        HAG_WARN("Fresh Blood skipped: could not create expiry timer");
+        return;
+    }
+
+    HAG_INFO("Fresh Blood applied: sourceForm={:#x} magickaRate +{} staminaRate +{} durationMs={} generation={}",
+             sourceFormID,
+             magickaBonus,
+             staminaBonus,
+             kFreshBloodDurationMs,
+             generation);
+}
+
+bool QueueConsoleCommand(const char* command) {
+    if (!command || !*command || !g_loaderApi || !g_loaderApi->QueueConsoleCommand) return false;
+    const bool queued = g_loaderApi->QueueConsoleCommand(command);
+    if (!queued) {
+        HAG_WARN("Blood Scent console command could not be queued: {}", command);
+    }
+    return queued;
+}
+
+bool QueueTargetRefractionCommands(std::uint32_t formID, float refraction, float fireRefraction) {
+    if (formID == 0) return false;
+
+    char prid[32];
+    char str[32];
+    char strf[32];
+    std::snprintf(prid, sizeof(prid), "prid %08X", formID);
+    std::snprintf(str, sizeof(str), "str %.2f", refraction);
+    std::snprintf(strf, sizeof(strf), "strf %.2f", fireRefraction);
+
+    bool ok = QueueConsoleCommand(prid);
+    ok = QueueConsoleCommand(str) && ok;
+    ok = QueueConsoleCommand(strf) && ok;
+    return ok;
+}
+
+void CALLBACK BloodScentClearTimerProc(PVOID user, BOOLEAN) {
+    auto* ctx = static_cast<BloodScentClearContext*>(user);
+    if (!ctx) return;
+
+    const std::uint32_t formID = ctx->formID;
+    const HANDLE timer = ctx->timer;
+    QueueTargetRefractionCommands(formID, 0.0f, 0.0f);
+    if (timer) {
+        ::DeleteTimerQueueTimer(nullptr, timer, nullptr);
+    }
+    delete ctx;
+}
+
+bool ScheduleBloodScentClear(std::uint32_t formID) {
+    auto* ctx = new BloodScentClearContext();
+    ctx->formID = formID;
+
+    HANDLE timer = nullptr;
+    if (!::CreateTimerQueueTimer(&timer,
+                                 nullptr,
+                                 &BloodScentClearTimerProc,
+                                 ctx,
+                                 kBloodScentPulseMs,
+                                 0,
+                                 WT_EXECUTEDEFAULT)) {
+        delete ctx;
+        return false;
+    }
+
+    ctx->timer = timer;
+    return true;
+}
+
+void PulseBloodScentIfEligible(void* player, const TargetInfo& target) {
+    if (!player || !target.actor) return;
+    if (!HasVampireBonusLevel(kBloodScentMinLevel)) {
+        HAG_INFO("Blood Scent skipped: vampire bonus level unavailable");
+        return;
+    }
+
+    float distance = 0.0f;
+    if (!DistanceBetweenRefsGuarded(player, target.actor, &distance)) {
+        HAG_WARN("Blood Scent skipped: could not calculate corpse distance form={:#x}",
+                 target.formID);
+        return;
+    }
+    if (distance > kBloodScentRange) {
+        HAG_INFO("Blood Scent skipped: corpse form={:#x} distance={} range={}",
+                 target.formID,
+                 distance,
+                 kBloodScentRange);
+        return;
+    }
+
+    if (!QueueTargetRefractionCommands(target.formID, kBloodScentRefraction, kBloodScentFireRefraction)) {
+        HAG_WARN("Blood Scent failed: could not queue highlight pulse for form={:#x}", target.formID);
+        return;
+    }
+    if (!ScheduleBloodScentClear(target.formID)) {
+        HAG_WARN("Blood Scent highlight queued but clear timer failed for form={:#x}", target.formID);
+        return;
+    }
+
+    HAG_INFO("Blood Scent highlighted corpse: form={:#x} distance={} durationMs={}",
+             target.formID,
+             distance,
+             kBloodScentPulseMs);
+}
+
 bool MovePlayerNearCorpseGuarded(void* player, void* target, NiPoint3* movedTo) noexcept {
     if (!player || !target) return false;
 
@@ -600,6 +886,8 @@ void RunNativeFeedTask(void*) {
 
     HAG_INFO("native corpse-feed invoking corpse action: target handle={:#x} form={:#x} mode={}",
              target.handle, target.formID, mode);
+    PulseBloodScentIfEligible(player, target);
+
     NiPoint3 movedTo{};
     if (!RunNativeCorpseFeedGuarded(player, target.actor, mode, &movedTo)) {
         HAG_ERR("native corpse-feed failed: native corpse action did not start");
@@ -613,6 +901,7 @@ void RunNativeFeedTask(void*) {
     g_lastCorpseLevelForm.store(target.formID);
     g_lastCorpseLevel.store(hasCorpseLevel ? corpseLevel : 0);
     AwardBloodExtract(hasCorpseLevel ? corpseLevel : 1, target.formID);
+    ApplyFreshBloodBuff(player, target.formID);
     if (g_uiApi && g_uiApi->Refresh) {
         g_uiApi->Refresh();
     }
@@ -808,11 +1097,12 @@ void Init(HagUI_PageHandle* page) {
 
     auto getLoaderApi = reinterpret_cast<HagLoader_GetAPIFn>(::GetProcAddress(h, "HagLoader_GetAPI"));
     g_loaderApi = getLoaderApi ? getLoaderApi(HAGLOADER_ABI_VERSION) : nullptr;
-    if (!g_loaderApi || !g_loaderApi->QueuePapyrusStaticCallWithCallback || !g_loaderApi->QueueMainThreadTask ||
+    if (!g_loaderApi || !g_loaderApi->QueueConsoleCommand ||
+        !g_loaderApi->QueuePapyrusStaticCallWithCallback || !g_loaderApi->QueueMainThreadTask ||
         !g_loaderApi->SaveStorageAvailable || !g_loaderApi->SaveFormIDSetContainsForModule ||
         !g_loaderApi->SaveFormIDSetAddForModule || !g_loaderApi->SaveFormIDSetCountForModule ||
         !g_loaderApi->RegisterHotkeyForModule) {
-        throw std::runtime_error("HagVampire requires HagLoader Papyrus API");
+        throw std::runtime_error("HagVampire requires HagLoader queue/config/save/hotkey APIs");
     }
     LoadConfig();
     RegisterFeedHotkey();
