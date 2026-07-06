@@ -316,6 +316,25 @@ inline constexpr std::size_t    FormType   = 0x1A;      // uint8 form type
 
 }  // namespace form
 
+namespace data {
+
+// CommonLibSSE-NG RE::Offset::TESDataHandler::Singleton,
+// Address Library 1.6.1170 id 400269. This is a pointer to TESDataHandler*.
+inline constexpr std::uintptr_t TESDataHandlerPtr = 0x20F6320;
+
+// Minimal TESDataHandler / TESFile layout needed for resolving plugin-local
+// FormIDs without linking CommonLib.
+inline constexpr std::size_t TESDataHandler_CompiledFileCollection = 0xD70;  // TESFileCollection
+inline constexpr std::size_t TESFileCollection_Files = 0x00;                 // BSTArray<TESFile*>
+inline constexpr std::size_t TESFileCollection_SmallFiles = 0x18;            // BSTArray<TESFile*>
+inline constexpr std::size_t TESFile_FileName = 0x58;                        // char[MAX_PATH]
+inline constexpr std::size_t TESFile_RecordFlags = 0x438;                    // uint32
+inline constexpr std::size_t TESFile_CompileIndex = 0x478;                   // uint8
+inline constexpr std::size_t TESFile_SmallFileCompileIndex = 0x47A;          // uint16
+inline constexpr std::uint32_t TESFile_RecordFlagSmallFile = 1u << 9;
+
+}  // namespace data
+
 namespace handle {
 
 // Address Library 1.6.1170 id 12332. Kept separate from the older console-path

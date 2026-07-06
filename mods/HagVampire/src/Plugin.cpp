@@ -13,6 +13,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <mutex>
 #include <stdexcept>
 #include <unordered_map>
@@ -38,11 +39,9 @@ enum class VampireAction {
 std::atomic_bool g_pageActionConsumed{false};
 VampireAction g_actionAtPageBuild = VampireAction::Transform;
 std::atomic_bool g_corpseFeedingEnabled{true};
-std::atomic_bool g_satiationSystemEnabled{true};
 std::atomic_int g_animationMode{0};
 std::atomic_int g_feedHotkey{'V'};
 std::atomic_int g_bloodExtract{0};
-std::atomic_int g_satiation{0};
 std::atomic_int g_permanentHealthBonusAppliedLevel{0};
 
 constexpr const char* kConfigName = "HagVampire";
@@ -55,9 +54,6 @@ constexpr int kBloodStrengthMaxLevel = 100;
 constexpr int kBloodStrengthLevel50Extract = 5369;
 constexpr int kBloodStrengthMaxExtract = 84000;
 constexpr int kBloodStrengthLateExtract = kBloodStrengthMaxExtract - kBloodStrengthLevel50Extract;
-constexpr int kSatiationMax = 100;
-constexpr int kLiveBloodSatiationGain = 35;
-constexpr int kCorpseBloodSatiationGain = 20;
 constexpr int kBloodScentMinLevel = 1;
 constexpr int kFreshBloodMinLevel = 1;
 constexpr int kStalkerLevel = 10;
@@ -68,6 +64,7 @@ constexpr int kLifestealHealScale = 1'000'000;
 constexpr std::uint32_t kFormFlagDeleted = 1u << 5;
 constexpr std::uint32_t kFormFlagDisabled = 1u << 11;
 constexpr std::uint8_t kFormTypeActorCharacter = 0x3E;
+constexpr std::uint8_t kFormTypeGlobal = 0x09;
 constexpr std::uint32_t kPlayerRefID = 0x14;
 constexpr float kBloodScentBaseRange = 600.0f;
 constexpr float kBloodScentStalkerRange = 850.0f;
@@ -78,6 +75,14 @@ constexpr float kFreshBloodBonusFraction = 0.10f;
 constexpr float kFreshBloodMinBonus = 0.1f;
 constexpr std::uint32_t kFreshBloodDurationMs = 5u * 60u * 1000u;
 constexpr std::uint32_t kCorpseFeedCleanupDelayMs = 5500u;
+constexpr const char* kSurvivalModePluginName = "ccQDRSSE001-SurvivalMode.esl";
+constexpr std::uint32_t kSurvivalModeEnabledLocal = 0x826;
+constexpr std::uint32_t kSurvivalHungerNeedValueLocal = 0x81A;
+constexpr std::uint32_t kSurvivalHungerNeedMaxValueLocal = 0x80C;
+constexpr std::uint32_t kSurvivalHungerRestoreMediumLocal = 0x82B;
+constexpr std::uint32_t kSurvivalHungerRestoreLargeLocal = 0x82C;
+constexpr std::uint32_t kSurvivalHungerRestoreSmallLocal = 0x82D;
+constexpr std::uint32_t kSurvivalHungerRestoreVerySmallLocal = 0x8DE;
 
 struct NiPoint3 {
     float x = 0.0f;
@@ -126,6 +131,27 @@ struct BSSpinLockRaw {
     volatile LONG lockCount = 0;
 };
 
+struct SurvivalGlobalSet {
+    void* modeEnabled = nullptr;
+    void* hungerNeedValue = nullptr;
+    void* hungerNeedMaxValue = nullptr;
+    void* restoreVerySmall = nullptr;
+    void* restoreSmall = nullptr;
+    void* restoreMedium = nullptr;
+    void* restoreLarge = nullptr;
+};
+
+struct SurvivalFoodRestoreState {
+    bool initialized = false;
+    bool available = false;
+    bool foodBlocked = false;
+    SurvivalGlobalSet globals{};
+    float originalVerySmall = 0.0f;
+    float originalSmall = 0.0f;
+    float originalMedium = 0.0f;
+    float originalLarge = 0.0f;
+};
+
 using BloodScentTargetMap = std::unordered_map<std::uint32_t, std::uint32_t>;  // form ID -> ObjectRefHandle
 
 std::mutex g_freshBloodMutex;
@@ -150,6 +176,8 @@ std::atomic_bool g_bloodScentMovementHookInstalled{false};
 std::atomic_int g_lifestealHealRemainderMicro{0};
 std::mutex g_lifestealAccumulatorMutex;
 thread_local bool g_lifestealHealInProgress = false;
+std::mutex g_survivalMutex;
+SurvivalFoodRestoreState g_survival{};
 
 constexpr VampireRank kVampireRanks[] = {
     {"Fledgling", 1},
@@ -218,31 +246,6 @@ void SaveBloodExtract(int extract) {
     ConfigSetInt("blood_extract", std::clamp(extract, 0, kBloodStrengthMaxExtract));
 }
 
-void SaveSatiation(int satiation) {
-    ConfigSetInt("satiation", std::clamp(satiation, 0, kSatiationMax));
-}
-
-// Blood-only meter: food, drink, potions, and alchemy effects must not call this.
-void AwardSatiationFromBloodFeed(std::uint32_t sourceFormID, int amount, const char* source) {
-    if (!g_satiationSystemEnabled.load()) {
-        HAG_INFO("satiation skipped: system disabled source={} form={:#x}",
-                 source ? source : "blood",
-                 sourceFormID);
-        return;
-    }
-
-    const int previous = std::clamp(g_satiation.load(), 0, kSatiationMax);
-    const int next = std::clamp(previous + amount, 0, kSatiationMax);
-    g_satiation.store(next);
-    SaveSatiation(next);
-    HAG_INFO("satiation blood feed awarded: source={} form={:#x} amount={} total={}/{}",
-             source ? source : "blood",
-             sourceFormID,
-             amount,
-             next,
-             kSatiationMax);
-}
-
 void AwardBloodExtract(std::uint16_t targetLevel, std::uint32_t sourceFormID) {
     const int feedExtract = BloodExtractForCorpseLevel(targetLevel);
     const int previousExtract = std::clamp(g_bloodExtract.load(), 0, kBloodStrengthMaxExtract);
@@ -276,7 +279,7 @@ bool IsPlayerVampire() {
         void* form = lookup ? lookup(0x000ED06D) : nullptr;
         if (!form) return false;
         auto* bytes = static_cast<std::uint8_t*>(form);
-        if (bytes[game::form::FormType] != 0x09) return false;
+        if (bytes[game::form::FormType] != kFormTypeGlobal) return false;
         const float value = *reinterpret_cast<float*>(bytes + 0x34);
         return value >= 0.5f;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -323,21 +326,16 @@ void ConfigSetInt(const char* key, int value) {
 
 void LoadConfig() {
     g_corpseFeedingEnabled.store(ConfigGetBool("enable_corpse_feeding", true));
-    g_satiationSystemEnabled.store(ConfigGetBool("enable_satiation_system", true));
     g_animationMode.store(ConfigGetInt("animation_mode", 0, 0, 2));
     g_feedHotkey.store(ConfigGetInt("feed_hotkey", 'V', 1, 255));
     g_bloodExtract.store(ConfigGetInt("blood_extract", 0, 0, kBloodStrengthMaxExtract));
-    g_satiation.store(ConfigGetInt("satiation", 0, 0, kSatiationMax));
     g_permanentHealthBonusAppliedLevel.store(ConfigGetInt("permanent_health_bonus_applied_level", 0, 0, kBloodStrengthMaxLevel));
     g_lifestealHealRemainderMicro.store(ConfigGetInt("lifesteal_heal_remainder_micro", 0, 0, kLifestealHealScale - 1));
-    HAG_INFO("config loaded: enable_corpse_feeding={} enable_satiation_system={} animation_mode={} feed_hotkey={:#x} blood_extract={} satiation={}/{} level={} rank={} permanentHealthBonusAppliedLevel={} lifestealRemainder={}",
+    HAG_INFO("config loaded: enable_corpse_feeding={} animation_mode={} feed_hotkey={:#x} blood_extract={} level={} rank={} permanentHealthBonusAppliedLevel={} lifestealRemainder={}",
              g_corpseFeedingEnabled.load(),
-             g_satiationSystemEnabled.load(),
              g_animationMode.load(),
              g_feedHotkey.load(),
              g_bloodExtract.load(),
-             g_satiation.load(),
-             kSatiationMax,
              BloodStrengthLevelForExtract(g_bloodExtract.load()),
              VampireRankNameForLevel(BloodStrengthLevelForExtract(g_bloodExtract.load())),
              g_permanentHealthBonusAppliedLevel.load(),
@@ -350,11 +348,6 @@ void PushConfigToUI() {
         g_uiApi->SetToggleState(g_page,
                                 "enable_corpse_feeding",
                                 g_corpseFeedingEnabled.load(),
-                                true,
-                                "");
-        g_uiApi->SetToggleState(g_page,
-                                "enable_satiation_system",
-                                g_satiationSystemEnabled.load(),
                                 true,
                                 "");
     }
@@ -439,6 +432,316 @@ void* LookupFormByIDGuarded(std::uint32_t formID) noexcept {
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return nullptr;
     }
+}
+
+bool ReadBSTPointerArrayHeaderBoundedGuarded(void* array,
+                                             void*** data,
+                                             std::uint32_t* size,
+                                             std::uint32_t maxSize) noexcept {
+    if (data) *data = nullptr;
+    if (size) *size = 0;
+    if (!array || !data || !size) return false;
+
+    __try {
+        auto* bytes = static_cast<std::uint8_t*>(array);
+        auto* rawData = *reinterpret_cast<void***>(bytes + game::process::BSTArray_Data);
+        const auto capacity = *reinterpret_cast<std::uint32_t*>(bytes + game::process::BSTArray_Capacity);
+        const auto rawSize = *reinterpret_cast<std::uint32_t*>(bytes + game::process::BSTArray_Size);
+        if (rawSize > capacity || rawSize > maxSize) return false;
+        *data = rawData;
+        *size = rawSize;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+void* GetTESDataHandlerGuarded() noexcept {
+    __try {
+        return *reinterpret_cast<void**>(SkyrimBase() + game::data::TESDataHandlerPtr);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return nullptr;
+    }
+}
+
+bool TESFileNameEqualsGuarded(void* file, const char* pluginName) noexcept {
+    if (!file || !pluginName || !*pluginName) return false;
+    __try {
+        auto* name = reinterpret_cast<const char*>(
+            static_cast<std::uint8_t*>(file) + game::data::TESFile_FileName);
+        return name && *name && _stricmp(name, pluginName) == 0;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+void* FindLoadedPluginFileInArrayGuarded(void* array, const char* pluginName) noexcept {
+    void** files = nullptr;
+    std::uint32_t size = 0;
+    if (!ReadBSTPointerArrayHeaderBoundedGuarded(array, &files, &size, 4096) || !files) return nullptr;
+
+    __try {
+        for (std::uint32_t i = 0; i < size; ++i) {
+            void* file = files[i];
+            if (TESFileNameEqualsGuarded(file, pluginName)) return file;
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return nullptr;
+    }
+
+    return nullptr;
+}
+
+void* FindLoadedPluginFileGuarded(const char* pluginName) noexcept {
+    void* dataHandler = GetTESDataHandlerGuarded();
+    if (!dataHandler) return nullptr;
+
+    auto* collection = static_cast<std::uint8_t*>(dataHandler) +
+                       game::data::TESDataHandler_CompiledFileCollection;
+    if (void* file = FindLoadedPluginFileInArrayGuarded(collection + game::data::TESFileCollection_Files,
+                                                        pluginName)) {
+        return file;
+    }
+    return FindLoadedPluginFileInArrayGuarded(collection + game::data::TESFileCollection_SmallFiles,
+                                             pluginName);
+}
+
+bool ResolvePluginLocalFormIDGuarded(const char* pluginName,
+                                     std::uint32_t localFormID,
+                                     std::uint32_t* runtimeFormID) noexcept {
+    if (runtimeFormID) *runtimeFormID = 0;
+    if (!pluginName || !runtimeFormID) return false;
+
+    void* file = FindLoadedPluginFileGuarded(pluginName);
+    if (!file) return false;
+
+    __try {
+        const auto compileIndex = *reinterpret_cast<std::uint8_t*>(
+            static_cast<std::uint8_t*>(file) + game::data::TESFile_CompileIndex);
+        const auto smallFileCompileIndex = *reinterpret_cast<std::uint16_t*>(
+            static_cast<std::uint8_t*>(file) + game::data::TESFile_SmallFileCompileIndex);
+        const auto recordFlags = *reinterpret_cast<std::uint32_t*>(
+            static_cast<std::uint8_t*>(file) + game::data::TESFile_RecordFlags);
+
+        if (compileIndex == 0xFF) return false;
+
+        if (compileIndex == 0xFE || (recordFlags & game::data::TESFile_RecordFlagSmallFile) != 0) {
+            *runtimeFormID = 0xFE000000u |
+                             (static_cast<std::uint32_t>(smallFileCompileIndex) << 12) |
+                             (localFormID & 0xFFFu);
+            return true;
+        }
+
+        *runtimeFormID = (static_cast<std::uint32_t>(compileIndex) << 24) |
+                         (localFormID & 0x00FFFFFFu);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        if (runtimeFormID) *runtimeFormID = 0;
+        return false;
+    }
+}
+
+void* LookupPluginLocalFormGuarded(const char* pluginName,
+                                   std::uint32_t localFormID,
+                                   std::uint32_t* runtimeFormID = nullptr) noexcept {
+    std::uint32_t resolvedFormID = 0;
+    if (!ResolvePluginLocalFormIDGuarded(pluginName, localFormID, &resolvedFormID)) {
+        return nullptr;
+    }
+    if (runtimeFormID) *runtimeFormID = resolvedFormID;
+    return LookupFormByIDGuarded(resolvedFormID);
+}
+
+bool ReadGlobalValueGuarded(void* global, float* out) noexcept {
+    if (out) *out = 0.0f;
+    if (!global || !out) return false;
+
+    __try {
+        auto* bytes = static_cast<std::uint8_t*>(global);
+        if (bytes[game::form::FormType] != kFormTypeGlobal) return false;
+        *out = *reinterpret_cast<float*>(bytes + 0x34);
+        return std::isfinite(*out);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool WriteGlobalValueGuarded(void* global, float value) noexcept {
+    if (!global || !std::isfinite(value)) return false;
+
+    __try {
+        auto* bytes = static_cast<std::uint8_t*>(global);
+        if (bytes[game::form::FormType] != kFormTypeGlobal) return false;
+        *reinterpret_cast<float*>(bytes + 0x34) = value;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool ResolveSurvivalGlobalsLocked(SurvivalFoodRestoreState& state) {
+    if (state.initialized) return state.available;
+    state.initialized = true;
+
+    state.globals.modeEnabled = LookupPluginLocalFormGuarded(kSurvivalModePluginName, kSurvivalModeEnabledLocal);
+    state.globals.hungerNeedValue = LookupPluginLocalFormGuarded(kSurvivalModePluginName, kSurvivalHungerNeedValueLocal);
+    state.globals.hungerNeedMaxValue = LookupPluginLocalFormGuarded(kSurvivalModePluginName, kSurvivalHungerNeedMaxValueLocal);
+    state.globals.restoreVerySmall = LookupPluginLocalFormGuarded(kSurvivalModePluginName, kSurvivalHungerRestoreVerySmallLocal);
+    state.globals.restoreSmall = LookupPluginLocalFormGuarded(kSurvivalModePluginName, kSurvivalHungerRestoreSmallLocal);
+    state.globals.restoreMedium = LookupPluginLocalFormGuarded(kSurvivalModePluginName, kSurvivalHungerRestoreMediumLocal);
+    state.globals.restoreLarge = LookupPluginLocalFormGuarded(kSurvivalModePluginName, kSurvivalHungerRestoreLargeLocal);
+
+    if (!state.globals.modeEnabled || !state.globals.hungerNeedValue || !state.globals.hungerNeedMaxValue ||
+        !state.globals.restoreVerySmall || !state.globals.restoreSmall ||
+        !state.globals.restoreMedium || !state.globals.restoreLarge) {
+        HAG_WARN("Survival Mode integration unavailable: could not resolve all globals from {}",
+                 kSurvivalModePluginName);
+        state.initialized = false;
+        return false;
+    }
+
+    if (!ReadGlobalValueGuarded(state.globals.restoreVerySmall, &state.originalVerySmall) ||
+        !ReadGlobalValueGuarded(state.globals.restoreSmall, &state.originalSmall) ||
+        !ReadGlobalValueGuarded(state.globals.restoreMedium, &state.originalMedium) ||
+        !ReadGlobalValueGuarded(state.globals.restoreLarge, &state.originalLarge)) {
+        HAG_WARN("Survival Mode integration unavailable: hunger restore globals did not read as TESGlobal values");
+        state.initialized = false;
+        return false;
+    }
+
+    state.available = true;
+    HAG_INFO("Survival Mode globals resolved: foodRestore verySmall={} small={} medium={} large={}",
+             state.originalVerySmall,
+             state.originalSmall,
+             state.originalMedium,
+             state.originalLarge);
+    return true;
+}
+
+bool SetSurvivalFoodRestoreGlobalsLocked(SurvivalFoodRestoreState& state,
+                                         float verySmall,
+                                         float small,
+                                         float medium,
+                                         float large) {
+    return WriteGlobalValueGuarded(state.globals.restoreVerySmall, verySmall) &&
+           WriteGlobalValueGuarded(state.globals.restoreSmall, small) &&
+           WriteGlobalValueGuarded(state.globals.restoreMedium, medium) &&
+           WriteGlobalValueGuarded(state.globals.restoreLarge, large);
+}
+
+void ApplySurvivalFoodPolicyNow(const char* reason) {
+    std::lock_guard lock(g_survivalMutex);
+    if (!ResolveSurvivalGlobalsLocked(g_survival)) return;
+
+    const bool shouldBlockFood = IsPlayerVampire();
+    if (shouldBlockFood) {
+        if (!g_survival.foodBlocked) {
+            if (SetSurvivalFoodRestoreGlobalsLocked(g_survival, 0.0f, 0.0f, 0.0f, 0.0f)) {
+                g_survival.foodBlocked = true;
+                HAG_INFO("Survival Mode food satiation blocked for vampire ({})",
+                         reason ? reason : "unspecified");
+            } else {
+                HAG_WARN("Survival Mode food satiation block failed ({})",
+                         reason ? reason : "unspecified");
+            }
+        }
+        return;
+    }
+
+    if (!g_survival.foodBlocked) return;
+    if (SetSurvivalFoodRestoreGlobalsLocked(g_survival,
+                                            g_survival.originalVerySmall,
+                                            g_survival.originalSmall,
+                                            g_survival.originalMedium,
+                                            g_survival.originalLarge)) {
+        g_survival.foodBlocked = false;
+        HAG_INFO("Survival Mode food satiation restored ({})", reason ? reason : "unspecified");
+    } else {
+        HAG_WARN("Survival Mode food satiation restore failed ({})", reason ? reason : "unspecified");
+    }
+}
+
+void ApplySurvivalFoodPolicyTask(void* user) {
+    ApplySurvivalFoodPolicyNow(static_cast<const char*>(user));
+}
+
+void QueueApplySurvivalFoodPolicy(const char* reason) {
+    if (!g_loaderApi || !g_loaderApi->QueueMainThreadTask) {
+        ApplySurvivalFoodPolicyNow(reason);
+        return;
+    }
+    if (!g_loaderApi->QueueMainThreadTask(&ApplySurvivalFoodPolicyTask, const_cast<char*>(reason))) {
+        HAG_WARN("Survival Mode food policy queue failed ({})", reason ? reason : "unspecified");
+    }
+}
+
+bool SurvivalModeEnabledLocked(const SurvivalFoodRestoreState& state) {
+    float enabled = 0.0f;
+    return ReadGlobalValueGuarded(state.globals.modeEnabled, &enabled) && enabled >= 0.5f;
+}
+
+void RestoreSurvivalHungerFromBloodFeed(std::uint32_t sourceFormID, bool liveVictim, const char* source) {
+    std::lock_guard lock(g_survivalMutex);
+    if (!ResolveSurvivalGlobalsLocked(g_survival)) return;
+
+    if (!SurvivalModeEnabledLocked(g_survival)) {
+        HAG_INFO("Survival Mode hunger restore skipped: Survival Mode disabled source={} form={:#x}",
+                 source ? source : "blood",
+                 sourceFormID);
+        return;
+    }
+
+    if (!IsPlayerVampire()) {
+        HAG_INFO("Survival Mode hunger restore skipped: player is not vampire source={} form={:#x}",
+                 source ? source : "blood",
+                 sourceFormID);
+        return;
+    }
+
+    const float restoreAmount = liveVictim ? g_survival.originalLarge : g_survival.originalMedium;
+    if (restoreAmount <= 0.0f || !std::isfinite(restoreAmount)) {
+        HAG_WARN("Survival Mode hunger restore skipped: invalid restore amount={} liveVictim={} source={} form={:#x}",
+                 restoreAmount,
+                 liveVictim,
+                 source ? source : "blood",
+                 sourceFormID);
+        return;
+    }
+
+    float current = 0.0f;
+    float maxValue = 0.0f;
+    if (!ReadGlobalValueGuarded(g_survival.globals.hungerNeedValue, &current) ||
+        !ReadGlobalValueGuarded(g_survival.globals.hungerNeedMaxValue, &maxValue) ||
+        maxValue <= 0.0f) {
+        HAG_WARN("Survival Mode hunger restore skipped: could not read hunger globals source={} form={:#x}",
+                 source ? source : "blood",
+                 sourceFormID);
+        return;
+    }
+
+    const float next = std::clamp(current - restoreAmount, 0.0f, maxValue);
+    if (!WriteGlobalValueGuarded(g_survival.globals.hungerNeedValue, next)) {
+        HAG_WARN("Survival Mode hunger restore failed: could not write hunger value source={} form={:#x}",
+                 source ? source : "blood",
+                 sourceFormID);
+        return;
+    }
+
+    if (!g_survival.foodBlocked) {
+        g_survival.foodBlocked = SetSurvivalFoodRestoreGlobalsLocked(g_survival, 0.0f, 0.0f, 0.0f, 0.0f);
+        if (!g_survival.foodBlocked) {
+            HAG_WARN("Survival Mode food satiation block failed after blood feed");
+        }
+    }
+
+    HAG_INFO("Survival Mode blood satiation applied: source={} form={:#x} liveVictim={} amount={} hunger {} -> {} max={}",
+             source ? source : "blood",
+             sourceFormID,
+             liveVictim,
+             restoreAmount,
+             current,
+             next,
+             maxValue);
 }
 
 void* ResolveRefHandleRawGuarded(std::uint32_t handle) noexcept {
@@ -2283,7 +2586,7 @@ void RunNativeCorpseFeedTarget(void* player, const TargetInfo& target, int mode)
         return;
     }
     AwardBloodExtract(hasCorpseLevel ? corpseLevel : 1, target.formID);
-    AwardSatiationFromBloodFeed(target.formID, kCorpseBloodSatiationGain, "corpse");
+    RestoreSurvivalHungerFromBloodFeed(target.formID, false, "corpse");
     ApplyFreshBloodBuff(player, target.formID);
     RefreshBloodScentHighlights("after feed", false);
     const auto cleanupGeneration = g_feedCleanupGeneration.fetch_add(1) + 1;
@@ -2326,7 +2629,7 @@ void RunNativeSneakFeedTarget(void* player, const TargetInfo& target) {
     }
 
     AwardBloodExtract(hasTargetLevel ? targetLevel : 1, target.formID);
-    AwardSatiationFromBloodFeed(target.formID, kLiveBloodSatiationGain, "sneak");
+    RestoreSurvivalHungerFromBloodFeed(target.formID, true, "sneak");
     ApplyFreshBloodBuff(player, target.formID);
     const auto cleanupGeneration = g_feedCleanupGeneration.fetch_add(1) + 1;
     if (!ScheduleFeedCleanup(cleanupGeneration, target.formID)) {
@@ -2370,7 +2673,7 @@ void RunNativeSleepingFeedTarget(void* player, const TargetInfo& target) {
     }
 
     AwardBloodExtract(hasTargetLevel ? targetLevel : 1, target.formID);
-    AwardSatiationFromBloodFeed(target.formID, kLiveBloodSatiationGain, "sleeping");
+    RestoreSurvivalHungerFromBloodFeed(target.formID, true, "sleeping");
     ApplyFreshBloodBuff(player, target.formID);
     const auto cleanupGeneration = g_feedCleanupGeneration.fetch_add(1) + 1;
     if (!ScheduleFeedCleanup(cleanupGeneration, target.formID)) {
@@ -2446,16 +2749,6 @@ void OnCorpseFeedingChanged(void*, HagUI_Value value) {
     HAG_INFO("enable_corpse_feeding -> {}", value.b);
 }
 
-void OnSatiationSystemChanged(void*, HagUI_Value value) {
-    if (value.type != HAGUI_VT_BOOL) return;
-    g_satiationSystemEnabled.store(value.b);
-    ConfigSetBool("enable_satiation_system", value.b);
-    HAG_INFO("enable_satiation_system -> {}", value.b);
-    if (g_uiApi && g_uiApi->Refresh) {
-        g_uiApi->Refresh();
-    }
-}
-
 void OnAnimationModeChanged(void*, HagUI_Value value) {
     int next = 0;
     if (value.type == HAGUI_VT_INT) {
@@ -2518,21 +2811,6 @@ const char* VampireRankText(void*) {
     return VampireRankNameForLevel(level);
 }
 
-HagUI_BarSample SatiationBarSample(void*) {
-    static thread_local char text[64];
-    if (!g_satiationSystemEnabled.load()) {
-        std::snprintf(text, sizeof(text), "Disabled");
-        return {0.0f, text};
-    }
-
-    const int satiation = std::clamp(g_satiation.load(), 0, kSatiationMax);
-    std::snprintf(text, sizeof(text), "%d / %d", satiation, kSatiationMax);
-    return {
-        static_cast<float>(satiation) / static_cast<float>(kSatiationMax),
-        text,
-    };
-}
-
 void OnFeedHotkeyChanged(void*, HagUI_Value value) {
     int next = 0;
     if (value.type == HAGUI_VT_INT) {
@@ -2566,6 +2844,7 @@ void OnActionResult(void*, const HagLoader_PapyrusResult* result) {
     }
     HAG_INFO("vampire action Papyrus call dispatched: '{}'",
              result->message ? result->message : "");
+    QueueApplySurvivalFoodPolicy("vampire action");
 }
 
 void OnVampireActionClicked(void*) {
@@ -2615,6 +2894,7 @@ void Init(HagUI_PageHandle* page) {
         throw std::runtime_error("HagVampire requires HagLoader queue/config/save/hotkey APIs");
     }
     LoadConfig();
+    QueueApplySurvivalFoodPolicy("init");
     if (!InstallDamageHook()) {
         HAG_WARN("Fresh Blood lifesteal unavailable: damage hook did not install");
     }
@@ -2638,9 +2918,9 @@ void Init(HagUI_PageHandle* page) {
         throw std::runtime_error("HagVampire requires HagLoader HagUI API/page");
     }
 
-    if (!g_uiApi->AddDynamicButton || !g_uiApi->AddProgressBar || !g_uiApi->SetIntState || !g_uiApi->AddHotkey ||
+    if (!g_uiApi->AddDynamicButton || !g_uiApi->SetIntState || !g_uiApi->AddHotkey ||
         !g_uiApi->AddCounter || !g_uiApi->SetGridCell || !g_uiApi->SetDoublePage) {
-        throw std::runtime_error("HagVampire requires HagUI dynamic button/progress/state/hotkey/counter/grid/double-page API");
+        throw std::runtime_error("HagVampire requires HagUI dynamic button/state/hotkey/counter/grid/double-page API");
     }
 
     g_uiApi->SetDoublePage(page, true);
@@ -2655,18 +2935,6 @@ void Init(HagUI_PageHandle* page) {
                         "Vampire rank",
                         &VampireRankText,
                         nullptr);
-    g_uiApi->AddToggle(page,
-                       "enable_satiation_system",
-                       "Enable satiation system",
-                       g_satiationSystemEnabled.load(),
-                       &OnSatiationSystemChanged,
-                       nullptr);
-    g_uiApi->AddProgressBar(page,
-                            "satiation_bar",
-                            "Satiation",
-                            0x8B1E1E,
-                            &SatiationBarSample,
-                            nullptr);
     g_uiApi->AddToggle(page,
                        "enable_corpse_feeding",
                        "Enable corpse feeding",
@@ -2695,12 +2963,10 @@ void Init(HagUI_PageHandle* page) {
                         nullptr);
     g_uiApi->SetGridCell(page, "vampire_action", 0, 0);
     g_uiApi->SetGridCell(page, "vampire_rank", 1, 0);
-    g_uiApi->SetGridCell(page, "enable_satiation_system", 0, 1);
-    g_uiApi->SetGridCell(page, "satiation_bar", 1, 1);
-    g_uiApi->SetGridCell(page, "enable_corpse_feeding", 0, 2);
-    g_uiApi->SetGridCell(page, "feed_hotkey", 1, 2);
-    g_uiApi->SetGridCell(page, "feeding_counter", 0, 3);
-    g_uiApi->SetGridCell(page, "animation_mode", 1, 3);
+    g_uiApi->SetGridCell(page, "enable_corpse_feeding", 0, 1);
+    g_uiApi->SetGridCell(page, "feed_hotkey", 1, 1);
+    g_uiApi->SetGridCell(page, "feeding_counter", 0, 2);
+    g_uiApi->SetGridCell(page, "animation_mode", 1, 2);
     PushConfigToUI();
     g_uiApi->Refresh();
 
@@ -2709,6 +2975,7 @@ void Init(HagUI_PageHandle* page) {
 
 void OnSaveLoaded() {
     ReloadSaveConfig("SKSE save context ready");
+    QueueApplySurvivalFoodPolicy("save loaded");
     InstallActorDeathHook();
     RegisterFeedHotkey();
     ApplyUnlockedRankRewards("save loaded");
