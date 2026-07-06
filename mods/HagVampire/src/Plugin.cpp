@@ -39,14 +39,17 @@ enum class VampireAction {
 std::atomic_bool g_pageActionConsumed{false};
 VampireAction g_actionAtPageBuild = VampireAction::Transform;
 std::atomic_bool g_corpseFeedingEnabled{true};
+std::atomic_bool g_bloodPotionExtractionEnabled{true};
 std::atomic_int g_animationMode{0};
 std::atomic_int g_feedHotkey{'V'};
+std::atomic_int g_extractBloodHotkey{'B'};
 std::atomic_int g_bloodExtract{0};
 std::atomic_int g_permanentHealthBonusAppliedLevel{0};
 
 constexpr const char* kConfigName = "HagVampire";
 constexpr const char* kFedCorpseSet = "fed_corpses_v2";
 constexpr const char* kFeedHotkeyName = "feed_corpse";
+constexpr const char* kExtractBloodHotkeyName = "extract_blood";
 constexpr std::int32_t kConfigScope = HAGLOADER_CONFIG_PERSAVE;
 constexpr std::uint32_t kMaxFedCorpseEntries = 65536;
 constexpr int kBloodStrengthMinLevel = 1;
@@ -65,6 +68,7 @@ constexpr std::uint32_t kFormFlagDeleted = 1u << 5;
 constexpr std::uint32_t kFormFlagDisabled = 1u << 11;
 constexpr std::uint8_t kFormTypeActorCharacter = 0x3E;
 constexpr std::uint8_t kFormTypeGlobal = 0x09;
+constexpr std::uint8_t kFormTypeAlchemyItem = 0x2E;
 constexpr std::uint32_t kPlayerRefID = 0x14;
 constexpr float kBloodScentBaseRange = 600.0f;
 constexpr float kBloodScentStalkerRange = 850.0f;
@@ -75,6 +79,9 @@ constexpr float kFreshBloodBonusFraction = 0.10f;
 constexpr float kFreshBloodMinBonus = 0.1f;
 constexpr std::uint32_t kFreshBloodDurationMs = 5u * 60u * 1000u;
 constexpr std::uint32_t kCorpseFeedCleanupDelayMs = 5500u;
+constexpr const char* kHagVampirePluginName = "HagVampire.esp";
+constexpr std::uint32_t kHagVampireBloodPotionLocal = 0x000800;
+constexpr std::uint32_t kHagVampireStaleBloodPotionLocal = 0x000801;
 constexpr const char* kSurvivalModePluginName = "ccQDRSSE001-SurvivalMode.esl";
 constexpr std::uint32_t kSurvivalModeEnabledLocal = 0x826;
 constexpr std::uint32_t kSurvivalHungerNeedValueLocal = 0x81A;
@@ -100,6 +107,12 @@ struct TargetInfo {
 struct FeedRefInfo {
     void* ref = nullptr;
     std::uint32_t handle = 0;
+};
+
+struct BloodPotionForm {
+    void* form = nullptr;
+    std::uint32_t formID = 0;
+    const char* label = "";
 };
 
 struct VampireRank {
@@ -326,15 +339,19 @@ void ConfigSetInt(const char* key, int value) {
 
 void LoadConfig() {
     g_corpseFeedingEnabled.store(ConfigGetBool("enable_corpse_feeding", true));
+    g_bloodPotionExtractionEnabled.store(ConfigGetBool("enable_blood_potion_extraction", true));
     g_animationMode.store(ConfigGetInt("animation_mode", 0, 0, 2));
     g_feedHotkey.store(ConfigGetInt("feed_hotkey", 'V', 1, 255));
+    g_extractBloodHotkey.store(ConfigGetInt("extract_blood_hotkey", 'B', 1, 255));
     g_bloodExtract.store(ConfigGetInt("blood_extract", 0, 0, kBloodStrengthMaxExtract));
     g_permanentHealthBonusAppliedLevel.store(ConfigGetInt("permanent_health_bonus_applied_level", 0, 0, kBloodStrengthMaxLevel));
     g_lifestealHealRemainderMicro.store(ConfigGetInt("lifesteal_heal_remainder_micro", 0, 0, kLifestealHealScale - 1));
-    HAG_INFO("config loaded: enable_corpse_feeding={} animation_mode={} feed_hotkey={:#x} blood_extract={} level={} rank={} permanentHealthBonusAppliedLevel={} lifestealRemainder={}",
+    HAG_INFO("config loaded: enable_corpse_feeding={} enable_blood_potion_extraction={} animation_mode={} feed_hotkey={:#x} extract_blood_hotkey={:#x} blood_extract={} level={} rank={} permanentHealthBonusAppliedLevel={} lifestealRemainder={}",
              g_corpseFeedingEnabled.load(),
+             g_bloodPotionExtractionEnabled.load(),
              g_animationMode.load(),
              g_feedHotkey.load(),
+             g_extractBloodHotkey.load(),
              g_bloodExtract.load(),
              BloodStrengthLevelForExtract(g_bloodExtract.load()),
              VampireRankNameForLevel(BloodStrengthLevelForExtract(g_bloodExtract.load())),
@@ -350,6 +367,11 @@ void PushConfigToUI() {
                                 g_corpseFeedingEnabled.load(),
                                 true,
                                 "");
+        g_uiApi->SetToggleState(g_page,
+                                "enable_blood_potion_extraction",
+                                g_bloodPotionExtractionEnabled.load(),
+                                true,
+                                "");
     }
     if (g_uiApi->SetIntState) {
         g_uiApi->SetIntState(g_page,
@@ -360,6 +382,11 @@ void PushConfigToUI() {
         g_uiApi->SetIntState(g_page,
                              "feed_hotkey",
                              g_feedHotkey.load(),
+                             true,
+                             "");
+        g_uiApi->SetIntState(g_page,
+                             "extract_blood_hotkey",
+                             g_extractBloodHotkey.load(),
                              true,
                              "");
     }
@@ -550,6 +577,55 @@ void* LookupPluginLocalFormGuarded(const char* pluginName,
     }
     if (runtimeFormID) *runtimeFormID = resolvedFormID;
     return LookupFormByIDGuarded(resolvedFormID);
+}
+
+bool IsAlchemyItemFormGuarded(void* form) noexcept {
+    if (!form) return false;
+    return ReadU8Guarded(form, game::form::FormType) == kFormTypeAlchemyItem;
+}
+
+bool ResolveBloodPotionForExtraction(bool stale, BloodPotionForm* out) noexcept {
+    if (out) *out = {};
+    if (!out) return false;
+
+    const std::uint32_t localFormID = stale ? kHagVampireStaleBloodPotionLocal : kHagVampireBloodPotionLocal;
+    std::uint32_t runtimeFormID = 0;
+    void* form = LookupPluginLocalFormGuarded(kHagVampirePluginName, localFormID, &runtimeFormID);
+    if (!form) {
+        HAG_ERR("blood extraction failed: {} local form {:#x} could not be resolved from {}",
+                stale ? "stale blood potion" : "blood potion",
+                localFormID,
+                kHagVampirePluginName);
+        return false;
+    }
+
+    if (!IsAlchemyItemFormGuarded(form)) {
+        HAG_ERR("blood extraction failed: resolved potion form {:#x} has type {:#x}, expected ALCH {:#x}",
+                runtimeFormID,
+                ReadU8Guarded(form, game::form::FormType),
+                kFormTypeAlchemyItem);
+        return false;
+    }
+
+    out->form = form;
+    out->formID = runtimeFormID;
+    out->label = stale ? "stale" : "fresh";
+    return true;
+}
+
+bool AddObjectToContainerGuarded(void* container, void* object, std::int32_t count) noexcept {
+    if (!container || !object || count <= 0) return false;
+
+    __try {
+        using AddObjectToContainerFn = void (*)(void*, void*, void*, std::int32_t, void*);
+        auto** vtbl = *reinterpret_cast<void***>(container);
+        auto addObjectToContainer = reinterpret_cast<AddObjectToContainerFn>(
+            vtbl[game::refr::VSlot_AddObjectToContainer]);
+        addObjectToContainer(container, object, nullptr, count, nullptr);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
 }
 
 bool ReadGlobalValueGuarded(void* global, float* out) noexcept {
@@ -2687,6 +2763,225 @@ void RunNativeSleepingFeedTarget(void* player, const TargetInfo& target) {
              target.formID);
 }
 
+bool AddBloodPotionToPlayerInventory(void* player,
+                                     const BloodPotionForm& potion,
+                                     const TargetInfo& target,
+                                     const char* source) {
+    if (!player || !potion.form) return false;
+
+    if (!AddObjectToContainerGuarded(player, potion.form, 1)) {
+        HAG_ERR("blood extraction failed: AddObjectToContainer faulted source={} target={:#x} potion={} potionForm={:#x}",
+                source ? source : "unknown",
+                target.formID,
+                potion.label ? potion.label : "",
+                potion.formID);
+        return false;
+    }
+
+    HAG_INFO("blood extraction potion added: source={} target={:#x} potion={} potionForm={:#x} count=1",
+             source ? source : "unknown",
+             target.formID,
+             potion.label ? potion.label : "",
+             potion.formID);
+    return true;
+}
+
+void ScheduleBloodExtractionCleanup(void* player, const TargetInfo& target, const char* source) {
+    const auto cleanupGeneration = g_feedCleanupGeneration.fetch_add(1) + 1;
+    if (!ScheduleFeedCleanup(cleanupGeneration, target.formID)) {
+        HAG_WARN("blood extraction cleanup timer failed; clearing feed state immediately source={} target={:#x}",
+                 source ? source : "unknown",
+                 target.formID);
+        CleanupCorpseFeedState(player, "blood extraction cleanup timer failed");
+    }
+    if (g_uiApi && g_uiApi->Refresh) {
+        g_uiApi->Refresh();
+    }
+}
+
+void RunBloodPotionCorpseExtractionTarget(void* player, const TargetInfo& target) {
+    const char* rejection = ValidateCorpseFeedTarget(target);
+    if (rejection) {
+        HAG_INFO("blood extraction corpse rejected handle={:#x} form={:#x} type={:#x}: {}",
+                 target.handle, target.formID, target.formType, rejection);
+        return;
+    }
+
+    if (!g_loaderApi->SaveStorageAvailable || !g_loaderApi->SaveStorageAvailable()) {
+        HAG_ERR("blood extraction corpse aborted: HagLoader SKSE save storage unavailable");
+        return;
+    }
+
+    if (!g_loaderApi->SaveFormIDSetContainsForModule || !g_loaderApi->SaveFormIDSetAddForModule ||
+        !g_loaderApi->SaveFormIDSetCountForModule) {
+        HAG_ERR("blood extraction corpse aborted: HagLoader save form-ID set API unavailable");
+        return;
+    }
+
+    float consumedMarker = 0.0f;
+    if (GetActorValueGuarded(target.actor, game::actor::AV_Variable08, &consumedMarker) &&
+        consumedMarker >= 8.5f) {
+        HAG_INFO("blood extraction corpse rejected form={:#x}: actor Variable08 already marks vampire feeding ({})",
+                 target.formID, consumedMarker);
+        return;
+    }
+
+    if (g_loaderApi->SaveFormIDSetContainsForModule(g_selfModule, kFedCorpseSet, target.formID)) {
+        HAG_INFO("blood extraction corpse rejected form={:#x}: corpse already fed/extracted in this save",
+                 target.formID);
+        return;
+    }
+
+    const std::uint32_t fedCount =
+        g_loaderApi->SaveFormIDSetCountForModule(g_selfModule, kFedCorpseSet);
+    if (fedCount >= kMaxFedCorpseEntries) {
+        HAG_ERR("blood extraction corpse aborted: fed corpse ledger full ({} entries)",
+                fedCount);
+        return;
+    }
+
+    std::uint16_t corpseLevel = 0;
+    const bool hasCorpseLevel = GetReferenceCalcLevelGuarded(target.actor, true, &corpseLevel);
+    HAG_INFO("blood extraction corpse accepted: handle={:#x} form={:#x} levelKnown={} level={}",
+             target.handle,
+             target.formID,
+             hasCorpseLevel,
+             hasCorpseLevel ? corpseLevel : 0);
+
+    BloodPotionForm potion{};
+    if (!ResolveBloodPotionForExtraction(true, &potion)) {
+        return;
+    }
+
+    if (!RunNativeCorpseFeedGuarded(player, target.actor, g_animationMode.load())) {
+        HAG_ERR("blood extraction corpse failed: native corpse action did not start");
+        return;
+    }
+
+    if (!g_loaderApi->SaveFormIDSetAddForModule(g_selfModule, kFedCorpseSet, target.formID, kMaxFedCorpseEntries)) {
+        HAG_ERR("blood extraction corpse action started but failed to record consumed corpse form={:#x}; potion will not be granted",
+                target.formID);
+        ScheduleBloodExtractionCleanup(player, target, "corpse");
+        return;
+    }
+
+    AddBloodPotionToPlayerInventory(player, potion, target, "corpse");
+    RefreshBloodScentHighlights("after blood extraction", false);
+    ScheduleBloodExtractionCleanup(player, target, "corpse");
+    HAG_INFO("blood extraction corpse completed: target={:#x} potionForm={:#x}",
+             target.formID,
+             potion.formID);
+}
+
+void RunBloodPotionSleepingExtractionTarget(void* player, const TargetInfo& target) {
+    FeedRefInfo feedRef{};
+    const char* rejection = ValidateSleepingFeedTarget(target, player, &feedRef);
+    if (rejection) {
+        HAG_INFO("blood extraction sleeping rejected handle={:#x} form={:#x} type={:#x}: {}",
+                 target.handle, target.formID, target.formType, rejection);
+        return;
+    }
+
+    BloodPotionForm potion{};
+    if (!ResolveBloodPotionForExtraction(false, &potion)) {
+        return;
+    }
+
+    if (!RunNativeSleepingFeedGuarded(player, target.actor, feedRef)) {
+        HAG_ERR("blood extraction sleeping failed: native live action did not start");
+        return;
+    }
+
+    AddBloodPotionToPlayerInventory(player, potion, target, "sleeping");
+    ScheduleBloodExtractionCleanup(player, target, "sleeping");
+    HAG_INFO("blood extraction sleeping completed: target={:#x} potionForm={:#x}",
+             target.formID,
+             potion.formID);
+}
+
+void RunBloodPotionSneakExtractionTarget(void* player, const TargetInfo& target) {
+    const char* rejection = ValidateSneakFeedTarget(target, player);
+    if (rejection) {
+        HAG_INFO("blood extraction sneak rejected handle={:#x} form={:#x} type={:#x}: {}",
+                 target.handle, target.formID, target.formType, rejection);
+        return;
+    }
+
+    BloodPotionForm potion{};
+    if (!ResolveBloodPotionForExtraction(false, &potion)) {
+        return;
+    }
+
+    if (!RunNativeSneakFeedGuarded(player, target.actor)) {
+        HAG_ERR("blood extraction sneak failed: native live action did not start");
+        return;
+    }
+
+    AddBloodPotionToPlayerInventory(player, potion, target, "sneak");
+    ScheduleBloodExtractionCleanup(player, target, "sneak");
+    HAG_INFO("blood extraction sneak completed: target={:#x} potionForm={:#x}",
+             target.formID,
+             potion.formID);
+}
+
+void RunBloodPotionExtractionTask(void*) {
+    HAG_INFO("blood extraction task started");
+
+    if (!g_bloodPotionExtractionEnabled.load()) {
+        HAG_INFO("blood extraction aborted: extraction disabled");
+        return;
+    }
+
+    void* player = GetPlayerActorGuarded();
+    if (!player) {
+        HAG_ERR("blood extraction aborted: player actor unavailable");
+        return;
+    }
+    if (!IsPlayerVampire()) {
+        HAG_INFO("blood extraction aborted: player is not a vampire");
+        return;
+    }
+
+    CleanupCorpseFeedState(player, "pre blood extraction");
+    RefreshBloodScentHighlights("blood extraction task start", false);
+
+    TargetInfo target{};
+    if (!GetCrosshairTargetActorGuarded(&target)) {
+        HAG_INFO("blood extraction aborted: no resolvable crosshair target");
+        return;
+    }
+
+    bool dead = false;
+    if (!IsDeadGuarded(target.actor, &dead)) {
+        HAG_INFO("blood extraction rejected handle={:#x} form={:#x} type={:#x}: crosshair actor death check faulted",
+                 target.handle,
+                 target.formID,
+                 target.formType);
+        return;
+    }
+
+    if (dead) {
+        RunBloodPotionCorpseExtractionTarget(player, target);
+        return;
+    }
+
+    bool sleeping = false;
+    if (!IsSleepingStateGuarded(target.actor, &sleeping)) {
+        HAG_INFO("blood extraction rejected handle={:#x} form={:#x} type={:#x}: crosshair actor sleep state check faulted",
+                 target.handle,
+                 target.formID,
+                 target.formType);
+        return;
+    }
+
+    if (sleeping) {
+        RunBloodPotionSleepingExtractionTarget(player, target);
+        return;
+    }
+
+    RunBloodPotionSneakExtractionTarget(player, target);
+}
+
 void RunNativeFeedTask(void*) {
     HAG_INFO("native feed task started");
 
@@ -2749,6 +3044,13 @@ void OnCorpseFeedingChanged(void*, HagUI_Value value) {
     HAG_INFO("enable_corpse_feeding -> {}", value.b);
 }
 
+void OnBloodPotionExtractionChanged(void*, HagUI_Value value) {
+    if (value.type != HAGUI_VT_BOOL) return;
+    g_bloodPotionExtractionEnabled.store(value.b);
+    ConfigSetBool("enable_blood_potion_extraction", value.b);
+    HAG_INFO("enable_blood_potion_extraction -> {}", value.b);
+}
+
 void OnAnimationModeChanged(void*, HagUI_Value value) {
     int next = 0;
     if (value.type == HAGUI_VT_INT) {
@@ -2781,6 +3083,22 @@ void OnFeedHotkey(void*) {
     QueueNativeFeed("hotkey");
 }
 
+void QueueBloodPotionExtraction(const char* reason) {
+    if (!g_loaderApi || !g_loaderApi->QueueMainThreadTask) {
+        HAG_ERR("blood extraction failed: HagLoader main-thread task API unavailable");
+        return;
+    }
+    if (!g_loaderApi->QueueMainThreadTask(&RunBloodPotionExtractionTask, nullptr)) {
+        HAG_ERR("blood extraction failed: could not queue main-thread task");
+        return;
+    }
+    HAG_INFO("blood extraction queued ({})", reason ? reason : "unspecified");
+}
+
+void OnExtractBloodHotkey(void*) {
+    QueueBloodPotionExtraction("hotkey");
+}
+
 void RegisterFeedHotkey() {
     if (!g_loaderApi || !g_loaderApi->RegisterHotkeyForModule) {
         HAG_ERR("feed hotkey registration failed: HagLoader hotkey API unavailable");
@@ -2792,6 +3110,23 @@ void RegisterFeedHotkey() {
         return;
     }
     HAG_INFO("feed hotkey registered at VK {:#x}", hotkey);
+}
+
+void RegisterExtractBloodHotkey() {
+    if (!g_loaderApi || !g_loaderApi->RegisterHotkeyForModule) {
+        HAG_ERR("blood extraction hotkey registration failed: HagLoader hotkey API unavailable");
+        return;
+    }
+    const int hotkey = g_extractBloodHotkey.load();
+    if (hotkey == g_feedHotkey.load()) {
+        HAG_WARN("blood extraction hotkey VK {:#x} matches feed hotkey; both actions will dispatch on that key",
+                 hotkey);
+    }
+    if (!g_loaderApi->RegisterHotkeyForModule(g_selfModule, kExtractBloodHotkeyName, hotkey, &OnExtractBloodHotkey, nullptr)) {
+        HAG_ERR("blood extraction hotkey registration failed for VK {:#x}", hotkey);
+        return;
+    }
+    HAG_INFO("blood extraction hotkey registered at VK {:#x}", hotkey);
 }
 
 const char* FeedingCounterText(void*) {
@@ -2826,6 +3161,23 @@ void OnFeedHotkeyChanged(void*, HagUI_Value value) {
     ConfigSetInt("feed_hotkey", next);
     RegisterFeedHotkey();
     HAG_INFO("feed_hotkey -> {:#x}", next);
+}
+
+void OnExtractBloodHotkeyChanged(void*, HagUI_Value value) {
+    int next = 0;
+    if (value.type == HAGUI_VT_INT) {
+        next = static_cast<int>(value.i);
+    } else if (value.type == HAGUI_VT_DOUBLE) {
+        next = static_cast<int>(value.d);
+    } else {
+        return;
+    }
+
+    next = std::clamp(next, 1, 255);
+    g_extractBloodHotkey.store(next);
+    ConfigSetInt("extract_blood_hotkey", next);
+    RegisterExtractBloodHotkey();
+    HAG_INFO("extract_blood_hotkey -> {:#x}", next);
 }
 
 void OnActionResult(void*, const HagLoader_PapyrusResult* result) {
@@ -2905,6 +3257,7 @@ void Init(HagUI_PageHandle* page) {
         HAG_WARN("Blood Scent will only refresh on save load/cell change/feed events");
     }
     RegisterFeedHotkey();
+    RegisterExtractBloodHotkey();
     if (!g_loaderApi->RegisterCellChangeCallbackForModule(g_selfModule, &OnCellChange, nullptr)) {
         HAG_WARN("Blood Scent cell-change callback registration failed");
     }
@@ -2952,6 +3305,18 @@ void Init(HagUI_PageHandle* page) {
                         "Feeding counter",
                         &FeedingCounterText,
                         nullptr);
+    g_uiApi->AddToggle(page,
+                       "enable_blood_potion_extraction",
+                       "Enable blood extraction",
+                       g_bloodPotionExtractionEnabled.load(),
+                       &OnBloodPotionExtractionChanged,
+                       nullptr);
+    g_uiApi->AddHotkey(page,
+                       "extract_blood_hotkey",
+                       "Extract blood hotkey",
+                       g_extractBloodHotkey.load(),
+                       &OnExtractBloodHotkeyChanged,
+                       nullptr);
     g_uiApi->AddStepper(page,
                         "animation_mode",
                         "Animation mode (0 Crouch / 1 Bedroll / 2 Custom)",
@@ -2967,6 +3332,8 @@ void Init(HagUI_PageHandle* page) {
     g_uiApi->SetGridCell(page, "feed_hotkey", 1, 1);
     g_uiApi->SetGridCell(page, "feeding_counter", 0, 2);
     g_uiApi->SetGridCell(page, "animation_mode", 1, 2);
+    g_uiApi->SetGridCell(page, "enable_blood_potion_extraction", 0, 3);
+    g_uiApi->SetGridCell(page, "extract_blood_hotkey", 1, 3);
     PushConfigToUI();
     g_uiApi->Refresh();
 
@@ -2978,6 +3345,7 @@ void OnSaveLoaded() {
     QueueApplySurvivalFoodPolicy("save loaded");
     InstallActorDeathHook();
     RegisterFeedHotkey();
+    RegisterExtractBloodHotkey();
     ApplyUnlockedRankRewards("save loaded");
     QueueBloodScentRefresh("save loaded");
     QueueFeedCleanup("save loaded");

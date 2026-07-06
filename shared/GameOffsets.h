@@ -292,6 +292,9 @@ inline constexpr std::uintptr_t Character = 0x18A5558;
 
 namespace refr {
 
+// Verified against unpacked 1.6.1170: Character vtable slot 0x05A -> 0x140678F90,
+// preserving rcx=container, rdx=object, r8=extraData, r9d=count before the native container-add helper.
+inline constexpr int VSlot_AddObjectToContainer = 0x05A;  // TESObjectREFR::AddObjectToContainer
 inline constexpr int VSlot_GetCurrent3D = 0x08D;  // TESObjectREFR::GetCurrent3D()
 inline constexpr std::uintptr_t GetCalcLevel = 0x2FA590;  // Address Library 1.6.1170 id 20205: TESObjectREFR::GetCalcLevel(bool)
 inline constexpr std::uintptr_t ApplyEffectShader = 0x2F0E20;  // Address Library 1.6.1170 id 19872: TESObjectREFR::ApplyEffectShader
