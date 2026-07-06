@@ -130,7 +130,6 @@ BloodScentTargetMap g_bloodScentActiveTargets;
 std::mutex g_bloodScentMovementMutex;
 NiPoint3 g_lastBloodScentScanPosition{};
 bool g_hasLastBloodScentScanPosition = false;
-std::atomic_bool g_bloodScentRefreshQueued{false};
 using ModActorValueInternalFn = void (*)(void*, std::int32_t, std::uint32_t, float, void*);
 ModActorValueInternalFn g_origModActorValueInternal = nullptr;
 std::atomic_bool g_damageHookInstalled{false};
@@ -1503,15 +1502,12 @@ void RefreshBloodScentHighlights(const char* reason) {
 }
 
 void RefreshBloodScentTask(void* user) {
-    g_bloodScentRefreshQueued.store(false);
     RefreshBloodScentHighlights(static_cast<const char*>(user));
 }
 
 void QueueBloodScentRefresh(const char* reason) {
     if (!g_loaderApi || !g_loaderApi->QueueMainThreadTask) return;
-    if (g_bloodScentRefreshQueued.exchange(true)) return;
     if (!g_loaderApi->QueueMainThreadTask(&RefreshBloodScentTask, const_cast<char*>(reason))) {
-        g_bloodScentRefreshQueued.store(false);
         HAG_WARN("Blood Scent refresh queue failed ({})", reason ? reason : "unspecified");
     }
 }
