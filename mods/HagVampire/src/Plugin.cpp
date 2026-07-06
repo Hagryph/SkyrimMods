@@ -67,7 +67,8 @@ constexpr std::uint32_t kPlayerRefID = 0x14;
 constexpr std::uint32_t kIdleCannibalFeedCrouching = 0x000FE09F;
 constexpr std::uint32_t kIdleVampireFeedingBedrollLeft = 0x00023622;
 constexpr float kCorpseFeedDistance = 40.0f;
-constexpr float kBloodScentRange = 600.0f;
+constexpr float kBloodScentBaseRange = 600.0f;
+constexpr float kBloodScentStalkerRange = 850.0f;
 constexpr float kBloodScentMovementRefreshDistance = 12.0f;
 constexpr std::uint32_t kBloodScentEffectShader = 0x000DC209;  // LifeDetectedEnemy EFSH.
 constexpr float kBloodScentShaderDuration = -1.0f;
@@ -257,6 +258,10 @@ int CurrentBloodStrengthLevel() {
 
 bool HasVampireBonusLevel(int minLevel) {
     return IsPlayerVampire() && CurrentBloodStrengthLevel() >= minLevel;
+}
+
+float EffectiveBloodScentRange() {
+    return CurrentBloodStrengthLevel() >= kStalkerLevel ? kBloodScentStalkerRange : kBloodScentBaseRange;
 }
 
 bool ConfigGetBool(const char* key, bool defaultValue) {
@@ -1438,7 +1443,7 @@ bool IsBloodScentCandidateInRange(void* player, const TargetInfo& target, float*
     if (!DistanceBetweenRefsGuarded(player, target.actor, &distance)) {
         return false;
     }
-    if (distance > kBloodScentRange) {
+    if (distance > EffectiveBloodScentRange()) {
         return false;
     }
 
