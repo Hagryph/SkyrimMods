@@ -69,15 +69,18 @@ public:
     Page& ProgressBar(std::string id, std::string label, std::uint32_t color, SampleFn sample);
     Page& Model3D(std::string id, std::string label, std::uint32_t formID);
     bool SetGridCell(const std::string& id, int column, int row);
+    void SetDoublePage(bool enabled);
 
     const std::string&         Title()   const { return m_title; }
     Scope                      GetScope() const { return m_scope; }
+    bool                       IsDoublePage() const { return m_doublePage; }
     const std::vector<Option>& Options() const { return m_options; }
 
 private:
     friend class HagUI;
     std::string         m_title;
     Scope               m_scope;
+    bool                m_doublePage = false;
     std::vector<Option> m_options;
 };
 
@@ -98,6 +101,7 @@ public:
     // calls this (via the C API) for dependent controls + restart hints; then Refresh() re-renders.
     void SetOptionState(Page* page, const std::string& id, Value value, bool enabled, std::string note);
     void SetGridCell(Page* page, const std::string& id, int column, int row);
+    void SetDoublePage(Page* page, bool enabled);
     void RefreshDynamicLabels();
 
     // Mark the rendered panel stale so the next menu tick re-pushes + re-draws it. TakeDirty is read

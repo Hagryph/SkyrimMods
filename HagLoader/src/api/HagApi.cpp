@@ -95,6 +95,10 @@ bool Page::SetGridCell(const std::string& id, int column, int row) {
     return false;
 }
 
+void Page::SetDoublePage(bool enabled) {
+    m_doublePage = enabled;
+}
+
 // ---- Host ----------------------------------------------------------------
 
 HagUI& HagUI::Get() {
@@ -170,6 +174,12 @@ void HagUI::SetGridCell(Page* page, const std::string& id, int column, int row) 
     if (!page->SetGridCell(id, column, row)) {
         HAG_WARN("HagUI SetGridCell ignored: id '{}' not found on page '{}'", id, page->Title());
     }
+}
+
+void HagUI::SetDoublePage(Page* page, bool enabled) {
+    if (!page) return;
+    page->SetDoublePage(enabled);
+    MarkDirty();
 }
 
 void HagUI::RefreshDynamicLabels() {

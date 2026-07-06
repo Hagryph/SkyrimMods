@@ -94,6 +94,7 @@ void PushPages(void* view) {
         Page* pg = pages[i];
         std::snprintf(p, sizeof p, "_root.hagPage%d_title", i);    MSetStr(view, p, pg->Title().c_str());
         std::snprintf(p, sizeof p, "_root.hagPage%d_scope", i);    MSetNum(view, p, pg->GetScope() == Scope::Global ? 0.0 : 1.0);
+        std::snprintf(p, sizeof p, "_root.hagPage%d_doublePage", i); MSetNum(view, p, pg->IsDoublePage() ? 1.0 : 0.0);
         const auto& opts = pg->Options();
         std::snprintf(p, sizeof p, "_root.hagPage%d_optCount", i); MSetNum(view, p, static_cast<double>(opts.size()));
         for (int j = 0; j < static_cast<int>(opts.size()); ++j) {

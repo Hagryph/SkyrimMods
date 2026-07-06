@@ -99,6 +99,11 @@ void C_SetGridCell(HagUI_PageHandle* page, const char* id, std::int32_t column, 
     HagUI::Get().SetGridCell(AsPage(page), id ? id : "", static_cast<int>(column), static_cast<int>(row));
 }
 
+void C_SetDoublePage(HagUI_PageHandle* page, bool enabled) {
+    if (!page) return;
+    HagUI::Get().SetDoublePage(AsPage(page), enabled);
+}
+
 void C_SetToggleState(HagUI_PageHandle* page, const char* id, bool value, bool enabled, const char* note) {
     if (!page) return;
     HagUI::Get().SetOptionState(AsPage(page), id ? id : "", Value(value), enabled, note ? note : "");
@@ -172,6 +177,7 @@ const HagUIAPI g_api = {
     &C_AddHotkey,         // v6
     &C_AddCounter,        // v7
     &C_SetGridCell,       // v8
+    &C_SetDoublePage,     // v9
 };
 
 }  // namespace

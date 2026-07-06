@@ -1715,10 +1715,11 @@ void Init(HagUI_PageHandle* page) {
     }
 
     if (!g_uiApi->AddDynamicButton || !g_uiApi->SetIntState || !g_uiApi->AddHotkey ||
-        !g_uiApi->AddCounter || !g_uiApi->SetGridCell) {
-        throw std::runtime_error("HagVampire requires HagUI dynamic button/state/hotkey/counter/grid API");
+        !g_uiApi->AddCounter || !g_uiApi->SetGridCell || !g_uiApi->SetDoublePage) {
+        throw std::runtime_error("HagVampire requires HagUI dynamic button/state/hotkey/counter/grid/double-page API");
     }
 
+    g_uiApi->SetDoublePage(page, true);
     g_uiApi->AddDynamicButton(page,
                               "vampire_action",
                               "Transform into a Vampire",

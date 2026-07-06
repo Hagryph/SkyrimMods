@@ -688,16 +688,7 @@ function gridNextSlot(used, span)
 function paintGridShell(parent, x, y, w, h, colW, gap)
 {
    var sh = parent.createEmptyMovieClip("gridShell", 4);
-   sh.beginFill(0x0A0A0C, 18);
-   _root.rect(sh, x, y, colW, h);
-   sh.endFill();
-   sh.beginFill(0x0A0A0C, 18);
-   _root.rect(sh, x + colW + gap, y, colW, h);
-   sh.endFill();
-   sh.lineStyle(1, 0xE0B34A, 12);
-   _root.rect(sh, x, y, colW, h);
-   _root.rect(sh, x + colW + gap, y, colW, h);
-   sh.lineStyle(1, 0xE0B34A, 32);
+   sh.lineStyle(1, 0xE0B34A, 24);
    var mid = x + colW + Math.round(gap / 2);
    sh.moveTo(mid, y + 6);
    sh.lineTo(mid, y + h - 6);
@@ -738,17 +729,39 @@ function buildOptionPage(c, x, y, w, pageIdx)
    _root.mkText(c, "hd", 1, x, y, w, 26,
       "<font face='$EverywhereBoldFont' size='21' color='#ECE6DA'>" + pg.title + "</font>");
    var topY = y + 44;
+   var rowH = 48;
+   var doublePage = (pg.doublePage == 1);
+   var depth = 10;
+   var i = 0;
+
+   if (!doublePage)
+   {
+      var flowY = topY + 8;
+      while (i < pg.opts.length)
+      {
+         var flowOp = pg.opts[i];
+         if (_root.gridRenderable(flowOp))
+         {
+            var flowRows = _root.gridControlRows(flowOp);
+            var flowH = _root.gridControlHeight(flowOp, rowH);
+            _root.gridPlaceControl(c, i, depth, flowOp, x, flowY, w, flowH);
+            flowY = flowY + flowRows * rowH;
+            depth = depth + 2;
+         }
+         i = i + 1;
+      }
+      return;
+   }
+
    var gridH = _root.HagWelcome.card._cyBot - topY;
    if (!(gridH > 120)) { gridH = 260; }
    var gap = 18;
    var colW = Math.floor((w - gap) / 2);
    var padX = 14;
    var padY = 14;
-   var rowH = 48;
    _root.paintGridShell(c, x, topY, w, gridH, colW, gap);
-
    var used = new Object();
-   var i = 0;
+   i = 0;
    while (i < pg.opts.length)
    {
       var op0 = pg.opts[i];
@@ -762,7 +775,6 @@ function buildOptionPage(c, x, y, w, pageIdx)
    }
 
    i = 0;
-   var depth = 10;
    while (i < pg.opts.length)
    {
       var op = pg.opts[i];
@@ -808,6 +820,8 @@ function HagBuildPages()
    {
       var pg = new Object();
       pg.title = String(_root["hagPage" + i + "_title"]);
+      var dp = Number(_root["hagPage" + i + "_doublePage"]);
+      pg.doublePage = (dp == 1) ? 1 : 0;
       pg.opts = new Array();
       var oc = Number(_root["hagPage" + i + "_optCount"]);
       if (!(oc > 0)) { oc = 0; }
