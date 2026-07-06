@@ -42,7 +42,7 @@ std::atomic_bool g_corpseFeedingEnabled{true};
 std::atomic_bool g_bloodPotionExtractionEnabled{true};
 std::atomic_int g_animationMode{0};
 std::atomic_int g_feedHotkey{'V'};
-std::atomic_int g_extractBloodHotkey{'B'};
+std::atomic_int g_extractBloodHotkey{'G'};
 std::atomic_int g_bloodExtract{0};
 std::atomic_int g_permanentHealthBonusAppliedLevel{0};
 
@@ -342,7 +342,7 @@ void LoadConfig() {
     g_bloodPotionExtractionEnabled.store(ConfigGetBool("enable_blood_potion_extraction", true));
     g_animationMode.store(ConfigGetInt("animation_mode", 0, 0, 2));
     g_feedHotkey.store(ConfigGetInt("feed_hotkey", 'V', 1, 255));
-    g_extractBloodHotkey.store(ConfigGetInt("extract_blood_hotkey", 'B', 1, 255));
+    g_extractBloodHotkey.store(ConfigGetInt("extract_blood_hotkey", 'G', 1, 255));
     g_bloodExtract.store(ConfigGetInt("blood_extract", 0, 0, kBloodStrengthMaxExtract));
     g_permanentHealthBonusAppliedLevel.store(ConfigGetInt("permanent_health_bonus_applied_level", 0, 0, kBloodStrengthMaxLevel));
     g_lifestealHealRemainderMicro.store(ConfigGetInt("lifesteal_heal_remainder_micro", 0, 0, kLifestealHealScale - 1));
