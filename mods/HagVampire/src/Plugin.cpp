@@ -68,6 +68,7 @@ constexpr std::uint32_t kIdleCannibalFeedCrouching = 0x000FE09F;
 constexpr std::uint32_t kIdleVampireFeedingBedrollLeft = 0x00023622;
 constexpr float kCorpseFeedDistance = 40.0f;
 constexpr float kBloodScentRange = 50.0f;
+constexpr float kBloodScentMovementRefreshDistance = 12.0f;
 constexpr std::uint32_t kBloodScentEffectShader = 0x000DC209;  // LifeDetectedEnemy EFSH.
 constexpr float kBloodScentShaderDuration = -1.0f;
 constexpr float kFreshBloodBonusFraction = 0.10f;
@@ -126,9 +127,16 @@ std::atomic<std::uint32_t> g_freshBloodGeneration{0};
 std::atomic<std::uint32_t> g_feedCleanupGeneration{0};
 std::mutex g_bloodScentMutex;
 BloodScentTargetMap g_bloodScentActiveTargets;
+std::mutex g_bloodScentMovementMutex;
+NiPoint3 g_lastBloodScentScanPosition{};
+bool g_hasLastBloodScentScanPosition = false;
+std::atomic_bool g_bloodScentRefreshQueued{false};
 using ModActorValueInternalFn = void (*)(void*, std::int32_t, std::uint32_t, float, void*);
 ModActorValueInternalFn g_origModActorValueInternal = nullptr;
 std::atomic_bool g_damageHookInstalled{false};
+using SetReferenceLocationFn = void (*)(void*, const NiPoint3*);
+SetReferenceLocationFn g_origSetReferenceLocation = nullptr;
+std::atomic_bool g_bloodScentMovementHookInstalled{false};
 std::atomic_int g_lifestealHealRemainderMicro{0};
 std::mutex g_lifestealAccumulatorMutex;
 thread_local bool g_lifestealHealInProgress = false;
@@ -327,6 +335,13 @@ void* GetPlayerActorGuarded() noexcept {
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return nullptr;
     }
+}
+
+float DistanceSquared(const NiPoint3& a, const NiPoint3& b) {
+    const float dx = a.x - b.x;
+    const float dy = a.y - b.y;
+    const float dz = a.z - b.z;
+    return (dx * dx) + (dy * dy) + (dz * dz);
 }
 
 std::uint32_t ReadU32Guarded(void* ptr, std::size_t offset, std::uint32_t fallback = 0) noexcept {
@@ -590,10 +605,7 @@ bool DistanceBetweenRefsGuarded(void* a, void* b, float* distance) noexcept {
         return false;
     }
 
-    const float dx = apos.x - bpos.x;
-    const float dy = apos.y - bpos.y;
-    const float dz = apos.z - bpos.z;
-    *distance = std::sqrt((dx * dx) + (dy * dy) + (dz * dz));
+    *distance = std::sqrt(DistanceSquared(apos, bpos));
     return true;
 }
 
@@ -1457,6 +1469,11 @@ void ClearBloodScentHighlights(const char* reason) {
 }
 
 void RefreshBloodScentHighlights(const char* reason) {
+    if (!g_corpseFeedingEnabled.load()) {
+        ClearBloodScentHighlights("corpse feeding disabled");
+        return;
+    }
+
     if (!HasVampireBonusLevel(kBloodScentMinLevel)) {
         ClearBloodScentHighlights("vampire bonus unavailable");
         return;
@@ -1470,6 +1487,14 @@ void RefreshBloodScentHighlights(const char* reason) {
 
     std::uint32_t scanned = 0;
     auto desired = FindBloodScentTargets(player, &scanned);
+    {
+        NiPoint3 position{};
+        if (ReadPoint3Guarded(player, game::refr::DataLocation, &position)) {
+            std::lock_guard lock(g_bloodScentMovementMutex);
+            g_lastBloodScentScanPosition = position;
+            g_hasLastBloodScentScanPosition = true;
+        }
+    }
     HAG_INFO("Blood Scent scan ({}): scannedActorHandles={} desired={}",
              reason ? reason : "unspecified",
              scanned,
@@ -1478,18 +1503,97 @@ void RefreshBloodScentHighlights(const char* reason) {
 }
 
 void RefreshBloodScentTask(void* user) {
+    g_bloodScentRefreshQueued.store(false);
     RefreshBloodScentHighlights(static_cast<const char*>(user));
 }
 
 void QueueBloodScentRefresh(const char* reason) {
     if (!g_loaderApi || !g_loaderApi->QueueMainThreadTask) return;
+    if (g_bloodScentRefreshQueued.exchange(true)) return;
     if (!g_loaderApi->QueueMainThreadTask(&RefreshBloodScentTask, const_cast<char*>(reason))) {
+        g_bloodScentRefreshQueued.store(false);
         HAG_WARN("Blood Scent refresh queue failed ({})", reason ? reason : "unspecified");
     }
 }
 
 void OnCellChange(void*) {
     QueueBloodScentRefresh("cell change");
+}
+
+bool ShouldRefreshBloodScentForMovement(const NiPoint3& position) {
+    if (!g_corpseFeedingEnabled.load()) return false;
+    if (CurrentBloodStrengthLevel() < kBloodScentMinLevel) return false;
+
+    std::lock_guard lock(g_bloodScentMovementMutex);
+    if (!g_hasLastBloodScentScanPosition) {
+        g_lastBloodScentScanPosition = position;
+        g_hasLastBloodScentScanPosition = true;
+        return true;
+    }
+
+    constexpr float kRefreshDistanceSquared =
+        kBloodScentMovementRefreshDistance * kBloodScentMovementRefreshDistance;
+    if (DistanceSquared(position, g_lastBloodScentScanPosition) < kRefreshDistanceSquared) {
+        return false;
+    }
+
+    g_lastBloodScentScanPosition = position;
+    return true;
+}
+
+void Detour_SetReferenceLocation(void* ref, const NiPoint3* position) {
+    bool playerMoved = false;
+    NiPoint3 nextPosition{};
+    __try {
+        void* player = GetPlayerActorGuarded();
+        if (player && ref == player && position) {
+            nextPosition = *position;
+            playerMoved = true;
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        playerMoved = false;
+    }
+
+    if (g_origSetReferenceLocation) {
+        g_origSetReferenceLocation(ref, position);
+    }
+
+    if (playerMoved && ShouldRefreshBloodScentForMovement(nextPosition)) {
+        QueueBloodScentRefresh("player movement");
+    }
+}
+
+bool InstallBloodScentMovementHook() {
+    if (g_bloodScentMovementHookInstalled.load()) return true;
+
+    const auto initStatus = MH_Initialize();
+    if (initStatus != MH_OK && initStatus != MH_ERROR_ALREADY_INITIALIZED) {
+        HAG_ERR("Blood Scent movement hook failed: MH_Initialize status={}", static_cast<int>(initStatus));
+        return false;
+    }
+
+    const auto target = SkyrimBase() + game::refr::SetLocation;
+    const auto createStatus = MH_CreateHook(reinterpret_cast<LPVOID>(target),
+                                            reinterpret_cast<LPVOID>(&Detour_SetReferenceLocation),
+                                            reinterpret_cast<LPVOID*>(&g_origSetReferenceLocation));
+    if (createStatus != MH_OK) {
+        HAG_ERR("Blood Scent movement hook failed: MH_CreateHook target={:#x} status={}",
+                target,
+                static_cast<int>(createStatus));
+        return false;
+    }
+
+    const auto enableStatus = MH_EnableHook(reinterpret_cast<LPVOID>(target));
+    if (enableStatus != MH_OK && enableStatus != MH_ERROR_ENABLED) {
+        HAG_ERR("Blood Scent movement hook failed: MH_EnableHook target={:#x} status={}",
+                target,
+                static_cast<int>(enableStatus));
+        return false;
+    }
+
+    g_bloodScentMovementHookInstalled.store(true);
+    HAG_INFO("Blood Scent movement hook installed: TESObjectREFR::SetLocation @{:#x}", target);
+    return true;
 }
 
 bool MovePlayerNearCorpseGuarded(void* player, void* target, NiPoint3* movedTo) noexcept {
@@ -1705,6 +1809,7 @@ void OnCorpseFeedingChanged(void*, HagUI_Value value) {
     if (value.type != HAGUI_VT_BOOL) return;
     g_corpseFeedingEnabled.store(value.b);
     ConfigSetBool("enable_corpse_feeding", value.b);
+    QueueBloodScentRefresh("corpse feeding config");
     HAG_INFO("enable_corpse_feeding -> {}", value.b);
 }
 
@@ -1854,6 +1959,9 @@ void Init(HagUI_PageHandle* page) {
     LoadConfig();
     if (!InstallDamageHook()) {
         HAG_WARN("Fresh Blood lifesteal unavailable: damage hook did not install");
+    }
+    if (!InstallBloodScentMovementHook()) {
+        HAG_WARN("Blood Scent will only refresh on save load/cell change/feed events");
     }
     RegisterFeedHotkey();
     if (!g_loaderApi->RegisterCellChangeCallbackForModule(g_selfModule, &OnCellChange, nullptr)) {
