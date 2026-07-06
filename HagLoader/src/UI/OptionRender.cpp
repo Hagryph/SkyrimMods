@@ -104,6 +104,8 @@ void PushPages(void* view) {
             std::snprintf(p, sizeof p, "_root.hagPage%d_opt%d_enabled", i, j); MSetNum(view, p, o.enabled ? 1.0 : 0.0);
             std::snprintf(p, sizeof p, "_root.hagPage%d_opt%d_note",    i, j); MSetStr(view, p, o.note.c_str());
             std::snprintf(p, sizeof p, "_root.hagPage%d_opt%d_color",   i, j); MSetNum(view, p, static_cast<double>(o.color));
+            std::snprintf(p, sizeof p, "_root.hagPage%d_opt%d_gridColumn", i, j); MSetNum(view, p, static_cast<double>(o.gridColumn));
+            std::snprintf(p, sizeof p, "_root.hagPage%d_opt%d_gridRow",    i, j); MSetNum(view, p, static_cast<double>(o.gridRow));
             // seed the live fields so the bar draws immediately (before the first UpdateLive tick)
             if ((o.control == Control::ProgressBar || o.control == Control::Counter) && o.sample) {
                 BarSample s = o.sample();

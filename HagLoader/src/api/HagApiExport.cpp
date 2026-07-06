@@ -94,6 +94,11 @@ void C_AddCounter(HagUI_PageHandle* page, const char* id, const char* label,
     AsPage(page)->Counter(id ? id : "", label ? label : "", WrapCounter(sample, user));
 }
 
+void C_SetGridCell(HagUI_PageHandle* page, const char* id, std::int32_t column, std::int32_t row) {
+    if (!page) return;
+    HagUI::Get().SetGridCell(AsPage(page), id ? id : "", static_cast<int>(column), static_cast<int>(row));
+}
+
 void C_SetToggleState(HagUI_PageHandle* page, const char* id, bool value, bool enabled, const char* note) {
     if (!page) return;
     HagUI::Get().SetOptionState(AsPage(page), id ? id : "", Value(value), enabled, note ? note : "");
@@ -166,6 +171,7 @@ const HagUIAPI g_api = {
     &C_SetDoubleState,    // v5
     &C_AddHotkey,         // v6
     &C_AddCounter,        // v7
+    &C_SetGridCell,       // v8
 };
 
 }  // namespace

@@ -34,7 +34,8 @@ extern "C" {
 // v5: added SetIntState + SetDoubleState for refreshing non-toggle controls after save-load.
 // v6: added AddHotkey (VK-code backed keybind widget).
 // v7: added AddCounter (live, read-only text counter).
-#define HAGUI_ABI_VERSION 7u
+// v8: added SetGridCell (two-column grid layout metadata; renderer owns pixel positions).
+#define HAGUI_ABI_VERSION 8u
 
 // Scope: Global  = shown in the Main Menu AND in-game; persists outside any save.
 //        PerSave = in-game only; belongs to the loaded save.
@@ -139,6 +140,11 @@ typedef struct HagUIAPI {
     // A live, read-only counter/readout. HagUI polls `sample(user)` every menu tick while visible.
     void (*AddCounter)(HagUI_PageHandle* page, const char* id, const char* label,
                        HagUI_TextCb sample, void* user);
+
+    // --- v8 ---
+    // Place an existing control into HagUI's predefined two-column grid. `column` is clamped to 0..1;
+    // `row` is clamped to >=0. Omit this call to keep legacy auto-flow behavior.
+    void (*SetGridCell)(HagUI_PageHandle* page, const char* id, int32_t column, int32_t row);
 } HagUIAPI;
 
 // Signature of the exported resolver, for reinterpret_cast<> on the consumer side.

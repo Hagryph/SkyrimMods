@@ -85,6 +85,16 @@ Page& Page::Model3D(std::string id, std::string label, std::uint32_t formID) {
     return *this;
 }
 
+bool Page::SetGridCell(const std::string& id, int column, int row) {
+    for (auto& o : m_options) {
+        if (o.id != id) continue;
+        o.gridColumn = std::clamp(column, 0, 1);
+        o.gridRow = std::max(0, row);
+        return true;
+    }
+    return false;
+}
+
 // ---- Host ----------------------------------------------------------------
 
 HagUI& HagUI::Get() {
@@ -152,6 +162,13 @@ void HagUI::SetOptionState(Page* page, const std::string& id, Value value, bool 
         o.enabled = enabled;
         o.note    = std::move(note);
         return;
+    }
+}
+
+void HagUI::SetGridCell(Page* page, const std::string& id, int column, int row) {
+    if (!page) return;
+    if (!page->SetGridCell(id, column, row)) {
+        HAG_WARN("HagUI SetGridCell ignored: id '{}' not found on page '{}'", id, page->Title());
     }
 }
 

@@ -624,6 +624,111 @@ function buildModel3D(parent, name, depth, x, y, w, h, op)
    }
    return m;
 }
+function gridKey(col, row)
+{
+   return "c" + col + "r" + row;
+}
+function gridRenderable(op)
+{
+   return op.type == 0 || op.type == 4 || op.type == 5 || op.type == 6 || op.type == 7 || op.type == 8;
+}
+function gridControlRows(op)
+{
+   if (op.type == 5) { return 2; }   // ProgressBar gets a full readout row plus bar row.
+   if (op.type == 6) { return 5; }   // Model3D has a predefined tall cell.
+   return 1;
+}
+function gridControlHeight(op, rowH)
+{
+   if (op.type == 5) { return 52; }
+   if (op.type == 6) { return rowH * 5 - 12; }
+   return 40;
+}
+function gridCanUse(used, col, row, span)
+{
+   if (col < 0 || col > 1 || row < 0) { return false; }
+   var i = 0;
+   while (i < span)
+   {
+      if (used[_root.gridKey(col, row + i)]) { return false; }
+      i = i + 1;
+   }
+   return true;
+}
+function gridReserve(used, col, row, span)
+{
+   var i = 0;
+   while (i < span)
+   {
+      used[_root.gridKey(col, row + i)] = true;
+      i = i + 1;
+   }
+}
+function gridNextSlot(used, span)
+{
+   var n = 0;
+   while (n < 200)
+   {
+      var row = Math.floor(n / 2);
+      var col = n - row * 2;   // row-major: left, right, next row.
+      if (_root.gridCanUse(used, col, row, span))
+      {
+         var slot = new Object();
+         slot.col = col;
+         slot.row = row;
+         return slot;
+      }
+      n = n + 1;
+   }
+   var fallback = new Object();
+   fallback.col = 0;
+   fallback.row = 0;
+   return fallback;
+}
+function paintGridShell(parent, x, y, w, h, colW, gap)
+{
+   var sh = parent.createEmptyMovieClip("gridShell", 4);
+   sh.beginFill(0x0A0A0C, 18);
+   _root.rect(sh, x, y, colW, h);
+   sh.endFill();
+   sh.beginFill(0x0A0A0C, 18);
+   _root.rect(sh, x + colW + gap, y, colW, h);
+   sh.endFill();
+   sh.lineStyle(1, 0xE0B34A, 12);
+   _root.rect(sh, x, y, colW, h);
+   _root.rect(sh, x + colW + gap, y, colW, h);
+   sh.lineStyle(1, 0xE0B34A, 32);
+   var mid = x + colW + Math.round(gap / 2);
+   sh.moveTo(mid, y + 6);
+   sh.lineTo(mid, y + h - 6);
+}
+function gridPlaceControl(c, i, depth, op, x, y, w, h)
+{
+   if (op.type == 0)
+   {
+      _root.makeCheckbox(c, "row" + i, depth, x, y, w, op);
+   }
+   else if (op.type == 5)
+   {
+      _root.buildProgressBar(c, "bar" + i, depth, x, y, w, op);
+   }
+   else if (op.type == 4)
+   {
+      _root.makeActionButton(c, "btn" + i, depth, x, y, w, op);
+   }
+   else if (op.type == 7)
+   {
+      _root.makeHotkey(c, "hotkey" + i, depth, x, y, w, op);
+   }
+   else if (op.type == 8)
+   {
+      _root.buildCounter(c, "counter" + i, depth, x, y, w, op);
+   }
+   else if (op.type == 6)
+   {
+      _root.buildModel3D(c, "model" + i, depth, x, y, w, h, op);
+   }
+}
 function buildOptionPage(c, x, y, w, pageIdx)
 {
    var pg = _root.HAG_PAGES[pageIdx];
@@ -633,56 +738,60 @@ function buildOptionPage(c, x, y, w, pageIdx)
    _root.mkText(c, "hd", 1, x, y, w, 26,
       "<font face='$EverywhereBoldFont' size='21' color='#ECE6DA'>" + pg.title + "</font>");
    var topY = y + 44;
+   var gridH = _root.HagWelcome.card._cyBot - topY;
+   if (!(gridH > 120)) { gridH = 260; }
+   var gap = 18;
+   var colW = Math.floor((w - gap) / 2);
+   var padX = 14;
+   var padY = 14;
+   var rowH = 48;
+   _root.paintGridShell(c, x, topY, w, gridH, colW, gap);
 
-   // a Model3D widget (type 6) switches the page to a 2-column layout: model left, other widgets right
-   var modelIdx = -1;
-   var k = 0;
-   while (k < pg.opts.length) { if (pg.opts[k].type == 6) { modelIdx = k; break; } k = k + 1; }
-   var colX = x;
-   var colW = w;
-   if (modelIdx >= 0)
+   var used = new Object();
+   var i = 0;
+   while (i < pg.opts.length)
    {
-      var leftW = Math.round(w * 0.42);
-      var mh = _root.HagWelcome.card._cyBot - topY;   // fill the left column to the card's content bottom
-      if (!(mh > 80)) { mh = 280; }
-      _root.buildModel3D(c, "model", 8, x, topY, leftW, mh, pg.opts[modelIdx]);
-      colX = x + leftW + 28;
-      colW = w - leftW - 28;
+      var op0 = pg.opts[i];
+      if (_root.gridRenderable(op0) && op0.gridRow >= 0)
+      {
+         var ec = (op0.gridColumn >= 0) ? op0.gridColumn : 0;
+         if (ec > 1) { ec = 1; }
+         _root.gridReserve(used, ec, op0.gridRow, _root.gridControlRows(op0));
+      }
+      i = i + 1;
    }
 
-   var rowY = topY;
-   var i = 0;
+   i = 0;
    var depth = 10;
    while (i < pg.opts.length)
    {
       var op = pg.opts[i];
-      if (op.type == 0)          // Toggle -> checkbox row
+      if (_root.gridRenderable(op))
       {
-         _root.makeCheckbox(c, "row" + i, depth, colX, rowY, colW, op);
-         rowY = rowY + 40;
+         var span = _root.gridControlRows(op);
+         var col = 0;
+         var row = 0;
+         if (op.gridRow >= 0)
+         {
+            col = (op.gridColumn >= 0) ? op.gridColumn : 0;
+            if (col > 1) { col = 1; }
+            row = op.gridRow;
+         }
+         else
+         {
+            var slot = _root.gridNextSlot(used, span);
+            col = slot.col;
+            row = slot.row;
+            _root.gridReserve(used, col, row, span);
+         }
+
+         var cellX = x + (col * (colW + gap)) + padX;
+         var cellY = topY + padY + row * rowH;
+         var cellW = colW - padX * 2;
+         var cellH = _root.gridControlHeight(op, rowH);
+         _root.gridPlaceControl(c, i, depth, op, cellX, cellY, cellW, cellH);
+         depth = depth + 2;
       }
-      else if (op.type == 5)     // ProgressBar
-      {
-         _root.buildProgressBar(c, "bar" + i, depth, colX, rowY, colW, op);
-         rowY = rowY + 52;
-      }
-      else if (op.type == 4)     // Button -> action button row
-      {
-         _root.makeActionButton(c, "btn" + i, depth, colX, rowY, colW, op);
-         rowY = rowY + 46;
-      }
-      else if (op.type == 7)     // Hotkey -> keybind capture row
-      {
-         _root.makeHotkey(c, "hotkey" + i, depth, colX, rowY, colW, op);
-         rowY = rowY + 46;
-      }
-      else if (op.type == 8)     // Counter -> live read-only value
-      {
-         _root.buildCounter(c, "counter" + i, depth, colX, rowY, colW, op);
-         rowY = rowY + 40;
-      }
-      // type 6 (Model3D) is already placed in the left column above
-      depth = depth + 2;
       i = i + 1;
    }
 }
@@ -717,6 +826,10 @@ function HagBuildPages()
          op.fill  = Number(_root["hagPage" + i + "_opt" + j + "_fill"]);       // ProgressBar 0..1
          var btx  = _root["hagPage" + i + "_opt" + j + "_bartext"];            // ProgressBar value text
          op.bartext = (btx == undefined) ? "" : String(btx);
+         var gc = Number(_root["hagPage" + i + "_opt" + j + "_gridColumn"]);
+         var gr = Number(_root["hagPage" + i + "_opt" + j + "_gridRow"]);
+         op.gridColumn = (gc >= 0) ? gc : -1;
+         op.gridRow = (gr >= 0) ? gr : -1;
          op.pageIdx = i;
          op.optIdx = j;
          pg.opts.push(op);

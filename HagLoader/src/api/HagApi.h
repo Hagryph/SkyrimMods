@@ -45,6 +45,8 @@ struct Option {
     std::uint32_t color = 0xE0B34A;                    // ProgressBar fill colour (0xRRGGBB)
     SampleFn      sample;                              // ProgressBar: polled each tick for frac + text
     std::uint32_t formID = 0x14;                       // Model3D: which TESForm to show (0x14 = player)
+    int           gridColumn = -1;                     // -1 => legacy auto-flow; otherwise 0..1
+    int           gridRow = -1;                        // -1 => legacy auto-flow; otherwise >=0
 };
 
 // Fluent page builder.
@@ -66,6 +68,7 @@ public:
     // Read-only live widgets (no onChange): a progress bar polled each tick, and a 3D character view.
     Page& ProgressBar(std::string id, std::string label, std::uint32_t color, SampleFn sample);
     Page& Model3D(std::string id, std::string label, std::uint32_t formID);
+    bool SetGridCell(const std::string& id, int column, int row);
 
     const std::string&         Title()   const { return m_title; }
     Scope                      GetScope() const { return m_scope; }
@@ -94,6 +97,7 @@ public:
     // Update a control's value / enabled (greyed) state / note without firing its onChange. A mod
     // calls this (via the C API) for dependent controls + restart hints; then Refresh() re-renders.
     void SetOptionState(Page* page, const std::string& id, Value value, bool enabled, std::string note);
+    void SetGridCell(Page* page, const std::string& id, int column, int row);
     void RefreshDynamicLabels();
 
     // Mark the rendered panel stale so the next menu tick re-pushes + re-draws it. TakeDirty is read
