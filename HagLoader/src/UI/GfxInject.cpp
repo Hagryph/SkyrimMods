@@ -19,8 +19,8 @@
 // GFxMovieView::Invoke(args) (movie vtable +0xB8). So the game's own dispatch runs for vanilla rows and
 // we own only our row -- no shared-event mutation, no listener-order dependency, mouse == keyboard.
 //   * Main menu dispatches by CARRIED entry.index -> our row {index:90} needs no positional fix-up.
-//   * System menu dispatches by POSITIONAL event.index -> we correct it by exactly our one inserted row
-//     before forwarding (the game sees the pre-insert position it expects).
+//   * System menu now receives the correct row payload from the live entryList; the trampoline only
+//     intercepts HagUI and forwards vanilla clicks unchanged.
 // Every offset/ABI here was recovered in Ghidra and validated live via HagIPC (docs/UI-RE.md §10/§11).
 namespace hag::ui {
 namespace {
@@ -167,9 +167,9 @@ void Detour_MainSetup(void* self) {
 }
 
 // ================================================================================================
-// IN-GAME SYSTEM MENU  --  SystemPage.onCategoryButtonPress dispatches by POSITIONAL event.index.
-// We insert our row after Load and TRAMPOLINE onCategoryButtonPress: our row opens HagUI; any row after
-// ours is forwarded with event.index-1 so the game's own switch maps it to the correct vanilla action.
+// IN-GAME SYSTEM MENU.
+// We insert our row after Load and TRAMPOLINE onCategoryButtonPress: our row opens HagUI; every vanilla
+// row is forwarded with its original event object.
 // Trigger: JournalMenu::AdvanceMovie (one-shot per movie, gated by AS markers so it re-arms on reopen).
 // ================================================================================================
 constexpr const char* kSystemPage = "_root.QuestJournalFader.Menu_mc.SystemFader.Page_mc";
@@ -211,10 +211,6 @@ void CatPress(HagHandler*, FnParams* params) {
             HagMenu::Open();
             return;                                          // ours: do NOT forward
         }
-        const int row = FindSysRow(m);
-        std::snprintf(q, sizeof q, "%s.index", evt);
-        const int P = MGetNum(m, q);
-        if (row >= 0 && P > row) MSetNum(m, q, static_cast<double>(P - 1));  // undo our insert's shift
         std::snprintf(fwd, sizeof fwd, "%s.__hagOrigCat", kSystemPage);
         MInvokeArgs(m, fwd, params->args, params->argc);
     } __except (EXCEPTION_EXECUTE_HANDLER) {}
