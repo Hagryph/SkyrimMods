@@ -7,6 +7,8 @@
 #include "SKSE_Min.h"
 #include "SkyrimModAPI.h"
 
+#include <MinHook.h>
+
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -56,6 +58,7 @@ constexpr int kFreshBloodMinLevel = 1;
 constexpr int kStalkerLevel = 10;
 constexpr float kStalkerPermanentHealthBonus = 20.0f;
 constexpr float kStalkerFreshBloodSpeedBonus = 5.0f;
+constexpr float kStalkerFreshBloodLifestealFraction = 0.05f;
 constexpr std::uint32_t kFormFlagDeleted = 1u << 5;
 constexpr std::uint32_t kFormFlagDisabled = 1u << 11;
 constexpr std::uint8_t kFormTypeActorCharacter = 0x3E;
@@ -94,6 +97,7 @@ struct FreshBloodState {
     float magickaRateBonus = 0.0f;
     float staminaRateBonus = 0.0f;
     float speedMultBonus = 0.0f;
+    float lifestealFraction = 0.0f;
 };
 
 struct FreshBloodTimerContext {
@@ -113,6 +117,10 @@ FreshBloodState g_freshBlood{};
 std::atomic<std::uint32_t> g_freshBloodGeneration{0};
 std::mutex g_bloodScentMutex;
 BloodScentTargetMap g_bloodScentActiveTargets;
+using ModActorValueInternalFn = void (*)(void*, std::int32_t, std::uint32_t, float, void*);
+ModActorValueInternalFn g_origModActorValueInternal = nullptr;
+std::atomic_bool g_damageHookInstalled{false};
+thread_local bool g_lifestealHealInProgress = false;
 
 constexpr VampireRank kVampireRanks[] = {
     {"Fledgling", 1},
@@ -467,6 +475,22 @@ bool GetActorValueGuarded(void* actor, std::uint32_t actorValue, float* out) noe
     }
 }
 
+bool GetPermanentActorValueGuarded(void* actor, std::uint32_t actorValue, float* out) noexcept {
+    if (out) *out = 0.0f;
+    if (!actor || !out) return false;
+    __try {
+        auto* avOwner = static_cast<std::uint8_t*>(actor) + game::actor::ActorValueOwnerOffset;
+        auto** vtbl = *reinterpret_cast<void***>(avOwner);
+        using GetPermanentActorValueFn = float (*)(void*, std::uint32_t);
+        auto getPermanentActorValue = reinterpret_cast<GetPermanentActorValueFn>(
+            vtbl[game::actor::AVOwner_GetPermanentActorValue]);
+        *out = getPermanentActorValue(avOwner, actorValue);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 bool GetBaseActorValueGuarded(void* actor, std::uint32_t actorValue, float* out) noexcept {
     if (out) *out = 0.0f;
     if (!actor || !out) return false;
@@ -535,6 +559,125 @@ bool ChangeActorValueByDeltaGuarded(void* actor, std::uint32_t actorValue, float
     float current = 0.0f;
     if (!GetActorValueGuarded(actor, actorValue, &current)) return false;
     return SetActorValueGuarded(actor, actorValue, current + delta);
+}
+
+float CurrentFreshBloodLifestealFraction() {
+    std::lock_guard lock(g_freshBloodMutex);
+    return g_freshBlood.active ? g_freshBlood.lifestealFraction : 0.0f;
+}
+
+bool HealPlayerFromLifesteal(void* player, void* target, float appliedDamage, float fraction) {
+    if (!player || !target || appliedDamage <= 0.0f || fraction <= 0.0f) return false;
+
+    float playerHealth = 0.0f;
+    float playerMaxHealth = 0.0f;
+    if (!GetActorValueGuarded(player, game::actor::AV_Health, &playerHealth) ||
+        !GetPermanentActorValueGuarded(player, game::actor::AV_Health, &playerMaxHealth)) {
+        HAG_WARN("Fresh Blood lifesteal skipped: could not read player health");
+        return false;
+    }
+
+    if (playerMaxHealth <= 0.0f || playerHealth >= playerMaxHealth) {
+        return false;
+    }
+
+    const float requestedHeal = appliedDamage * fraction;
+    const float appliedHeal = std::min(requestedHeal, playerMaxHealth - playerHealth);
+    if (appliedHeal <= 0.0f) return false;
+
+    g_lifestealHealInProgress = true;
+    const bool healed = SetActorValueGuarded(player, game::actor::AV_Health, playerHealth + appliedHeal);
+    g_lifestealHealInProgress = false;
+
+    if (!healed) {
+        HAG_WARN("Fresh Blood lifesteal skipped: could not write player health");
+        return false;
+    }
+
+    const std::uint32_t targetFormID = ReadU32Guarded(target, 0x14);
+    HAG_INFO("Fresh Blood lifesteal: target={:#x} damage={} heal={} fraction={}",
+             targetFormID,
+             appliedDamage,
+             appliedHeal,
+             fraction);
+    return true;
+}
+
+void Detour_ModActorValueInternal(void* actor,
+                                  std::int32_t modifier,
+                                  std::uint32_t actorValue,
+                                  float delta,
+                                  void* source) {
+    if (!g_origModActorValueInternal) return;
+
+    float beforeHealth = 0.0f;
+    void* player = nullptr;
+    bool trackOutgoingPlayerDamage = false;
+
+    if (!g_lifestealHealInProgress &&
+        modifier == game::actor::AVModifier_Damage &&
+        actorValue == game::actor::AV_Health &&
+        delta < 0.0f &&
+        actor &&
+        source) {
+        const float lifestealFraction = CurrentFreshBloodLifestealFraction();
+        if (lifestealFraction > 0.0f) {
+            player = GetPlayerActorGuarded();
+            trackOutgoingPlayerDamage = player &&
+                                        source == player &&
+                                        actor != player &&
+                                        GetActorValueGuarded(actor, game::actor::AV_Health, &beforeHealth) &&
+                                        beforeHealth > 0.0f;
+        }
+    }
+
+    g_origModActorValueInternal(actor, modifier, actorValue, delta, source);
+
+    if (!trackOutgoingPlayerDamage || !player) return;
+
+    float afterHealth = 0.0f;
+    if (!GetActorValueGuarded(actor, game::actor::AV_Health, &afterHealth)) {
+        return;
+    }
+
+    const float appliedDamage = std::clamp(beforeHealth - afterHealth, 0.0f, beforeHealth);
+    const float lifestealFraction = CurrentFreshBloodLifestealFraction();
+    if (appliedDamage > 0.0f && lifestealFraction > 0.0f) {
+        HealPlayerFromLifesteal(player, actor, appliedDamage, lifestealFraction);
+    }
+}
+
+bool InstallDamageHook() {
+    if (g_damageHookInstalled.load()) return true;
+
+    const auto initStatus = MH_Initialize();
+    if (initStatus != MH_OK && initStatus != MH_ERROR_ALREADY_INITIALIZED) {
+        HAG_ERR("Fresh Blood damage hook failed: MH_Initialize status={}", static_cast<int>(initStatus));
+        return false;
+    }
+
+    const auto target = SkyrimBase() + game::actor::Actor_ModActorValueInternal;
+    const auto createStatus = MH_CreateHook(reinterpret_cast<LPVOID>(target),
+                                            reinterpret_cast<LPVOID>(&Detour_ModActorValueInternal),
+                                            reinterpret_cast<LPVOID*>(&g_origModActorValueInternal));
+    if (createStatus != MH_OK) {
+        HAG_ERR("Fresh Blood damage hook failed: MH_CreateHook target={:#x} status={}",
+                target,
+                static_cast<int>(createStatus));
+        return false;
+    }
+
+    const auto enableStatus = MH_EnableHook(reinterpret_cast<LPVOID>(target));
+    if (enableStatus != MH_OK && enableStatus != MH_ERROR_ENABLED) {
+        HAG_ERR("Fresh Blood damage hook failed: MH_EnableHook target={:#x} status={}",
+                target,
+                static_cast<int>(enableStatus));
+        return false;
+    }
+
+    g_damageHookInstalled.store(true);
+    HAG_INFO("Fresh Blood damage hook installed: ActorValueModifierInternal @{:#x}", target);
+    return true;
 }
 
 bool ApplyPermanentHealthBonus(void* player, float amount, const char* label) {
@@ -699,6 +842,7 @@ void ApplyFreshBloodBuff(void* player, std::uint32_t sourceFormID) {
     const float magickaBonus = std::max(std::fabs(magickaRate) * kFreshBloodBonusFraction, kFreshBloodMinBonus);
     const float staminaBonus = std::max(std::fabs(staminaRate) * kFreshBloodBonusFraction, kFreshBloodMinBonus);
     const float speedBonus = HasVampireBonusLevel(kStalkerLevel) ? kStalkerFreshBloodSpeedBonus : 0.0f;
+    const float lifestealFraction = HasVampireBonusLevel(kStalkerLevel) ? kStalkerFreshBloodLifestealFraction : 0.0f;
 
     if (!ChangeActorValueByDeltaGuarded(player, game::actor::AV_MagickaRate, magickaBonus)) {
         HAG_WARN("Fresh Blood skipped: could not apply magicka regen bonus");
@@ -722,6 +866,7 @@ void ApplyFreshBloodBuff(void* player, std::uint32_t sourceFormID) {
     g_freshBlood.magickaRateBonus = magickaBonus;
     g_freshBlood.staminaRateBonus = staminaBonus;
     g_freshBlood.speedMultBonus = speedBonus;
+    g_freshBlood.lifestealFraction = lifestealFraction;
 
     if (!ScheduleFreshBloodRevert(generation)) {
         RemoveFreshBloodBonusesLocked(player);
@@ -729,11 +874,12 @@ void ApplyFreshBloodBuff(void* player, std::uint32_t sourceFormID) {
         return;
     }
 
-    HAG_INFO("Fresh Blood applied: sourceForm={:#x} magickaRate +{} staminaRate +{} speedMult +{} durationMs={} generation={} level={} rank={}",
+    HAG_INFO("Fresh Blood applied: sourceForm={:#x} magickaRate +{} staminaRate +{} speedMult +{} lifesteal {} durationMs={} generation={} level={} rank={}",
              sourceFormID,
              magickaBonus,
              staminaBonus,
              speedBonus,
+             lifestealFraction,
              kFreshBloodDurationMs,
              generation,
              CurrentBloodStrengthLevel(),
@@ -1522,6 +1668,9 @@ void Init(HagUI_PageHandle* page) {
         throw std::runtime_error("HagVampire requires HagLoader queue/config/save/hotkey APIs");
     }
     LoadConfig();
+    if (!InstallDamageHook()) {
+        HAG_WARN("Fresh Blood lifesteal unavailable: damage hook did not install");
+    }
     RegisterFeedHotkey();
     if (!g_loaderApi->RegisterCellChangeCallbackForModule(g_selfModule, &OnCellChange, nullptr)) {
         HAG_WARN("Blood Scent cell-change callback registration failed");

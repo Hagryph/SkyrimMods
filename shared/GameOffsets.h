@@ -234,6 +234,12 @@ inline constexpr std::uint32_t AV_StaminaRate = 0x1D;
 inline constexpr std::uint32_t AV_SpeedMult = 0x1E;
 inline constexpr std::uint32_t AV_Variable08 = 75;
 
+// Actor value mutation path. Reverse engineered in Ghidra from the direct Health
+// consumers: this clamps/writes modifier values and calls Actor::HandleHealthDamage
+// for modifier 2 + AV_Health + negative delta.
+inline constexpr std::uintptr_t Actor_ModActorValueInternal = 0x6B27A0;
+inline constexpr std::int32_t   AVModifier_Damage = 2;
+
 // Actor layout / process helpers.
 inline constexpr std::size_t ActorProcessOffset = 0xF8;          // Actor -> AIProcess*
 inline constexpr std::uintptr_t AIProcess_SetupSpecialIdle = 0x6DDE70;  // Address Library 1.6.1170 id 39256
