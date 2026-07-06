@@ -64,7 +64,6 @@ constexpr std::uint32_t kFormFlagDeleted = 1u << 5;
 constexpr std::uint32_t kFormFlagDisabled = 1u << 11;
 constexpr std::uint8_t kFormTypeActorCharacter = 0x3E;
 constexpr std::uint32_t kPlayerRefID = 0x14;
-constexpr float kCorpseFeedDistance = 40.0f;
 constexpr float kBloodScentBaseRange = 600.0f;
 constexpr float kBloodScentStalkerRange = 850.0f;
 constexpr float kBloodScentMovementRefreshDistance = 12.0f;
@@ -74,7 +73,6 @@ constexpr float kFreshBloodBonusFraction = 0.10f;
 constexpr float kFreshBloodMinBonus = 0.1f;
 constexpr std::uint32_t kFreshBloodDurationMs = 5u * 60u * 1000u;
 constexpr std::uint32_t kCorpseFeedCleanupDelayMs = 5500u;
-constexpr float kPi = 3.14159265358979323846f;
 
 struct NiPoint3 {
     float x = 0.0f;
@@ -1840,45 +1838,7 @@ bool InstallBloodScentMovementHook() {
     return true;
 }
 
-bool MovePlayerNearCorpseGuarded(void* player, void* target, NiPoint3* movedTo) noexcept {
-    if (!player || !target) return false;
-
-    NiPoint3 targetPosition{};
-    NiPoint3 targetAngle{};
-    if (!ReadPoint3Guarded(target, game::refr::DataLocation, &targetPosition)) return false;
-    if (!ReadPoint3Guarded(target, game::refr::DataAngle, &targetAngle)) return false;
-
-    void* targetCell = ReadPtrGuarded(target, game::refr::ParentCell);
-    if (!targetCell) return false;
-
-    const auto cellFlags = ReadU32Guarded(targetCell, game::refr::CellFlags);
-    const bool interior = (cellFlags & game::refr::CellFlag_IsInterior) != 0;
-    void* worldSpace = interior ? nullptr : ReadPtrGuarded(targetCell, game::refr::CellWorldSpace);
-    if (!interior && !worldSpace) return false;
-
-    const float feedAngle = targetAngle.z + kPi;
-    NiPoint3 position{
-        targetPosition.x + (std::sin(feedAngle) * kCorpseFeedDistance),
-        targetPosition.y + (std::cos(feedAngle) * kCorpseFeedDistance),
-        targetPosition.z,
-    };
-    NiPoint3 rotation = targetAngle;
-    rotation.z = feedAngle;
-
-    __try {
-        using MoveToImplFn = void (*)(void*, const std::uint32_t*, void*, void*, const NiPoint3*, const NiPoint3*);
-        auto moveTo = reinterpret_cast<MoveToImplFn>(SkyrimBase() + game::refr::MoveToImpl);
-        std::uint32_t noTargetHandle = 0;
-        moveTo(player, &noTargetHandle, targetCell, worldSpace, &position, &rotation);
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;
-    }
-
-    if (movedTo) *movedTo = position;
-    return true;
-}
-
-bool RunNativeCorpseFeedGuarded(void* player, void* target, int animationMode, NiPoint3* movedTo) noexcept {
+bool RunNativeCorpseFeedGuarded(void* player, void* target, int animationMode) noexcept {
     if (!player || !target) return false;
 
     if (animationMode == 2) {
@@ -1888,11 +1848,6 @@ bool RunNativeCorpseFeedGuarded(void* player, void* target, int animationMode, N
 
     if (animationMode != 0) {
         HAG_INFO("native corpse-feed animation mode {} routed through engine cannibal package", animationMode);
-    }
-
-    if (!MovePlayerNearCorpseGuarded(player, target, movedTo)) {
-        HAG_ERR("native corpse-feed failed: could not move player into feed position");
-        return false;
     }
 
     if (!InitiateCannibalPackageGuarded(player, target)) {
@@ -1909,7 +1864,7 @@ bool RunNativeCorpseFeedGuarded(void* player, void* target, int animationMode, N
 
     bool cannibalActive = false;
     const bool cannibalReadOk = GetCannibalStateGuarded(player, &cannibalActive);
-    HAG_INFO("native corpse-feed action started: package=InitiateCannibalPackage cannibalReadOk={} cannibalActive={}",
+    HAG_INFO("native corpse-feed action started: package=InitiateCannibalPackage positioning=engine cannibalReadOk={} cannibalActive={}",
              cannibalReadOk,
              cannibalActive);
     return true;
@@ -1991,8 +1946,7 @@ void RunNativeFeedTask(void*) {
     HAG_INFO("native corpse-feed invoking corpse action: target handle={:#x} form={:#x} mode={}",
              target.handle, target.formID, mode);
 
-    NiPoint3 movedTo{};
-    if (!RunNativeCorpseFeedGuarded(player, target.actor, mode, &movedTo)) {
+    if (!RunNativeCorpseFeedGuarded(player, target.actor, mode)) {
         HAG_ERR("native corpse-feed failed: native corpse action did not start");
         return;
     }
@@ -2012,8 +1966,8 @@ void RunNativeFeedTask(void*) {
     if (g_uiApi && g_uiApi->Refresh) {
         g_uiApi->Refresh();
     }
-    HAG_INFO("native corpse-feed completed: form={:#x} playerMovedTo=({}, {}, {})",
-             target.formID, movedTo.x, movedTo.y, movedTo.z);
+    HAG_INFO("native corpse-feed completed: form={:#x} positioning=engine package",
+             target.formID);
 }
 
 const char* VampireActionLabel(void*) {
