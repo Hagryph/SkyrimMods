@@ -64,8 +64,6 @@ constexpr std::uint32_t kFormFlagDeleted = 1u << 5;
 constexpr std::uint32_t kFormFlagDisabled = 1u << 11;
 constexpr std::uint8_t kFormTypeActorCharacter = 0x3E;
 constexpr std::uint32_t kPlayerRefID = 0x14;
-constexpr std::uint32_t kIdleCannibalFeedCrouching = 0x000FE09F;
-constexpr std::uint32_t kIdleVampireFeedingBedrollLeft = 0x00023622;
 constexpr float kCorpseFeedDistance = 40.0f;
 constexpr float kBloodScentBaseRange = 600.0f;
 constexpr float kBloodScentStalkerRange = 850.0f;
@@ -487,6 +485,49 @@ bool SetVampireFeedStateGuarded(void* actor, bool active) noexcept {
         auto setVampireFeed = reinterpret_cast<SetVampireFeedFn>(
             vtbl[game::actor::VSlot_SetVampireFeed]);
         setVampireFeed(actor, active);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool GetCannibalStateGuarded(void* actor, bool* active) noexcept {
+    if (active) *active = false;
+    if (!actor || !active) return false;
+    __try {
+        using GetCannibalFn = bool (*)(void*);
+        auto** vtbl = *reinterpret_cast<void***>(actor);
+        auto getCannibal = reinterpret_cast<GetCannibalFn>(
+            vtbl[game::actor::VSlot_GetCannibal]);
+        *active = getCannibal(actor);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool SetCannibalStateGuarded(void* actor, bool active) noexcept {
+    if (!actor) return false;
+    __try {
+        using SetCannibalFn = void (*)(void*, bool);
+        auto** vtbl = *reinterpret_cast<void***>(actor);
+        auto setCannibal = reinterpret_cast<SetCannibalFn>(
+            vtbl[game::actor::VSlot_SetCannibal]);
+        setCannibal(actor, active);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool InitiateCannibalPackageGuarded(void* actor, void* target) noexcept {
+    if (!actor || !target) return false;
+    __try {
+        using InitiateCannibalPackageFn = void (*)(void*, void*);
+        auto** vtbl = *reinterpret_cast<void***>(actor);
+        auto initiateCannibalPackage = reinterpret_cast<InitiateCannibalPackageFn>(
+            vtbl[game::actor::VSlot_InitiateCannibalPackage]);
+        initiateCannibalPackage(actor, target);
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return false;
@@ -958,20 +999,34 @@ void RevertFreshBloodTask(void* user) {
 bool CleanupCorpseFeedState(void* player, const char* reason) {
     if (!player) return false;
 
-    bool wasFeeding = false;
-    const bool readOk = GetVampireFeedStateGuarded(player, &wasFeeding);
-    const bool clearOk = SetVampireFeedStateGuarded(player, false);
+    bool wasVampireFeeding = false;
+    const bool vampireReadOk = GetVampireFeedStateGuarded(player, &wasVampireFeeding);
+    const bool vampireClearOk = SetVampireFeedStateGuarded(player, false);
 
-    bool afterFeeding = false;
-    const bool rereadOk = GetVampireFeedStateGuarded(player, &afterFeeding);
-    HAG_INFO("native corpse-feed cleanup ({}): readOk={} wasFeeding={} clearOk={} rereadOk={} nowFeeding={}",
+    bool wasCannibal = false;
+    const bool cannibalReadOk = GetCannibalStateGuarded(player, &wasCannibal);
+    const bool cannibalClearOk = SetCannibalStateGuarded(player, false);
+
+    bool afterVampireFeeding = false;
+    const bool vampireRereadOk = GetVampireFeedStateGuarded(player, &afterVampireFeeding);
+    bool afterCannibal = false;
+    const bool cannibalRereadOk = GetCannibalStateGuarded(player, &afterCannibal);
+
+    HAG_INFO("native corpse-feed cleanup ({}): vampireReadOk={} wasVampireFeed={} vampireClearOk={} vampireRereadOk={} nowVampireFeed={} cannibalReadOk={} wasCannibal={} cannibalClearOk={} cannibalRereadOk={} nowCannibal={}",
              reason ? reason : "unspecified",
-             readOk,
-             wasFeeding,
-             clearOk,
-             rereadOk,
-             afterFeeding);
-    return clearOk && (!rereadOk || !afterFeeding);
+             vampireReadOk,
+             wasVampireFeeding,
+             vampireClearOk,
+             vampireRereadOk,
+             afterVampireFeeding,
+             cannibalReadOk,
+             wasCannibal,
+             cannibalClearOk,
+             cannibalRereadOk,
+             afterCannibal);
+    return vampireClearOk && cannibalClearOk &&
+           (!vampireRereadOk || !afterVampireFeeding) &&
+           (!cannibalRereadOk || !afterCannibal);
 }
 
 void FeedCleanupTask(void* user);
@@ -1823,42 +1878,16 @@ bool MovePlayerNearCorpseGuarded(void* player, void* target, NiPoint3* movedTo) 
     return true;
 }
 
-bool PlayFeedIdleGuarded(void* player, void* target, std::uint32_t idleFormID) noexcept {
-    if (!player || !target) return false;
-
-    void* idle = LookupFormByIDGuarded(idleFormID);
-    if (!idle) return false;
-
-    void* process = ReadPtrGuarded(player, game::actor::ActorProcessOffset);
-    if (!process) return false;
-
-    __try {
-        using SetupSpecialIdleFn = bool (*)(void*, void*, std::uint32_t, void*, bool, bool, void*);
-        auto setupSpecialIdle = reinterpret_cast<SetupSpecialIdleFn>(
-            SkyrimBase() + game::actor::AIProcess_SetupSpecialIdle);
-        return setupSpecialIdle(process,
-                                player,
-                                game::actor::DefaultObject_ActionIdle,
-                                idle,
-                                true,
-                                false,
-                                target);
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;
-    }
-}
-
 bool RunNativeCorpseFeedGuarded(void* player, void* target, int animationMode, NiPoint3* movedTo) noexcept {
     if (!player || !target) return false;
 
-    std::uint32_t idleFormID = kIdleCannibalFeedCrouching;
-    const char* idleName = "IdleCannibalFeedCrouching";
-    if (animationMode == 1) {
-        idleFormID = kIdleVampireFeedingBedrollLeft;
-        idleName = "VampireFeedingBedRollLeft_Loose";
-    } else if (animationMode == 2) {
+    if (animationMode == 2) {
         HAG_INFO("native corpse-feed aborted: custom animation mode is not implemented yet");
         return false;
+    }
+
+    if (animationMode != 0) {
+        HAG_INFO("native corpse-feed animation mode {} routed through engine cannibal package", animationMode);
     }
 
     if (!MovePlayerNearCorpseGuarded(player, target, movedTo)) {
@@ -1866,14 +1895,9 @@ bool RunNativeCorpseFeedGuarded(void* player, void* target, int animationMode, N
         return false;
     }
 
-    if (!SetVampireFeedStateGuarded(player, true)) {
-        HAG_WARN("native corpse-feed warning: could not set player vampire-feed state before idle");
-    }
-
-    if (!PlayFeedIdleGuarded(player, target, idleFormID)) {
-        HAG_ERR("native corpse-feed failed: PlayIdle {} ({:#x}) returned false/faulted",
-                idleName, idleFormID);
-        CleanupCorpseFeedState(player, "idle start failed");
+    if (!InitiateCannibalPackageGuarded(player, target)) {
+        HAG_ERR("native corpse-feed failed: InitiateCannibalPackage faulted");
+        CleanupCorpseFeedState(player, "package start failed");
         return false;
     }
 
@@ -1883,7 +1907,11 @@ bool RunNativeCorpseFeedGuarded(void* player, void* target, int animationMode, N
         return false;
     }
 
-    HAG_INFO("native corpse-feed action started: idle={} ({:#x})", idleName, idleFormID);
+    bool cannibalActive = false;
+    const bool cannibalReadOk = GetCannibalStateGuarded(player, &cannibalActive);
+    HAG_INFO("native corpse-feed action started: package=InitiateCannibalPackage cannibalReadOk={} cannibalActive={}",
+             cannibalReadOk,
+             cannibalActive);
     return true;
 }
 

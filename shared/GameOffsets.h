@@ -248,9 +248,12 @@ inline constexpr std::uint32_t DefaultObject_ActionIdle = 64;    // DEFAULT_OBJE
 
 // Actor virtual slots from CommonLibSSE-NG headers, verified against Skyrim SE 1.6.1170 layout.
 inline constexpr int VSlot_IsDead = 0x099;                       // bool Actor::IsDead(bool notEssential)
+inline constexpr int VSlot_GetCannibal = 0x0BC;                  // bool Actor::GetCannibal()
+inline constexpr int VSlot_SetCannibal = 0x0BD;                  // void Actor::SetCannibal(bool)
 inline constexpr int VSlot_GetVampireFeed = 0x0BE;               // bool Actor::GetVampireFeed(); byte slot +0x5F0
 inline constexpr int VSlot_SetVampireFeed = 0x0BF;               // void Actor::SetVampireFeed(bool)
 inline constexpr int VSlot_InitiateVampireFeedPackage = 0x0C0;   // live-victim package; Papyrus StartVampireFeed rejects dead targets before this
+inline constexpr int VSlot_InitiateCannibalPackage = 0x0C1;      // corpse-feed package; Papyrus Actor.StartCannibal routes here
 
 }  // namespace actor
 
