@@ -58,8 +58,8 @@ constexpr std::uint32_t kIdleCannibalFeedCrouching = 0x000FE09F;
 constexpr std::uint32_t kIdleVampireFeedingBedrollLeft = 0x00023622;
 constexpr float kCorpseFeedDistance = 40.0f;
 constexpr float kBloodScentRange = 700.0f;
-constexpr float kBloodScentRefraction = 0.45f;
-constexpr float kBloodScentFireRefraction = 0.18f;
+constexpr std::uint32_t kBloodScentEffectShader = 0x000DC209;  // LifeDetectedEnemy EFSH.
+constexpr float kBloodScentShaderDuration = -1.0f;
 constexpr float kFreshBloodBonusFraction = 0.10f;
 constexpr float kFreshBloodMinBonus = 0.1f;
 constexpr std::uint32_t kFreshBloodDurationMs = 5u * 60u * 1000u;
@@ -626,19 +626,67 @@ bool QueueConsoleCommand(const char* command) {
     return queued;
 }
 
-bool QueueTargetRefractionCommands(std::uint32_t formID, float refraction, float fireRefraction) {
+bool ApplyEffectShaderGuarded(void* target, std::uint32_t shaderFormID, float duration) noexcept {
+    if (!target || shaderFormID == 0) return false;
+
+    void* shader = LookupFormByIDGuarded(shaderFormID);
+    if (!shader) {
+        HAG_WARN("Blood Scent shader apply failed: shader form {:#x} was not found", shaderFormID);
+        return false;
+    }
+    constexpr std::uint8_t kFormTypeEffectShader = 0x55;
+    const auto shaderType = ReadU8Guarded(shader, game::form::FormType);
+    if (shaderType != kFormTypeEffectShader) {
+        HAG_WARN("Blood Scent shader apply failed: form {:#x} type {:#x} is not EFSH",
+                 shaderFormID,
+                 shaderType);
+        return false;
+    }
+
+    __try {
+        using ApplyEffectShaderFn = void* (*)(void*, void*, float, void*, bool, bool, void*, bool);
+        auto applyEffectShader = reinterpret_cast<ApplyEffectShaderFn>(
+            SkyrimBase() + game::refr::ApplyEffectShader);
+        void* effect = applyEffectShader(target, shader, duration, nullptr, false, false, nullptr, false);
+        return effect != nullptr;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool ApplyBloodScentShader(std::uint32_t formID) {
+    if (formID == 0) return false;
+
+    void* target = LookupFormByIDGuarded(formID);
+    if (!target) {
+        HAG_WARN("Blood Scent shader apply skipped: target form {:#x} was not found", formID);
+        return false;
+    }
+
+    const bool ok = ApplyEffectShaderGuarded(target, kBloodScentEffectShader, kBloodScentShaderDuration);
+    if (!ok) {
+        HAG_WARN("Blood Scent shader apply failed: target={:#x} shader={:#x}",
+                 formID,
+                 kBloodScentEffectShader);
+        return false;
+    }
+
+    HAG_INFO("Blood Scent shader applied: target={:#x} shader={:#x}",
+             formID,
+             kBloodScentEffectShader);
+    return true;
+}
+
+bool QueueTargetEffectShaderStopCommand(std::uint32_t formID) {
     if (formID == 0) return false;
 
     char prid[32];
-    char str[32];
-    char strf[32];
+    char sms[32];
     std::snprintf(prid, sizeof(prid), "prid %08X", formID);
-    std::snprintf(str, sizeof(str), "str %.2f", refraction);
-    std::snprintf(strf, sizeof(strf), "strf %.2f", fireRefraction);
+    std::snprintf(sms, sizeof(sms), "sms %08X", kBloodScentEffectShader);
 
     bool ok = QueueConsoleCommand(prid);
-    ok = QueueConsoleCommand(str) && ok;
-    ok = QueueConsoleCommand(strf) && ok;
+    ok = QueueConsoleCommand(sms) && ok;
     return ok;
 }
 
@@ -799,10 +847,10 @@ void ApplyBloodScentSet(const std::unordered_set<std::uint32_t>& desired, const 
     }
 
     for (const auto formID : toApply) {
-        QueueTargetRefractionCommands(formID, kBloodScentRefraction, kBloodScentFireRefraction);
+        ApplyBloodScentShader(formID);
     }
     for (const auto formID : toClear) {
-        QueueTargetRefractionCommands(formID, 0.0f, 0.0f);
+        QueueTargetEffectShaderStopCommand(formID);
     }
 
     if (!toApply.empty() || !toClear.empty()) {
