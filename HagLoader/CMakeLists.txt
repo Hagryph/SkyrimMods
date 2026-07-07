@@ -10,6 +10,7 @@ find_package(minhook CONFIG REQUIRED)
 add_library(HagLoader SHARED
     src/Plugin.cpp
     src/Log.cpp
+    src/Animation.cpp
     src/Hooking.cpp
     src/GameState.cpp
     src/CellChangeHook.cpp

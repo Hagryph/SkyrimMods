@@ -9,7 +9,7 @@
 
 extern "C" {
 
-#define HAGLOADER_ABI_VERSION 9u
+#define HAGLOADER_ABI_VERSION 10u
 
 #define HAGLOADER_CONFIG_GLOBAL 0
 #define HAGLOADER_CONFIG_PERSAVE 1
@@ -57,6 +57,12 @@ typedef struct HagLoaderAPI {
     bool (*RegisterHotkeyForModule)(void* moduleHandle, const char* name, int32_t vkCode, HagLoader_HotkeyCb callback, void* user);
     bool (*SetHotkeyForModule)(void* moduleHandle, const char* name, int32_t vkCode);
     bool (*RegisterCellChangeCallbackForModule)(void* moduleHandle, HagLoader_CellChangeCb callback, void* user);
+    bool (*PlayIdleWithTargetAutoStop)(uint32_t actorFormID,
+                                       uint32_t idleFormID,
+                                       uint32_t targetFormID,
+                                       uint32_t stopIdleFormID,
+                                       uint32_t stopDelayMs);
+    bool (*StopIdle)(uint32_t actorFormID, uint32_t stopIdleFormID);
 } HagLoaderAPI;
 
 typedef const HagLoaderAPI* (*HagLoader_GetAPIFn)(uint32_t abiVersion);

@@ -80,6 +80,7 @@ constexpr float kFreshBloodMinBonus = 0.1f;
 constexpr std::uint32_t kFreshBloodDurationMs = 5u * 60u * 1000u;
 constexpr std::uint32_t kCorpseFeedCleanupDelayMs = 5500u;
 constexpr std::uint32_t kBloodExtractionRewardDelayMs = 5200u;
+constexpr std::uint32_t kBloodExtractionAutoStopDelayMs = 6200u;
 constexpr const char* kHagVampirePluginName = "HagVampire.esp";
 constexpr std::uint32_t kHagVampireBloodPotionLocal = 0x000800;
 constexpr std::uint32_t kHagVampireStaleBloodPotionLocal = 0x000801;
@@ -2526,47 +2527,20 @@ bool InstallBloodScentMovementHook() {
     return true;
 }
 
-bool PlayIdleWithTargetGuarded(void* actor, void* idle, void* targetRef) noexcept {
-    if (!actor || !idle) return false;
-    __try {
-        void* process = *reinterpret_cast<void**>(
-            static_cast<std::uint8_t*>(actor) + game::actor::ActorProcessOffset);
-        if (!process) return false;
-
-        using SetupSpecialIdleFn = bool (*)(void*,
-                                            void*,
-                                            std::uint32_t,
-                                            void*,
-                                            bool,
-                                            bool,
-                                            void*);
-        auto setupSpecialIdle = reinterpret_cast<SetupSpecialIdleFn>(
-            SkyrimBase() + game::actor::AIProcess_SetupSpecialIdle);
-        return setupSpecialIdle(process,
-                                actor,
-                                game::actor::DefaultObject_ActionIdle,
-                                idle,
-                                true,
-                                false,
-                                targetRef);
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;
-    }
-}
-
-bool RunBloodExtractionSearchBodyIdleGuarded(void* player, void* target) noexcept {
-    if (!player || !target) return false;
-
-    void* idle = LookupFormByIDGuarded(kIdleSearchBodyFormID);
-    if (!idle) {
-        HAG_ERR("blood extraction search-body idle failed: IdleSearchBody form {:#x} was not found",
-                kIdleSearchBodyFormID);
+bool RunBloodExtractionSearchBodyIdleGuarded(void* player, const TargetInfo& target) noexcept {
+    if (!player || !target.actor || target.formID == 0) return false;
+    if (!g_loaderApi || !g_loaderApi->PlayIdleWithTargetAutoStop) {
+        HAG_ERR("blood extraction search-body idle failed: HagLoader animation API unavailable");
         return false;
     }
 
-    if (!PlayIdleWithTargetGuarded(player, idle, target)) {
-        HAG_ERR("blood extraction search-body idle failed: AIProcess_SetupSpecialIdle faulted or rejected idle={:#x}",
-                kIdleSearchBodyFormID);
+    if (!g_loaderApi->PlayIdleWithTargetAutoStop(kPlayerRefID,
+                                                 kIdleSearchBodyFormID,
+                                                 target.formID,
+                                                 kIdleStopFormID,
+                                                 kBloodExtractionAutoStopDelayMs)) {
+        HAG_ERR("blood extraction search-body idle failed: HagLoader rejected idle start target={:#x}",
+                target.formID);
         return false;
     }
 
@@ -2575,24 +2549,23 @@ bool RunBloodExtractionSearchBodyIdleGuarded(void* player, void* target) noexcep
         return false;
     }
 
-    HAG_INFO("blood extraction search-body idle started: idle=IdleSearchBody form={:#x}",
-             kIdleSearchBodyFormID);
+    HAG_INFO("blood extraction search-body idle started through HagLoader: idle=IdleSearchBody form={:#x} target={:#x} autoStopMs={}",
+             kIdleSearchBodyFormID,
+             target.formID,
+             kBloodExtractionAutoStopDelayMs);
     return true;
 }
 
 bool StopBloodExtractionIdleGuarded(void* player, const char* reason) noexcept {
     if (!player) return false;
-
-    void* idle = LookupFormByIDGuarded(kIdleStopFormID);
-    if (!idle) {
-        HAG_ERR("blood extraction idle cleanup failed: IdleStop form {:#x} was not found reason={}",
-                kIdleStopFormID,
+    if (!g_loaderApi || !g_loaderApi->StopIdle) {
+        HAG_ERR("blood extraction idle cleanup failed: HagLoader animation API unavailable reason={}",
                 reason ? reason : "unspecified");
         return false;
     }
 
-    const bool stopped = PlayIdleWithTargetGuarded(player, idle, nullptr);
-    HAG_INFO("blood extraction idle cleanup: idle=IdleStop form={:#x} stopped={} reason={}",
+    const bool stopped = g_loaderApi->StopIdle(kPlayerRefID, kIdleStopFormID);
+    HAG_INFO("blood extraction idle cleanup through HagLoader: idle=IdleStop form={:#x} stopped={} reason={}",
              kIdleStopFormID,
              stopped,
              reason ? reason : "unspecified");
@@ -3047,7 +3020,7 @@ void RunBloodPotionCorpseExtractionTarget(void* player, const TargetInfo& target
         return;
     }
 
-    if (!RunBloodExtractionSearchBodyIdleGuarded(player, target.actor)) {
+    if (!RunBloodExtractionSearchBodyIdleGuarded(player, target)) {
         HAG_ERR("blood extraction corpse failed: search-body idle did not start");
         return;
     }
@@ -3450,8 +3423,9 @@ void Init(HagUI_PageHandle* page) {
         !g_loaderApi->QueuePapyrusStaticCallWithCallback || !g_loaderApi->QueueMainThreadTask ||
         !g_loaderApi->SaveStorageAvailable || !g_loaderApi->SaveFormIDSetContainsForModule ||
         !g_loaderApi->SaveFormIDSetAddForModule || !g_loaderApi->SaveFormIDSetCountForModule ||
-        !g_loaderApi->RegisterHotkeyForModule || !g_loaderApi->RegisterCellChangeCallbackForModule) {
-        throw std::runtime_error("HagVampire requires HagLoader queue/config/save/hotkey APIs");
+        !g_loaderApi->RegisterHotkeyForModule || !g_loaderApi->RegisterCellChangeCallbackForModule ||
+        !g_loaderApi->PlayIdleWithTargetAutoStop || !g_loaderApi->StopIdle) {
+        throw std::runtime_error("HagVampire requires HagLoader queue/config/save/hotkey/animation APIs");
     }
     LoadConfig();
     QueueApplySurvivalFoodPolicy("init");

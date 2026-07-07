@@ -1,4 +1,5 @@
 #include "PCH.h"
+#include "Animation.h"
 #include "ConfigStore.h"
 #include "CellChangeHook.h"
 #include "ConsoleQueue.h"
@@ -129,6 +130,32 @@ bool C_RegisterCellChangeCallbackForModule(void* moduleHandle, HagLoader_CellCha
     return hag::cell_change::RegisterCallback(moduleHandle, callback, user);
 }
 
+bool C_PlayIdleWithTargetAutoStop(std::uint32_t actorFormID,
+                                  std::uint32_t idleFormID,
+                                  std::uint32_t targetFormID,
+                                  std::uint32_t stopIdleFormID,
+                                  std::uint32_t stopDelayMs) {
+    const bool started = hag::animation::PlayIdleWithTargetAutoStop(
+        actorFormID, idleFormID, targetFormID, stopIdleFormID, stopDelayMs);
+    HAG_INFO("HagLoader API PlayIdleWithTargetAutoStop actor={:#x} idle={:#x} target={:#x} stopIdle={:#x} delayMs={} {}",
+             actorFormID,
+             idleFormID,
+             targetFormID,
+             stopIdleFormID,
+             stopDelayMs,
+             started ? "started" : "failed");
+    return started;
+}
+
+bool C_StopIdle(std::uint32_t actorFormID, std::uint32_t stopIdleFormID) {
+    const bool stopped = hag::animation::StopIdle(actorFormID, stopIdleFormID);
+    HAG_INFO("HagLoader API StopIdle actor={:#x} stopIdle={:#x} {}",
+             actorFormID,
+             stopIdleFormID,
+             stopped ? "stopped" : "failed");
+    return stopped;
+}
+
 const HagLoaderAPI g_loaderApi = {
     HAGLOADER_ABI_VERSION,
     &C_QueueConsoleCommand,
@@ -151,6 +178,8 @@ const HagLoaderAPI g_loaderApi = {
     &C_RegisterHotkeyForModule,
     &C_SetHotkeyForModule,
     &C_RegisterCellChangeCallbackForModule,
+    &C_PlayIdleWithTargetAutoStop,
+    &C_StopIdle,
 };
 
 }  // namespace
