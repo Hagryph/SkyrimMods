@@ -79,6 +79,7 @@ constexpr float kFreshBloodBonusFraction = 0.10f;
 constexpr float kFreshBloodMinBonus = 0.1f;
 constexpr std::uint32_t kFreshBloodDurationMs = 5u * 60u * 1000u;
 constexpr std::uint32_t kCorpseFeedCleanupDelayMs = 5500u;
+constexpr std::uint32_t kBloodExtractionRewardDelayMs = 5200u;
 constexpr const char* kHagVampirePluginName = "HagVampire.esp";
 constexpr std::uint32_t kHagVampireBloodPotionLocal = 0x000800;
 constexpr std::uint32_t kHagVampireStaleBloodPotionLocal = 0x000801;
@@ -139,6 +140,15 @@ struct FeedCleanupTimerContext {
     std::uint32_t targetFormID = 0;
 };
 
+struct BloodExtractionRewardContext {
+    HANDLE timer = nullptr;
+    std::uint32_t generation = 0;
+    std::uint32_t targetFormID = 0;
+    bool stalePotion = false;
+    bool refreshBloodScent = false;
+    const char* source = "";
+};
+
 struct BSSpinLockRaw {
     volatile LONG owningThread = 0;
     volatile LONG lockCount = 0;
@@ -171,6 +181,7 @@ std::mutex g_freshBloodMutex;
 FreshBloodState g_freshBlood{};
 std::atomic<std::uint32_t> g_freshBloodGeneration{0};
 std::atomic<std::uint32_t> g_feedCleanupGeneration{0};
+std::atomic<std::uint32_t> g_bloodExtractionRewardGeneration{0};
 std::mutex g_bloodScentMutex;
 BloodScentTargetMap g_bloodScentActiveTargets;
 BloodScentTargetMap g_bloodScentCandidateTargets;
@@ -2786,6 +2797,108 @@ bool AddBloodPotionToPlayerInventory(void* player,
     return true;
 }
 
+void BloodExtractionRewardTask(void* user);
+
+void CALLBACK BloodExtractionRewardTimerProc(PVOID user, BOOLEAN) {
+    auto* ctx = static_cast<BloodExtractionRewardContext*>(user);
+    if (!ctx) return;
+
+    const HANDLE timer = ctx->timer;
+    ctx->timer = nullptr;
+    if (timer) {
+        ::DeleteTimerQueueTimer(nullptr, timer, nullptr);
+    }
+
+    if (g_loaderApi && g_loaderApi->QueueMainThreadTask &&
+        g_loaderApi->QueueMainThreadTask(&BloodExtractionRewardTask, ctx)) {
+        return;
+    }
+
+    HAG_WARN("blood extraction reward could not be queued; dropping reward context source={} target={:#x}",
+             ctx->source ? ctx->source : "unknown",
+             ctx->targetFormID);
+    delete ctx;
+}
+
+bool ScheduleBloodExtractionReward(const TargetInfo& target,
+                                   bool stalePotion,
+                                   bool refreshBloodScent,
+                                   const char* source) {
+    auto* ctx = new BloodExtractionRewardContext();
+    ctx->generation = g_bloodExtractionRewardGeneration.fetch_add(1) + 1;
+    ctx->targetFormID = target.formID;
+    ctx->stalePotion = stalePotion;
+    ctx->refreshBloodScent = refreshBloodScent;
+    ctx->source = source ? source : "unknown";
+
+    HANDLE timer = nullptr;
+    if (!::CreateTimerQueueTimer(&timer,
+                                 nullptr,
+                                 &BloodExtractionRewardTimerProc,
+                                 ctx,
+                                 kBloodExtractionRewardDelayMs,
+                                 0,
+                                 WT_EXECUTEDEFAULT)) {
+        HAG_ERR("blood extraction reward timer failed: source={} target={:#x}",
+                ctx->source,
+                ctx->targetFormID);
+        delete ctx;
+        return false;
+    }
+
+    ctx->timer = timer;
+    HAG_INFO("blood extraction reward scheduled: source={} target={:#x} stalePotion={} delayMs={}",
+             ctx->source,
+             ctx->targetFormID,
+             stalePotion,
+             kBloodExtractionRewardDelayMs);
+    return true;
+}
+
+void BloodExtractionRewardTask(void* user) {
+    std::unique_ptr<BloodExtractionRewardContext> ctx(static_cast<BloodExtractionRewardContext*>(user));
+    if (!ctx) return;
+
+    if (ctx->generation != g_bloodExtractionRewardGeneration.load()) {
+        HAG_INFO("blood extraction stale reward ignored: generation={} current={} source={} target={:#x}",
+                 ctx->generation,
+                 g_bloodExtractionRewardGeneration.load(),
+                 ctx->source ? ctx->source : "unknown",
+                 ctx->targetFormID);
+        return;
+    }
+
+    void* player = GetPlayerActorGuarded();
+    if (!player) {
+        HAG_WARN("blood extraction reward skipped: player actor unavailable source={} target={:#x}",
+                 ctx->source ? ctx->source : "unknown",
+                 ctx->targetFormID);
+        return;
+    }
+
+    TargetInfo target{};
+    target.formID = ctx->targetFormID;
+
+    BloodPotionForm potion{};
+    const bool resolved = ResolveBloodPotionForExtraction(ctx->stalePotion, &potion);
+    const bool added = resolved && AddBloodPotionToPlayerInventory(player, potion, target, ctx->source);
+
+    const bool cleaned = CleanupCorpseFeedState(player, "blood extraction reward");
+    if (ctx->refreshBloodScent) {
+        RefreshBloodScentHighlights("after blood extraction reward", false);
+    }
+    if (g_uiApi && g_uiApi->Refresh) {
+        g_uiApi->Refresh();
+    }
+
+    HAG_INFO("blood extraction reward completed: source={} target={:#x} added={} cleaned={} potionForm={:#x}",
+             ctx->source ? ctx->source : "unknown",
+             ctx->targetFormID,
+             added,
+             cleaned,
+             resolved ? potion.formID : 0);
+}
+
 void ScheduleBloodExtractionCleanup(void* player, const TargetInfo& target, const char* source) {
     const auto cleanupGeneration = g_feedCleanupGeneration.fetch_add(1) + 1;
     if (!ScheduleFeedCleanup(cleanupGeneration, target.formID)) {
@@ -2865,10 +2978,14 @@ void RunBloodPotionCorpseExtractionTarget(void* player, const TargetInfo& target
         return;
     }
 
-    AddBloodPotionToPlayerInventory(player, potion, target, "corpse");
-    RefreshBloodScentHighlights("after blood extraction", false);
-    ScheduleBloodExtractionCleanup(player, target, "corpse");
-    HAG_INFO("blood extraction corpse completed: target={:#x} potionForm={:#x}",
+    if (!ScheduleBloodExtractionReward(target, true, true, "corpse")) {
+        HAG_ERR("blood extraction corpse action started but reward scheduling failed target={:#x}; potion will not be granted",
+                target.formID);
+        CleanupCorpseFeedState(player, "blood extraction reward scheduling failed");
+        return;
+    }
+
+    HAG_INFO("blood extraction corpse action started: target={:#x} rewardPotionForm={:#x}",
              target.formID,
              potion.formID);
 }
@@ -2892,9 +3009,14 @@ void RunBloodPotionSleepingExtractionTarget(void* player, const TargetInfo& targ
         return;
     }
 
-    AddBloodPotionToPlayerInventory(player, potion, target, "sleeping");
-    ScheduleBloodExtractionCleanup(player, target, "sleeping");
-    HAG_INFO("blood extraction sleeping completed: target={:#x} potionForm={:#x}",
+    if (!ScheduleBloodExtractionReward(target, false, false, "sleeping")) {
+        HAG_ERR("blood extraction sleeping action started but reward scheduling failed target={:#x}; potion will not be granted",
+                target.formID);
+        CleanupCorpseFeedState(player, "blood extraction reward scheduling failed");
+        return;
+    }
+
+    HAG_INFO("blood extraction sleeping action started: target={:#x} rewardPotionForm={:#x}",
              target.formID,
              potion.formID);
 }
@@ -2917,9 +3039,14 @@ void RunBloodPotionSneakExtractionTarget(void* player, const TargetInfo& target)
         return;
     }
 
-    AddBloodPotionToPlayerInventory(player, potion, target, "sneak");
-    ScheduleBloodExtractionCleanup(player, target, "sneak");
-    HAG_INFO("blood extraction sneak completed: target={:#x} potionForm={:#x}",
+    if (!ScheduleBloodExtractionReward(target, false, false, "sneak")) {
+        HAG_ERR("blood extraction sneak action started but reward scheduling failed target={:#x}; potion will not be granted",
+                target.formID);
+        CleanupCorpseFeedState(player, "blood extraction reward scheduling failed");
+        return;
+    }
+
+    HAG_INFO("blood extraction sneak action started: target={:#x} rewardPotionForm={:#x}",
              target.formID,
              potion.formID);
 }
