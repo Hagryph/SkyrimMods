@@ -81,6 +81,8 @@ constexpr std::uint32_t kFreshBloodDurationMs = 5u * 60u * 1000u;
 constexpr std::uint32_t kCorpseFeedCleanupDelayMs = 5500u;
 constexpr std::uint32_t kBloodExtractionRewardDelayMs = 5200u;
 constexpr std::uint32_t kBloodExtractionAutoStopDelayMs = 6200u;
+constexpr float kCorpseExtractionStandDistance = 82.0f;
+constexpr float kCorpseExtractionMinDirectionDistance = 12.0f;
 constexpr const char* kHagVampirePluginName = "HagVampire.esp";
 constexpr std::uint32_t kHagVampireBloodPotionLocal = 0x000800;
 constexpr std::uint32_t kHagVampireStaleBloodPotionLocal = 0x000801;
@@ -458,6 +460,16 @@ bool ReadPoint3Guarded(void* ptr, std::size_t offset, NiPoint3* out) noexcept {
     if (!ptr || !out) return false;
     __try {
         *out = *reinterpret_cast<NiPoint3*>(static_cast<std::uint8_t*>(ptr) + offset);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool WritePoint3Guarded(void* ptr, std::size_t offset, const NiPoint3& value) noexcept {
+    if (!ptr) return false;
+    __try {
+        *reinterpret_cast<NiPoint3*>(static_cast<std::uint8_t*>(ptr) + offset) = value;
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return false;
@@ -2527,6 +2539,83 @@ bool InstallBloodScentMovementHook() {
     return true;
 }
 
+bool SetReferenceLocationGuarded(void* ref, const NiPoint3& position) noexcept {
+    if (!ref) return false;
+    __try {
+        using SetReferenceLocationRawFn = void (*)(void*, const NiPoint3*);
+        auto setLocation = reinterpret_cast<SetReferenceLocationRawFn>(
+            SkyrimBase() + game::refr::SetLocation);
+        if (!setLocation) return false;
+        setLocation(ref, &position);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool AlignPlayerForCorpseExtractionGuarded(void* player, const TargetInfo& target) noexcept {
+    if (!player || !target.actor) return false;
+
+    NiPoint3 playerPos{};
+    NiPoint3 targetPos{};
+    if (!ReadPoint3Guarded(player, game::refr::DataLocation, &playerPos) ||
+        !ReadPoint3Guarded(target.actor, game::refr::DataLocation, &targetPos)) {
+        HAG_WARN("blood extraction alignment skipped: could not read positions target={:#x}",
+                 target.formID);
+        return false;
+    }
+
+    float awayX = playerPos.x - targetPos.x;
+    float awayY = playerPos.y - targetPos.y;
+    float distance2D = std::sqrt((awayX * awayX) + (awayY * awayY));
+
+    if (!std::isfinite(distance2D) || distance2D < kCorpseExtractionMinDirectionDistance) {
+        NiPoint3 targetAngle{};
+        if (ReadPoint3Guarded(target.actor, game::refr::DataAngle, &targetAngle) &&
+            std::isfinite(targetAngle.z)) {
+            awayX = std::sin(targetAngle.z);
+            awayY = std::cos(targetAngle.z);
+            distance2D = 1.0f;
+        } else {
+            awayX = 0.0f;
+            awayY = -1.0f;
+            distance2D = 1.0f;
+        }
+    }
+
+    const float invDistance = 1.0f / distance2D;
+    const float dirX = awayX * invDistance;
+    const float dirY = awayY * invDistance;
+
+    NiPoint3 nextPlayerPos{};
+    nextPlayerPos.x = targetPos.x + (dirX * kCorpseExtractionStandDistance);
+    nextPlayerPos.y = targetPos.y + (dirY * kCorpseExtractionStandDistance);
+    nextPlayerPos.z = targetPos.z;
+
+    NiPoint3 nextPlayerAngle{};
+    if (!ReadPoint3Guarded(player, game::refr::DataAngle, &nextPlayerAngle)) {
+        nextPlayerAngle = {};
+    }
+    nextPlayerAngle.z = std::atan2(targetPos.x - nextPlayerPos.x,
+                                   targetPos.y - nextPlayerPos.y);
+
+    const bool moved = SetReferenceLocationGuarded(player, nextPlayerPos);
+    const bool angled = WritePoint3Guarded(player, game::refr::DataAngle, nextPlayerAngle);
+    HAG_INFO("blood extraction alignment: target={:#x} moved={} angled={} from=({:.1f},{:.1f},{:.1f}) to=({:.1f},{:.1f},{:.1f}) yaw={:.3f} distance={:.1f}",
+             target.formID,
+             moved,
+             angled,
+             playerPos.x,
+             playerPos.y,
+             playerPos.z,
+             nextPlayerPos.x,
+             nextPlayerPos.y,
+             nextPlayerPos.z,
+             nextPlayerAngle.z,
+             kCorpseExtractionStandDistance);
+    return moved && angled;
+}
+
 bool RunBloodExtractionSearchBodyIdleGuarded(void* player, const TargetInfo& target) noexcept {
     if (!player || !target.actor || target.formID == 0) return false;
     if (!g_loaderApi || !g_loaderApi->PlayIdleWithTargetAutoStop) {
@@ -3020,6 +3109,11 @@ void RunBloodPotionCorpseExtractionTarget(void* player, const TargetInfo& target
         return;
     }
 
+    const bool aligned = AlignPlayerForCorpseExtractionGuarded(player, target);
+    if (!aligned) {
+        HAG_WARN("blood extraction corpse continuing without alignment: target={:#x}", target.formID);
+    }
+
     if (!RunBloodExtractionSearchBodyIdleGuarded(player, target)) {
         HAG_ERR("blood extraction corpse failed: search-body idle did not start");
         return;
@@ -3039,9 +3133,10 @@ void RunBloodPotionCorpseExtractionTarget(void* player, const TargetInfo& target
         return;
     }
 
-    HAG_INFO("blood extraction corpse action started: target={:#x} rewardPotionForm={:#x}",
+    HAG_INFO("blood extraction corpse action started: target={:#x} rewardPotionForm={:#x} aligned={}",
              target.formID,
-             potion.formID);
+             potion.formID,
+             aligned);
 }
 
 void RunBloodPotionSleepingExtractionTarget(void* player, const TargetInfo& target) {
