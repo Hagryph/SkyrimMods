@@ -5,8 +5,11 @@ const root = path.resolve(__dirname, '..');
 const outPath = path.join(root, 'assets', 'HagVampire.esp');
 
 const MASTER_COUNT = 3;
-const FRESH_BLOOD_POTION = (MASTER_COUNT << 24) | 0x000800;
-const STALE_BLOOD_POTION = (MASTER_COUNT << 24) | 0x000801;
+const FRESH_BLOOD_POTION_BASE = (MASTER_COUNT << 24) | 0x000800;
+const STALE_BLOOD_POTION_BASE = (MASTER_COUNT << 24) | 0x000840;
+const BLOOD_POTION_EXTRACT_MIN = 1;
+const BLOOD_POTION_EXTRACT_MAX = 34;
+const BLOOD_POTION_EXTRACT_HEALTH_SCALE = 1000;
 
 const FORM_ITM_POTION_USE_SOUND = 0x00106614;
 const FORM_ITM_POTION_PICKUP_SOUND = 0x0003EDBD;
@@ -105,7 +108,7 @@ function efit(magnitude, area = 0, duration = 0) {
   ]);
 }
 
-function potionRecord({ formID, edid, name, value, healthMagnitude }) {
+function potionRecord({ formID, edid, name, value, healthMagnitude, extractReward }) {
   return record('ALCH', formID, [
     subrecord('EDID', edid),
     subrecord('OBND', Buffer.from('f3fff3ff00000d000d001400', 'hex')),
@@ -116,14 +119,14 @@ function potionRecord({ formID, edid, name, value, healthMagnitude }) {
     subrecord('DATA', f32(0.5)),
     subrecord('ENIT', enit(value)),
     subrecord('EFID', u32(FORM_DLC1_BLOOD_POTION_EFFECT)),
-    subrecord('EFIT', efit(0)),
+    subrecord('EFIT', efit(extractReward)),
     subrecord('EFID', u32(FORM_DLC1_RESTORE_HEALTH_BLOOD_EFFECT)),
     subrecord('EFIT', efit(healthMagnitude)),
   ]);
 }
 
 const tes4 = record('TES4', 0, [
-  subrecord('HEDR', concat([f32(1.7), u32(2), u32(0x000802)])),
+  subrecord('HEDR', concat([f32(1.7), u32(2), u32(0x000862)])),
   subrecord('CNAM', 'Hagryph'),
   subrecord('SNAM', 'HagVampire owned blood potion records.'),
   master('Skyrim.esm'),
@@ -131,22 +134,30 @@ const tes4 = record('TES4', 0, [
   master('Dawnguard.esm'),
 ]);
 
-const fresh = potionRecord({
-  formID: FRESH_BLOOD_POTION,
-  edid: 'HagVampireBloodPotion',
-  name: 'Extracted Blood Potion',
-  value: 75,
-  healthMagnitude: 100,
-});
+function encodedHealth(baseHealth, extractReward) {
+  return baseHealth + (extractReward / BLOOD_POTION_EXTRACT_HEALTH_SCALE);
+}
 
-const stale = potionRecord({
-  formID: STALE_BLOOD_POTION,
-  edid: 'HagVampireStaleBloodPotion',
-  name: 'Stale Blood Potion',
-  value: 25,
-  healthMagnitude: 50,
-});
+const potions = [];
+for (let extractReward = BLOOD_POTION_EXTRACT_MIN; extractReward <= BLOOD_POTION_EXTRACT_MAX; extractReward += 1) {
+  potions.push(potionRecord({
+    formID: FRESH_BLOOD_POTION_BASE + (extractReward - BLOOD_POTION_EXTRACT_MIN),
+    edid: `HagVampireBloodPotionExtract${extractReward}`,
+    name: 'Extracted Blood Potion',
+    value: 75,
+    healthMagnitude: encodedHealth(100, extractReward),
+    extractReward,
+  }));
+  potions.push(potionRecord({
+    formID: STALE_BLOOD_POTION_BASE + (extractReward - BLOOD_POTION_EXTRACT_MIN),
+    edid: `HagVampireStaleBloodPotionExtract${extractReward}`,
+    name: 'Stale Blood Potion',
+    value: 25,
+    healthMagnitude: encodedHealth(50, extractReward),
+    extractReward,
+  }));
+}
 
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
-fs.writeFileSync(outPath, concat([tes4, topGroup('ALCH', [fresh, stale])]));
+fs.writeFileSync(outPath, concat([tes4, topGroup('ALCH', potions)]));
 console.log(`wrote ${outPath}`);

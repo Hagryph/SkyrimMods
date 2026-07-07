@@ -81,8 +81,14 @@ constexpr std::uint32_t kFreshBloodDurationMs = 5u * 60u * 1000u;
 constexpr std::uint32_t kCorpseFeedCleanupDelayMs = 5500u;
 constexpr std::uint32_t kBloodExtractionRewardDelayMs = 5200u;
 constexpr const char* kHagVampirePluginName = "HagVampire.esp";
-constexpr std::uint32_t kHagVampireBloodPotionLocal = 0x000800;
-constexpr std::uint32_t kHagVampireStaleBloodPotionLocal = 0x000801;
+constexpr std::uint32_t kHagVampireBloodPotionLocalBase = 0x000800;
+constexpr std::uint32_t kHagVampireStaleBloodPotionLocalBase = 0x000840;
+constexpr int kBloodPotionExtractMin = 1;
+constexpr int kBloodPotionExtractMax = 34;
+constexpr float kBloodPotionExtractHealthScale = 1000.0f;
+constexpr float kFreshBloodPotionBaseHealth = 100.0f;
+constexpr float kStaleBloodPotionBaseHealth = 50.0f;
+constexpr float kBloodPotionExtractDecodeTolerance = 0.00025f;
 constexpr const char* kSurvivalModePluginName = "ccQDRSSE001-SurvivalMode.esl";
 constexpr std::uint32_t kSurvivalModeEnabledLocal = 0x826;
 constexpr std::uint32_t kSurvivalHungerNeedValueLocal = 0x81A;
@@ -113,6 +119,7 @@ struct FeedRefInfo {
 struct BloodPotionForm {
     void* form = nullptr;
     std::uint32_t formID = 0;
+    int extractReward = 0;
     const char* label = "";
 };
 
@@ -144,6 +151,7 @@ struct BloodExtractionRewardContext {
     HANDLE timer = nullptr;
     std::uint32_t generation = 0;
     std::uint32_t targetFormID = 0;
+    int bottleExtract = 0;
     bool stalePotion = false;
     bool refreshBloodScent = false;
     const char* source = "";
@@ -270,8 +278,19 @@ void SaveBloodExtract(int extract) {
     ConfigSetInt("blood_extract", std::clamp(extract, 0, kBloodStrengthMaxExtract));
 }
 
-void AwardBloodExtract(std::uint16_t targetLevel, std::uint32_t sourceFormID) {
-    const int feedExtract = BloodExtractForCorpseLevel(targetLevel);
+void AwardBloodExtractAmount(int feedExtract,
+                             std::uint32_t sourceFormID,
+                             const char* source,
+                             std::uint16_t targetLevel = 0) {
+    feedExtract = std::clamp(feedExtract, 0, kBloodStrengthMaxExtract);
+    if (feedExtract <= 0) {
+        HAG_INFO("bloodstrength award skipped: source={} form={:#x} amount={}",
+                 source ? source : "unknown",
+                 sourceFormID,
+                 feedExtract);
+        return;
+    }
+
     const int previousExtract = std::clamp(g_bloodExtract.load(), 0, kBloodStrengthMaxExtract);
     const int previousLevel = BloodStrengthLevelForExtract(previousExtract);
     const int nextExtract = std::min(kBloodStrengthMaxExtract, previousExtract + feedExtract);
@@ -279,7 +298,8 @@ void AwardBloodExtract(std::uint16_t targetLevel, std::uint32_t sourceFormID) {
     g_bloodExtract.store(nextExtract);
     SaveBloodExtract(nextExtract);
 
-    HAG_INFO("bloodstrength feed awarded: form={:#x} targetLevel={} bloodExtract={} totalBloodExtract={}/{} level={} rank={}",
+    HAG_INFO("bloodstrength awarded: source={} form={:#x} targetLevel={} bloodExtract={} totalBloodExtract={}/{} level={} rank={}",
+             source ? source : "unknown",
              sourceFormID,
              targetLevel,
              feedExtract,
@@ -293,7 +313,21 @@ void AwardBloodExtract(std::uint16_t targetLevel, std::uint32_t sourceFormID) {
                  nextLevel,
                  VampireRankNameForLevel(nextLevel));
     }
-    ApplyUnlockedRankRewards(nextLevel > previousLevel ? "bloodstrength level up" : "bloodstrength feed");
+    ApplyUnlockedRankRewards(nextLevel > previousLevel ? "bloodstrength level up" : "bloodstrength award");
+}
+
+void AwardBloodExtract(std::uint16_t targetLevel, std::uint32_t sourceFormID) {
+    AwardBloodExtractAmount(BloodExtractForCorpseLevel(targetLevel),
+                            sourceFormID,
+                            "feed",
+                            targetLevel);
+}
+
+int BloodPotionExtractForTargetLevel(std::uint16_t targetLevel) {
+    const int targetExtract = BloodExtractForCorpseLevel(targetLevel);
+    return std::clamp(static_cast<int>(std::llround(static_cast<double>(targetExtract) * 0.8)),
+                      kBloodPotionExtractMin,
+                      kBloodPotionExtractMax);
 }
 
 bool IsPlayerVampire() {
@@ -605,17 +639,20 @@ bool IsAlchemyItemFormGuarded(void* form) noexcept {
     return ReadU8Guarded(form, game::form::FormType) == kFormTypeAlchemyItem;
 }
 
-bool ResolveBloodPotionForExtraction(bool stale, BloodPotionForm* out) noexcept {
+bool ResolveBloodPotionForExtraction(bool stale, int bottleExtract, BloodPotionForm* out) noexcept {
     if (out) *out = {};
     if (!out) return false;
 
-    const std::uint32_t localFormID = stale ? kHagVampireStaleBloodPotionLocal : kHagVampireBloodPotionLocal;
+    bottleExtract = std::clamp(bottleExtract, kBloodPotionExtractMin, kBloodPotionExtractMax);
+    const std::uint32_t localFormID = (stale ? kHagVampireStaleBloodPotionLocalBase : kHagVampireBloodPotionLocalBase) +
+                                      static_cast<std::uint32_t>(bottleExtract - kBloodPotionExtractMin);
     std::uint32_t runtimeFormID = 0;
     void* form = LookupPluginLocalFormGuarded(kHagVampirePluginName, localFormID, &runtimeFormID);
     if (!form) {
-        HAG_ERR("blood extraction failed: {} local form {:#x} could not be resolved from {}",
+        HAG_ERR("blood extraction failed: {} local form {:#x} extractReward={} could not be resolved from {}",
                 stale ? "stale blood potion" : "blood potion",
                 localFormID,
+                bottleExtract,
                 kHagVampirePluginName);
         return false;
     }
@@ -630,8 +667,27 @@ bool ResolveBloodPotionForExtraction(bool stale, BloodPotionForm* out) noexcept 
 
     out->form = form;
     out->formID = runtimeFormID;
+    out->extractReward = bottleExtract;
     out->label = stale ? "stale" : "fresh";
     return true;
+}
+
+int DecodeBloodPotionExtractFromHealthDelta(float delta) {
+    if (!std::isfinite(delta) || delta <= 0.0f) return 0;
+
+    for (const float baseHealth : {kFreshBloodPotionBaseHealth, kStaleBloodPotionBaseHealth}) {
+        const float encoded = delta - baseHealth;
+        const int extract = static_cast<int>(std::llround(encoded * kBloodPotionExtractHealthScale));
+        if (extract < kBloodPotionExtractMin || extract > kBloodPotionExtractMax) continue;
+
+        const float expected = baseHealth +
+                               (static_cast<float>(extract) / kBloodPotionExtractHealthScale);
+        if (std::fabs(delta - expected) <= kBloodPotionExtractDecodeTolerance) {
+            return extract;
+        }
+    }
+
+    return 0;
 }
 
 bool AddObjectToContainerGuarded(void* container, void* object, std::int32_t count) noexcept {
@@ -1437,6 +1493,7 @@ void Detour_ModActorValueInternal(void* actor,
     float beforeHealth = 0.0f;
     void* player = nullptr;
     bool trackOutgoingPlayerDamage = false;
+    int bloodPotionExtract = 0;
 
     if (!g_lifestealHealInProgress &&
         modifier == game::actor::AVModifier_Damage &&
@@ -1455,7 +1512,27 @@ void Detour_ModActorValueInternal(void* actor,
         }
     }
 
+    if (!g_lifestealHealInProgress &&
+        actor &&
+        actorValue == game::actor::AV_Health &&
+        delta > 0.0f) {
+        void* maybePlayer = player ? player : GetPlayerActorGuarded();
+        if (maybePlayer && actor == maybePlayer) {
+            bloodPotionExtract = DecodeBloodPotionExtractFromHealthDelta(delta);
+        }
+    }
+
     g_origModActorValueInternal(actor, modifier, actorValue, delta, source);
+
+    if (bloodPotionExtract > 0) {
+        AwardBloodExtractAmount(bloodPotionExtract, 0, "blood potion");
+        HAG_INFO("blood potion consumed: encodedBloodExtract={} healthDelta={}",
+                 bloodPotionExtract,
+                 delta);
+        if (g_uiApi && g_uiApi->Refresh) {
+            g_uiApi->Refresh();
+        }
+    }
 
     if (!trackOutgoingPlayerDamage || !player) return;
 
@@ -2803,11 +2880,12 @@ bool AddBloodPotionToPlayerInventory(void* player,
         return false;
     }
 
-    HAG_INFO("blood extraction potion added: source={} target={:#x} potion={} potionForm={:#x} count=1",
+    HAG_INFO("blood extraction potion added: source={} target={:#x} potion={} potionForm={:#x} bottleExtract={} count=1",
              source ? source : "unknown",
              target.formID,
              potion.label ? potion.label : "",
-             potion.formID);
+             potion.formID,
+             potion.extractReward);
     return true;
 }
 
@@ -2836,11 +2914,13 @@ void CALLBACK BloodExtractionRewardTimerProc(PVOID user, BOOLEAN) {
 
 bool ScheduleBloodExtractionReward(const TargetInfo& target,
                                    bool stalePotion,
+                                   int bottleExtract,
                                    bool refreshBloodScent,
                                    const char* source) {
     auto* ctx = new BloodExtractionRewardContext();
     ctx->generation = g_bloodExtractionRewardGeneration.fetch_add(1) + 1;
     ctx->targetFormID = target.formID;
+    ctx->bottleExtract = std::clamp(bottleExtract, kBloodPotionExtractMin, kBloodPotionExtractMax);
     ctx->stalePotion = stalePotion;
     ctx->refreshBloodScent = refreshBloodScent;
     ctx->source = source ? source : "unknown";
@@ -2861,10 +2941,11 @@ bool ScheduleBloodExtractionReward(const TargetInfo& target,
     }
 
     ctx->timer = timer;
-    HAG_INFO("blood extraction reward scheduled: source={} target={:#x} stalePotion={} delayMs={}",
+    HAG_INFO("blood extraction reward scheduled: source={} target={:#x} stalePotion={} bottleExtract={} delayMs={}",
              ctx->source,
              ctx->targetFormID,
              stalePotion,
+             ctx->bottleExtract,
              kBloodExtractionRewardDelayMs);
     return true;
 }
@@ -2894,7 +2975,7 @@ void BloodExtractionRewardTask(void* user) {
     target.formID = ctx->targetFormID;
 
     BloodPotionForm potion{};
-    const bool resolved = ResolveBloodPotionForExtraction(ctx->stalePotion, &potion);
+    const bool resolved = ResolveBloodPotionForExtraction(ctx->stalePotion, ctx->bottleExtract, &potion);
     const bool added = resolved && AddBloodPotionToPlayerInventory(player, potion, target, ctx->source);
 
     if (ctx->refreshBloodScent) {
@@ -2904,11 +2985,12 @@ void BloodExtractionRewardTask(void* user) {
         g_uiApi->Refresh();
     }
 
-    HAG_INFO("blood extraction reward completed: source={} target={:#x} added={} potionForm={:#x}",
+    HAG_INFO("blood extraction reward completed: source={} target={:#x} added={} potionForm={:#x} bottleExtract={}",
              ctx->source ? ctx->source : "unknown",
              ctx->targetFormID,
              added,
-             resolved ? potion.formID : 0);
+             resolved ? potion.formID : 0,
+             resolved ? potion.extractReward : ctx->bottleExtract);
 }
 
 void ScheduleBloodExtractionCleanup(void* player, const TargetInfo& target, const char* source) {
@@ -2973,8 +3055,10 @@ void RunBloodPotionCorpseExtractionTarget(void* player, const TargetInfo& target
              hasCorpseLevel,
              hasCorpseLevel ? corpseLevel : 0);
 
+    const int bottleExtract = BloodPotionExtractForTargetLevel(hasCorpseLevel ? corpseLevel : 1);
+
     BloodPotionForm potion{};
-    if (!ResolveBloodPotionForExtraction(true, &potion)) {
+    if (!ResolveBloodPotionForExtraction(true, bottleExtract, &potion)) {
         return;
     }
 
@@ -2995,12 +3079,11 @@ void RunBloodPotionCorpseExtractionTarget(void* player, const TargetInfo& target
         return;
     }
 
-    AwardBloodExtract(hasCorpseLevel ? corpseLevel : 1, target.formID);
     RestoreSurvivalHungerFromBloodFeed(target.formID, false, "blood extraction corpse");
     ApplyFreshBloodBuff(player, target.formID);
     RefreshBloodScentHighlights("after blood extraction feed", false);
 
-    if (!ScheduleBloodExtractionReward(target, true, true, "corpse")) {
+    if (!ScheduleBloodExtractionReward(target, true, bottleExtract, true, "corpse")) {
         HAG_ERR("blood extraction corpse action started but reward scheduling failed target={:#x}; potion will not be granted",
                 target.formID);
         CleanupBloodExtractionState(player, "blood extraction reward scheduling failed");
@@ -3009,9 +3092,10 @@ void RunBloodPotionCorpseExtractionTarget(void* player, const TargetInfo& target
 
     ScheduleBloodExtractionCleanup(player, target, "corpse");
 
-    HAG_INFO("blood extraction corpse action started: target={:#x} rewardPotionForm={:#x}",
+    HAG_INFO("blood extraction corpse action started: target={:#x} rewardPotionForm={:#x} bottleExtract={}",
              target.formID,
-             potion.formID);
+             potion.formID,
+             potion.extractReward);
 }
 
 void RunBloodPotionSleepingExtractionTarget(void* player, const TargetInfo& target) {
@@ -3023,8 +3107,12 @@ void RunBloodPotionSleepingExtractionTarget(void* player, const TargetInfo& targ
         return;
     }
 
+    std::uint16_t targetLevel = 0;
+    const bool hasTargetLevel = GetReferenceCalcLevelGuarded(target.actor, true, &targetLevel);
+    const int bottleExtract = BloodPotionExtractForTargetLevel(hasTargetLevel ? targetLevel : 1);
+
     BloodPotionForm potion{};
-    if (!ResolveBloodPotionForExtraction(false, &potion)) {
+    if (!ResolveBloodPotionForExtraction(false, bottleExtract, &potion)) {
         return;
     }
 
@@ -3033,13 +3121,10 @@ void RunBloodPotionSleepingExtractionTarget(void* player, const TargetInfo& targ
         return;
     }
 
-    std::uint16_t targetLevel = 0;
-    const bool hasTargetLevel = GetReferenceCalcLevelGuarded(target.actor, true, &targetLevel);
-    AwardBloodExtract(hasTargetLevel ? targetLevel : 1, target.formID);
     RestoreSurvivalHungerFromBloodFeed(target.formID, true, "blood extraction sleeping");
     ApplyFreshBloodBuff(player, target.formID);
 
-    if (!ScheduleBloodExtractionReward(target, false, false, "sleeping")) {
+    if (!ScheduleBloodExtractionReward(target, false, bottleExtract, false, "sleeping")) {
         HAG_ERR("blood extraction sleeping action started but reward scheduling failed target={:#x}; potion will not be granted",
                 target.formID);
         CleanupBloodExtractionState(player, "blood extraction reward scheduling failed");
@@ -3048,9 +3133,10 @@ void RunBloodPotionSleepingExtractionTarget(void* player, const TargetInfo& targ
 
     ScheduleBloodExtractionCleanup(player, target, "sleeping");
 
-    HAG_INFO("blood extraction sleeping action started: target={:#x} rewardPotionForm={:#x}",
+    HAG_INFO("blood extraction sleeping action started: target={:#x} rewardPotionForm={:#x} bottleExtract={}",
              target.formID,
-             potion.formID);
+             potion.formID,
+             potion.extractReward);
 }
 
 void RunBloodPotionSneakExtractionTarget(void* player, const TargetInfo& target) {
@@ -3061,8 +3147,12 @@ void RunBloodPotionSneakExtractionTarget(void* player, const TargetInfo& target)
         return;
     }
 
+    std::uint16_t targetLevel = 0;
+    const bool hasTargetLevel = GetReferenceCalcLevelGuarded(target.actor, true, &targetLevel);
+    const int bottleExtract = BloodPotionExtractForTargetLevel(hasTargetLevel ? targetLevel : 1);
+
     BloodPotionForm potion{};
-    if (!ResolveBloodPotionForExtraction(false, &potion)) {
+    if (!ResolveBloodPotionForExtraction(false, bottleExtract, &potion)) {
         return;
     }
 
@@ -3071,13 +3161,10 @@ void RunBloodPotionSneakExtractionTarget(void* player, const TargetInfo& target)
         return;
     }
 
-    std::uint16_t targetLevel = 0;
-    const bool hasTargetLevel = GetReferenceCalcLevelGuarded(target.actor, true, &targetLevel);
-    AwardBloodExtract(hasTargetLevel ? targetLevel : 1, target.formID);
     RestoreSurvivalHungerFromBloodFeed(target.formID, true, "blood extraction sneak");
     ApplyFreshBloodBuff(player, target.formID);
 
-    if (!ScheduleBloodExtractionReward(target, false, false, "sneak")) {
+    if (!ScheduleBloodExtractionReward(target, false, bottleExtract, false, "sneak")) {
         HAG_ERR("blood extraction sneak action started but reward scheduling failed target={:#x}; potion will not be granted",
                 target.formID);
         CleanupBloodExtractionState(player, "blood extraction reward scheduling failed");
@@ -3086,9 +3173,10 @@ void RunBloodPotionSneakExtractionTarget(void* player, const TargetInfo& target)
 
     ScheduleBloodExtractionCleanup(player, target, "sneak");
 
-    HAG_INFO("blood extraction sneak action started: target={:#x} rewardPotionForm={:#x}",
+    HAG_INFO("blood extraction sneak action started: target={:#x} rewardPotionForm={:#x} bottleExtract={}",
              target.formID,
-             potion.formID);
+             potion.formID,
+             potion.extractReward);
 }
 
 void RunBloodPotionExtractionTask(void*) {
