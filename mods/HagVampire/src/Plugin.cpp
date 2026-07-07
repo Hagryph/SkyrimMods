@@ -84,6 +84,7 @@ constexpr const char* kHagVampirePluginName = "HagVampire.esp";
 constexpr std::uint32_t kHagVampireBloodPotionLocal = 0x000800;
 constexpr std::uint32_t kHagVampireStaleBloodPotionLocal = 0x000801;
 constexpr std::uint32_t kIdleSearchBodyFormID = 0x000EFC64;
+constexpr std::uint32_t kIdleStopFormID = 0x000E4242;
 constexpr const char* kSurvivalModePluginName = "ccQDRSSE001-SurvivalMode.esl";
 constexpr std::uint32_t kSurvivalModeEnabledLocal = 0x826;
 constexpr std::uint32_t kSurvivalHungerNeedValueLocal = 0x81A;
@@ -2579,6 +2580,31 @@ bool RunBloodExtractionSearchBodyIdleGuarded(void* player, void* target) noexcep
     return true;
 }
 
+bool StopBloodExtractionIdleGuarded(void* player, const char* reason) noexcept {
+    if (!player) return false;
+
+    void* idle = LookupFormByIDGuarded(kIdleStopFormID);
+    if (!idle) {
+        HAG_ERR("blood extraction idle cleanup failed: IdleStop form {:#x} was not found reason={}",
+                kIdleStopFormID,
+                reason ? reason : "unspecified");
+        return false;
+    }
+
+    const bool stopped = PlayIdleWithTargetGuarded(player, idle, nullptr);
+    HAG_INFO("blood extraction idle cleanup: idle=IdleStop form={:#x} stopped={} reason={}",
+             kIdleStopFormID,
+             stopped,
+             reason ? reason : "unspecified");
+    return stopped;
+}
+
+bool CleanupBloodExtractionState(void* player, const char* reason) {
+    const bool idleStopped = StopBloodExtractionIdleGuarded(player, reason);
+    const bool feedStateCleaned = CleanupCorpseFeedState(player, reason);
+    return idleStopped && feedStateCleaned;
+}
+
 bool RunNativeCorpseFeedGuarded(void* player, void* target, int animationMode) noexcept {
     if (!player || !target) return false;
 
@@ -2938,7 +2964,7 @@ void BloodExtractionRewardTask(void* user) {
     const bool resolved = ResolveBloodPotionForExtraction(ctx->stalePotion, &potion);
     const bool added = resolved && AddBloodPotionToPlayerInventory(player, potion, target, ctx->source);
 
-    const bool cleaned = CleanupCorpseFeedState(player, "blood extraction reward");
+    const bool cleaned = CleanupBloodExtractionState(player, "blood extraction reward");
     if (ctx->refreshBloodScent) {
         RefreshBloodScentHighlights("after blood extraction reward", false);
     }
@@ -3036,7 +3062,7 @@ void RunBloodPotionCorpseExtractionTarget(void* player, const TargetInfo& target
     if (!ScheduleBloodExtractionReward(target, true, true, "corpse")) {
         HAG_ERR("blood extraction corpse action started but reward scheduling failed target={:#x}; potion will not be granted",
                 target.formID);
-        CleanupCorpseFeedState(player, "blood extraction reward scheduling failed");
+        CleanupBloodExtractionState(player, "blood extraction reward scheduling failed");
         return;
     }
 
@@ -3067,7 +3093,7 @@ void RunBloodPotionSleepingExtractionTarget(void* player, const TargetInfo& targ
     if (!ScheduleBloodExtractionReward(target, false, false, "sleeping")) {
         HAG_ERR("blood extraction sleeping action started but reward scheduling failed target={:#x}; potion will not be granted",
                 target.formID);
-        CleanupCorpseFeedState(player, "blood extraction reward scheduling failed");
+        CleanupBloodExtractionState(player, "blood extraction reward scheduling failed");
         return;
     }
 
@@ -3097,7 +3123,7 @@ void RunBloodPotionSneakExtractionTarget(void* player, const TargetInfo& target)
     if (!ScheduleBloodExtractionReward(target, false, false, "sneak")) {
         HAG_ERR("blood extraction sneak action started but reward scheduling failed target={:#x}; potion will not be granted",
                 target.formID);
-        CleanupCorpseFeedState(player, "blood extraction reward scheduling failed");
+        CleanupBloodExtractionState(player, "blood extraction reward scheduling failed");
         return;
     }
 
@@ -3124,7 +3150,7 @@ void RunBloodPotionExtractionTask(void*) {
         return;
     }
 
-    CleanupCorpseFeedState(player, "pre blood extraction");
+    CleanupBloodExtractionState(player, "pre blood extraction");
     RefreshBloodScentHighlights("blood extraction task start", false);
 
     TargetInfo target{};
