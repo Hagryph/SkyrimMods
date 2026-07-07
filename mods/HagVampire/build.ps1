@@ -8,6 +8,8 @@ $ErrorActionPreference = 'Stop'
 $root  = $PSScriptRoot
 $cmake = 'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe'
 $papyrusCompiler = 'C:\Program Files (x86)\Steam\steamapps\common\Skyrim Special Edition\Papyrus Compiler\PapyrusCompiler.exe'
+$blender = 'C:\Program Files\Blender Foundation\Blender 5.0\blender.exe'
+$skyrimData = 'C:\Program Files (x86)\Steam\steamapps\common\Skyrim Special Edition\Data'
 $scriptsZip = 'C:\Program Files (x86)\Steam\steamapps\common\Skyrim Special Edition\Data\Scripts.zip'
 $vanillaSource = Join-Path $root 'build\PapyrusSource'
 $papyrusImports  = @(
@@ -109,6 +111,16 @@ if (-not $NoBuild) {
     }
 }
 
+$animationGenerator = Join-Path $root 'tools\generate_cut_animation.py'
+$animationOut = Join-Path $root 'assets\meshes\actors\character\animations\HagVampire\hagvampire_throat_cut.hkx'
+if ((-not $NoBuild) -or (-not (Test-Path $animationOut))) {
+    if (-not (Test-Path $animationGenerator)) { throw "Animation generator not found: $animationGenerator" }
+    if (-not (Test-Path $blender)) { throw "Blender not found: $blender" }
+    Write-Host '== animation =='
+    & $blender --background --python $animationGenerator -- --root $root --skyrim-data $skyrimData | Select-Object -Last 8
+    if ($LASTEXITCODE -ne 0) { throw "animation generation failed (exit $LASTEXITCODE)" }
+}
+
 $dll = Get-ChildItem "$root\build" -Recurse -Filter HagVampire.dll -ErrorAction SilentlyContinue | Select-Object -First 1
 if (-not $dll) { throw 'HagVampire.dll not found - build first (omit -NoBuild).' }
 
@@ -126,6 +138,12 @@ if (-not (Test-Path $esp)) { throw "HagVampire.esp not found: $esp" }
 Copy-Item $esp (Join-Path $mod 'HagVampire.esp') -Force
 Write-Host "deployed HagVampire.esp -> $mod"
 Enable-MO2PluginForEnabledMod -Mo2ModsPath $Mo2Mods -ModName 'HagVampire' -PluginName 'HagVampire.esp'
+
+$meshesSource = Join-Path $root 'assets\meshes'
+if (Test-Path $meshesSource) {
+    Copy-Item $meshesSource $mod -Recurse -Force
+    Write-Host "deployed meshes -> $mod"
+}
 
 $meta = Join-Path $mod 'meta.ini'
 if (-not (Test-Path $meta)) {
