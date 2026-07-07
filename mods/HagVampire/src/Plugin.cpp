@@ -83,6 +83,7 @@ constexpr std::uint32_t kBloodExtractionRewardDelayMs = 5200u;
 constexpr const char* kHagVampirePluginName = "HagVampire.esp";
 constexpr std::uint32_t kHagVampireBloodPotionLocal = 0x000800;
 constexpr std::uint32_t kHagVampireStaleBloodPotionLocal = 0x000801;
+constexpr std::uint32_t kIdleSearchBodyFormID = 0x000EFC64;
 constexpr const char* kSurvivalModePluginName = "ccQDRSSE001-SurvivalMode.esl";
 constexpr std::uint32_t kSurvivalModeEnabledLocal = 0x826;
 constexpr std::uint32_t kSurvivalHungerNeedValueLocal = 0x81A;
@@ -2524,6 +2525,60 @@ bool InstallBloodScentMovementHook() {
     return true;
 }
 
+bool PlayIdleWithTargetGuarded(void* actor, void* idle, void* targetRef) noexcept {
+    if (!actor || !idle) return false;
+    __try {
+        void* process = *reinterpret_cast<void**>(
+            static_cast<std::uint8_t*>(actor) + game::actor::ActorProcessOffset);
+        if (!process) return false;
+
+        using SetupSpecialIdleFn = bool (*)(void*,
+                                            void*,
+                                            std::uint32_t,
+                                            void*,
+                                            bool,
+                                            bool,
+                                            void*);
+        auto setupSpecialIdle = reinterpret_cast<SetupSpecialIdleFn>(
+            SkyrimBase() + game::actor::AIProcess_SetupSpecialIdle);
+        return setupSpecialIdle(process,
+                                actor,
+                                game::actor::DefaultObject_ActionIdle,
+                                idle,
+                                true,
+                                false,
+                                targetRef);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool RunBloodExtractionSearchBodyIdleGuarded(void* player, void* target) noexcept {
+    if (!player || !target) return false;
+
+    void* idle = LookupFormByIDGuarded(kIdleSearchBodyFormID);
+    if (!idle) {
+        HAG_ERR("blood extraction search-body idle failed: IdleSearchBody form {:#x} was not found",
+                kIdleSearchBodyFormID);
+        return false;
+    }
+
+    if (!PlayIdleWithTargetGuarded(player, idle, target)) {
+        HAG_ERR("blood extraction search-body idle failed: AIProcess_SetupSpecialIdle faulted or rejected idle={:#x}",
+                kIdleSearchBodyFormID);
+        return false;
+    }
+
+    if (!SetActorValueGuarded(target, game::actor::AV_Variable08, 9.0f)) {
+        HAG_ERR("blood extraction search-body idle failed: could not mark target Variable08");
+        return false;
+    }
+
+    HAG_INFO("blood extraction search-body idle started: idle=IdleSearchBody form={:#x}",
+             kIdleSearchBodyFormID);
+    return true;
+}
+
 bool RunNativeCorpseFeedGuarded(void* player, void* target, int animationMode) noexcept {
     if (!player || !target) return false;
 
@@ -2966,8 +3021,8 @@ void RunBloodPotionCorpseExtractionTarget(void* player, const TargetInfo& target
         return;
     }
 
-    if (!RunNativeCorpseFeedGuarded(player, target.actor, g_animationMode.load())) {
-        HAG_ERR("blood extraction corpse failed: native corpse action did not start");
+    if (!RunBloodExtractionSearchBodyIdleGuarded(player, target.actor)) {
+        HAG_ERR("blood extraction corpse failed: search-body idle did not start");
         return;
     }
 

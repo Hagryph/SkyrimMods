@@ -243,6 +243,9 @@ inline constexpr std::int32_t   AVModifier_Damage = 2;
 
 // Actor layout / process helpers.
 inline constexpr std::size_t ActorProcessOffset = 0xF8;          // Actor -> AIProcess*
+// Papyrus Actor.PlayIdle/PlayIdleWithTarget wrappers FUN_1409e9700/FUN_1409e9730
+// call helper FUN_1409fac30, which calls:
+//   AIProcess_SetupSpecialIdle(actor->process, actor, kActionIdle, idle, true, false, target)
 inline constexpr std::uintptr_t AIProcess_SetupSpecialIdle = 0x6DDE70;  // Address Library 1.6.1170 id 39256
 // Papyrus Actor.StartVampireFeed wrapper FUN_1409eb0f0 calls this on the
 // target actor's AIProcess, then resolves the returned handle as the third
