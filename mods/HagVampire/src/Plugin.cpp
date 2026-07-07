@@ -2544,7 +2544,7 @@ bool RunBloodExtractionSearchBodyIdleGuarded(void* player, const TargetInfo& tar
         return false;
     }
 
-    if (!SetActorValueGuarded(target, game::actor::AV_Variable08, 9.0f)) {
+    if (!SetActorValueGuarded(target.actor, game::actor::AV_Variable08, 9.0f)) {
         HAG_ERR("blood extraction search-body idle failed: could not mark target Variable08");
         return false;
     }
