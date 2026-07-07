@@ -80,14 +80,9 @@ constexpr float kFreshBloodMinBonus = 0.1f;
 constexpr std::uint32_t kFreshBloodDurationMs = 5u * 60u * 1000u;
 constexpr std::uint32_t kCorpseFeedCleanupDelayMs = 5500u;
 constexpr std::uint32_t kBloodExtractionRewardDelayMs = 5200u;
-constexpr std::uint32_t kBloodExtractionAutoStopDelayMs = 6200u;
-constexpr float kCorpseExtractionStandDistance = 82.0f;
-constexpr float kCorpseExtractionMinDirectionDistance = 12.0f;
 constexpr const char* kHagVampirePluginName = "HagVampire.esp";
 constexpr std::uint32_t kHagVampireBloodPotionLocal = 0x000800;
 constexpr std::uint32_t kHagVampireStaleBloodPotionLocal = 0x000801;
-constexpr std::uint32_t kIdleSearchBodyFormID = 0x000EFC64;
-constexpr std::uint32_t kIdleStopFormID = 0x000E4242;
 constexpr const char* kSurvivalModePluginName = "ccQDRSSE001-SurvivalMode.esl";
 constexpr std::uint32_t kSurvivalModeEnabledLocal = 0x826;
 constexpr std::uint32_t kSurvivalHungerNeedValueLocal = 0x81A;
@@ -2539,132 +2534,8 @@ bool InstallBloodScentMovementHook() {
     return true;
 }
 
-bool SetReferenceLocationGuarded(void* ref, const NiPoint3& position) noexcept {
-    if (!ref) return false;
-    __try {
-        using SetReferenceLocationRawFn = void (*)(void*, const NiPoint3*);
-        auto setLocation = reinterpret_cast<SetReferenceLocationRawFn>(
-            SkyrimBase() + game::refr::SetLocation);
-        if (!setLocation) return false;
-        setLocation(ref, &position);
-        return true;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;
-    }
-}
-
-bool AlignPlayerForCorpseExtractionGuarded(void* player, const TargetInfo& target) noexcept {
-    if (!player || !target.actor) return false;
-
-    NiPoint3 playerPos{};
-    NiPoint3 targetPos{};
-    if (!ReadPoint3Guarded(player, game::refr::DataLocation, &playerPos) ||
-        !ReadPoint3Guarded(target.actor, game::refr::DataLocation, &targetPos)) {
-        HAG_WARN("blood extraction alignment skipped: could not read positions target={:#x}",
-                 target.formID);
-        return false;
-    }
-
-    float awayX = playerPos.x - targetPos.x;
-    float awayY = playerPos.y - targetPos.y;
-    float distance2D = std::sqrt((awayX * awayX) + (awayY * awayY));
-
-    if (!std::isfinite(distance2D) || distance2D < kCorpseExtractionMinDirectionDistance) {
-        NiPoint3 targetAngle{};
-        if (ReadPoint3Guarded(target.actor, game::refr::DataAngle, &targetAngle) &&
-            std::isfinite(targetAngle.z)) {
-            awayX = std::sin(targetAngle.z);
-            awayY = std::cos(targetAngle.z);
-            distance2D = 1.0f;
-        } else {
-            awayX = 0.0f;
-            awayY = -1.0f;
-            distance2D = 1.0f;
-        }
-    }
-
-    const float invDistance = 1.0f / distance2D;
-    const float dirX = awayX * invDistance;
-    const float dirY = awayY * invDistance;
-
-    NiPoint3 nextPlayerPos{};
-    nextPlayerPos.x = targetPos.x + (dirX * kCorpseExtractionStandDistance);
-    nextPlayerPos.y = targetPos.y + (dirY * kCorpseExtractionStandDistance);
-    nextPlayerPos.z = targetPos.z;
-
-    NiPoint3 nextPlayerAngle{};
-    if (!ReadPoint3Guarded(player, game::refr::DataAngle, &nextPlayerAngle)) {
-        nextPlayerAngle = {};
-    }
-    nextPlayerAngle.z = std::atan2(targetPos.x - nextPlayerPos.x,
-                                   targetPos.y - nextPlayerPos.y);
-
-    const bool moved = SetReferenceLocationGuarded(player, nextPlayerPos);
-    const bool angled = WritePoint3Guarded(player, game::refr::DataAngle, nextPlayerAngle);
-    HAG_INFO("blood extraction alignment: target={:#x} moved={} angled={} from=({:.1f},{:.1f},{:.1f}) to=({:.1f},{:.1f},{:.1f}) yaw={:.3f} distance={:.1f}",
-             target.formID,
-             moved,
-             angled,
-             playerPos.x,
-             playerPos.y,
-             playerPos.z,
-             nextPlayerPos.x,
-             nextPlayerPos.y,
-             nextPlayerPos.z,
-             nextPlayerAngle.z,
-             kCorpseExtractionStandDistance);
-    return moved && angled;
-}
-
-bool RunBloodExtractionSearchBodyIdleGuarded(void* player, const TargetInfo& target) noexcept {
-    if (!player || !target.actor || target.formID == 0) return false;
-    if (!g_loaderApi || !g_loaderApi->PlayIdleWithTargetAutoStop) {
-        HAG_ERR("blood extraction search-body idle failed: HagLoader animation API unavailable");
-        return false;
-    }
-
-    if (!g_loaderApi->PlayIdleWithTargetAutoStop(kPlayerRefID,
-                                                 kIdleSearchBodyFormID,
-                                                 target.formID,
-                                                 kIdleStopFormID,
-                                                 kBloodExtractionAutoStopDelayMs)) {
-        HAG_ERR("blood extraction search-body idle failed: HagLoader rejected idle start target={:#x}",
-                target.formID);
-        return false;
-    }
-
-    if (!SetActorValueGuarded(target.actor, game::actor::AV_Variable08, 9.0f)) {
-        HAG_ERR("blood extraction search-body idle failed: could not mark target Variable08");
-        return false;
-    }
-
-    HAG_INFO("blood extraction search-body idle started through HagLoader: idle=IdleSearchBody form={:#x} target={:#x} autoStopMs={}",
-             kIdleSearchBodyFormID,
-             target.formID,
-             kBloodExtractionAutoStopDelayMs);
-    return true;
-}
-
-bool StopBloodExtractionIdleGuarded(void* player, const char* reason) noexcept {
-    if (!player) return false;
-    if (!g_loaderApi || !g_loaderApi->StopIdle) {
-        HAG_ERR("blood extraction idle cleanup failed: HagLoader animation API unavailable reason={}",
-                reason ? reason : "unspecified");
-        return false;
-    }
-
-    const bool stopped = g_loaderApi->StopIdle(kPlayerRefID, kIdleStopFormID);
-    HAG_INFO("blood extraction idle cleanup through HagLoader: idle=IdleStop form={:#x} stopped={} reason={}",
-             kIdleStopFormID,
-             stopped,
-             reason ? reason : "unspecified");
-    return stopped;
-}
-
 bool CleanupBloodExtractionState(void* player, const char* reason) {
-    const bool idleStopped = StopBloodExtractionIdleGuarded(player, reason);
-    const bool feedStateCleaned = CleanupCorpseFeedState(player, reason);
-    return idleStopped && feedStateCleaned;
+    return CleanupCorpseFeedState(player, reason);
 }
 
 bool RunNativeCorpseFeedGuarded(void* player, void* target, int animationMode) noexcept {
@@ -3026,7 +2897,6 @@ void BloodExtractionRewardTask(void* user) {
     const bool resolved = ResolveBloodPotionForExtraction(ctx->stalePotion, &potion);
     const bool added = resolved && AddBloodPotionToPlayerInventory(player, potion, target, ctx->source);
 
-    const bool cleaned = CleanupBloodExtractionState(player, "blood extraction reward");
     if (ctx->refreshBloodScent) {
         RefreshBloodScentHighlights("after blood extraction reward", false);
     }
@@ -3034,11 +2904,10 @@ void BloodExtractionRewardTask(void* user) {
         g_uiApi->Refresh();
     }
 
-    HAG_INFO("blood extraction reward completed: source={} target={:#x} added={} cleaned={} potionForm={:#x}",
+    HAG_INFO("blood extraction reward completed: source={} target={:#x} added={} potionForm={:#x}",
              ctx->source ? ctx->source : "unknown",
              ctx->targetFormID,
              added,
-             cleaned,
              resolved ? potion.formID : 0);
 }
 
@@ -3109,13 +2978,13 @@ void RunBloodPotionCorpseExtractionTarget(void* player, const TargetInfo& target
         return;
     }
 
-    const bool aligned = AlignPlayerForCorpseExtractionGuarded(player, target);
-    if (!aligned) {
-        HAG_WARN("blood extraction corpse continuing without alignment: target={:#x}", target.formID);
-    }
+    HAG_INFO("blood extraction corpse invoking normal corpse feed action: target handle={:#x} form={:#x} mode={}",
+             target.handle,
+             target.formID,
+             g_animationMode.load());
 
-    if (!RunBloodExtractionSearchBodyIdleGuarded(player, target)) {
-        HAG_ERR("blood extraction corpse failed: search-body idle did not start");
+    if (!RunNativeCorpseFeedGuarded(player, target.actor, g_animationMode.load())) {
+        HAG_ERR("blood extraction corpse failed: native corpse action did not start");
         return;
     }
 
@@ -3126,6 +2995,11 @@ void RunBloodPotionCorpseExtractionTarget(void* player, const TargetInfo& target
         return;
     }
 
+    AwardBloodExtract(hasCorpseLevel ? corpseLevel : 1, target.formID);
+    RestoreSurvivalHungerFromBloodFeed(target.formID, false, "blood extraction corpse");
+    ApplyFreshBloodBuff(player, target.formID);
+    RefreshBloodScentHighlights("after blood extraction feed", false);
+
     if (!ScheduleBloodExtractionReward(target, true, true, "corpse")) {
         HAG_ERR("blood extraction corpse action started but reward scheduling failed target={:#x}; potion will not be granted",
                 target.formID);
@@ -3133,10 +3007,11 @@ void RunBloodPotionCorpseExtractionTarget(void* player, const TargetInfo& target
         return;
     }
 
-    HAG_INFO("blood extraction corpse action started: target={:#x} rewardPotionForm={:#x} aligned={}",
+    ScheduleBloodExtractionCleanup(player, target, "corpse");
+
+    HAG_INFO("blood extraction corpse action started: target={:#x} rewardPotionForm={:#x}",
              target.formID,
-             potion.formID,
-             aligned);
+             potion.formID);
 }
 
 void RunBloodPotionSleepingExtractionTarget(void* player, const TargetInfo& target) {
@@ -3158,12 +3033,20 @@ void RunBloodPotionSleepingExtractionTarget(void* player, const TargetInfo& targ
         return;
     }
 
+    std::uint16_t targetLevel = 0;
+    const bool hasTargetLevel = GetReferenceCalcLevelGuarded(target.actor, true, &targetLevel);
+    AwardBloodExtract(hasTargetLevel ? targetLevel : 1, target.formID);
+    RestoreSurvivalHungerFromBloodFeed(target.formID, true, "blood extraction sleeping");
+    ApplyFreshBloodBuff(player, target.formID);
+
     if (!ScheduleBloodExtractionReward(target, false, false, "sleeping")) {
         HAG_ERR("blood extraction sleeping action started but reward scheduling failed target={:#x}; potion will not be granted",
                 target.formID);
         CleanupBloodExtractionState(player, "blood extraction reward scheduling failed");
         return;
     }
+
+    ScheduleBloodExtractionCleanup(player, target, "sleeping");
 
     HAG_INFO("blood extraction sleeping action started: target={:#x} rewardPotionForm={:#x}",
              target.formID,
@@ -3188,12 +3071,20 @@ void RunBloodPotionSneakExtractionTarget(void* player, const TargetInfo& target)
         return;
     }
 
+    std::uint16_t targetLevel = 0;
+    const bool hasTargetLevel = GetReferenceCalcLevelGuarded(target.actor, true, &targetLevel);
+    AwardBloodExtract(hasTargetLevel ? targetLevel : 1, target.formID);
+    RestoreSurvivalHungerFromBloodFeed(target.formID, true, "blood extraction sneak");
+    ApplyFreshBloodBuff(player, target.formID);
+
     if (!ScheduleBloodExtractionReward(target, false, false, "sneak")) {
         HAG_ERR("blood extraction sneak action started but reward scheduling failed target={:#x}; potion will not be granted",
                 target.formID);
         CleanupBloodExtractionState(player, "blood extraction reward scheduling failed");
         return;
     }
+
+    ScheduleBloodExtractionCleanup(player, target, "sneak");
 
     HAG_INFO("blood extraction sneak action started: target={:#x} rewardPotionForm={:#x}",
              target.formID,
