@@ -3327,13 +3327,13 @@ void Init(HagUI_PageHandle* page) {
                         &OnAnimationModeChanged,
                         nullptr);
     g_uiApi->SetGridCell(page, "vampire_action", 0, 0);
-    g_uiApi->SetGridCell(page, "vampire_rank", 1, 0);
     g_uiApi->SetGridCell(page, "enable_corpse_feeding", 0, 1);
-    g_uiApi->SetGridCell(page, "feed_hotkey", 1, 1);
-    g_uiApi->SetGridCell(page, "feeding_counter", 0, 2);
-    g_uiApi->SetGridCell(page, "animation_mode", 1, 2);
-    g_uiApi->SetGridCell(page, "enable_blood_potion_extraction", 0, 3);
-    g_uiApi->SetGridCell(page, "extract_blood_hotkey", 1, 3);
+    g_uiApi->SetGridCell(page, "enable_blood_potion_extraction", 0, 2);
+    g_uiApi->SetGridCell(page, "animation_mode", 0, 3);
+    g_uiApi->SetGridCell(page, "vampire_rank", 0, 4);
+    g_uiApi->SetGridCell(page, "feed_hotkey", 1, 0);
+    g_uiApi->SetGridCell(page, "extract_blood_hotkey", 1, 1);
+    g_uiApi->SetGridCell(page, "feeding_counter", 1, 2);
     PushConfigToUI();
     g_uiApi->Refresh();
 
