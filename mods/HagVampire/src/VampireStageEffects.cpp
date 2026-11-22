@@ -251,7 +251,11 @@ void RefreshPlayerFrost() {
     const auto addSpell = reinterpret_cast<SpellFn>(GameBase() + game::actor::AddSpell);
     // An active ability can retain its old magnitude after a mode change or load.
     for (void* spell : g_frostSpells) {
-        if (!hasSpell(player, spell) || !removeSpell(player, spell)) continue;
+        if (!hasSpell(player, spell)) continue;
+        if (!removeSpell(player, spell)) {
+            HAG_WARN("Failed to remove loaded Vampire frost ability {:#x} before refresh", FormID(spell));
+            continue;
+        }
         if (addSpell(player, spell)) HAG_INFO("Refreshed loaded Vampire frost ability {:#x}", FormID(spell));
         else HAG_WARN("Failed to reapply loaded Vampire frost ability {:#x}", FormID(spell));
     }

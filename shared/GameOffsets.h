@@ -241,7 +241,7 @@ inline constexpr std::uintptr_t Actor_ModActorValueInternal = 0x6B27A0;
 inline constexpr std::uintptr_t Actor_SetDeadState = 0x665230;  // Actor* RCX, bool DL; tail-calls process dead-state setter
 inline constexpr std::uintptr_t GetLevel = 0x666D00;     // Actor::GetLevel(), including leveled actors
 inline constexpr std::uintptr_t AddSpell = 0x6C12A0;     // native target of Papyrus Actor.AddSpell
-inline constexpr std::uintptr_t RemoveSpell = 0x6C17A0;  // native target of Papyrus Actor.RemoveSpell
+inline constexpr std::uintptr_t RemoveSpell = 0x6C14B0;  // Actor.RemoveSpell task dispatch calls this at RVA 0x658621
 inline constexpr std::uintptr_t HasSpell = 0x6C4C50;     // spell branch of Papyrus Actor.HasSpell
 inline constexpr std::int32_t   AVModifier_Damage = 2;
 
