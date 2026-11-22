@@ -41,6 +41,9 @@ std::atomic_bool g_pageActionConsumed{false};
 VampireAction g_actionAtPageBuild = VampireAction::Transform;
 std::atomic_bool g_corpseFeedingEnabled{true};
 std::atomic_bool g_bloodPotionExtractionEnabled{true};
+constexpr char kReverseProgressionKey[] = "reverse_progression";
+constexpr bool kReverseProgressionDefault = true;
+std::atomic_bool g_reverseProgressionEnabled{kReverseProgressionDefault};
 std::atomic_int g_animationMode{0};
 std::atomic_int g_feedHotkey{'V'};
 std::atomic_int g_extractBloodHotkey{'G'};
@@ -386,15 +389,17 @@ void ConfigSetInt(const char* key, int value) {
 void LoadConfig() {
     g_corpseFeedingEnabled.store(ConfigGetBool("enable_corpse_feeding", true));
     g_bloodPotionExtractionEnabled.store(ConfigGetBool("enable_blood_potion_extraction", true));
+    g_reverseProgressionEnabled.store(ConfigGetBool(kReverseProgressionKey, kReverseProgressionDefault));
     g_animationMode.store(ConfigGetInt("animation_mode", 0, 0, 2));
     g_feedHotkey.store(ConfigGetInt("feed_hotkey", 'V', 1, 255));
     g_extractBloodHotkey.store(ConfigGetInt("extract_blood_hotkey", 'G', 1, 255));
     g_bloodExtract.store(ConfigGetInt("blood_extract", 0, 0, kBloodStrengthMaxExtract));
     g_permanentHealthBonusAppliedLevel.store(ConfigGetInt("permanent_health_bonus_applied_level", 0, 0, kBloodStrengthMaxLevel));
     g_lifestealHealRemainderMicro.store(ConfigGetInt("lifesteal_heal_remainder_micro", 0, 0, kLifestealHealScale - 1));
-    HAG_INFO("config loaded: enable_corpse_feeding={} enable_blood_potion_extraction={} animation_mode={} feed_hotkey={:#x} extract_blood_hotkey={:#x} blood_extract={} level={} rank={} permanentHealthBonusAppliedLevel={} lifestealRemainder={}",
+    HAG_INFO("config loaded: enable_corpse_feeding={} enable_blood_potion_extraction={} reverse_progression={} animation_mode={} feed_hotkey={:#x} extract_blood_hotkey={:#x} blood_extract={} level={} rank={} permanentHealthBonusAppliedLevel={} lifestealRemainder={}",
              g_corpseFeedingEnabled.load(),
              g_bloodPotionExtractionEnabled.load(),
+             g_reverseProgressionEnabled.load(),
              g_animationMode.load(),
              g_feedHotkey.load(),
              g_extractBloodHotkey.load(),
@@ -408,6 +413,7 @@ void LoadConfig() {
 void PushConfigToUI() {
     if (!g_uiApi || !g_page) return;
     if (g_uiApi->SetToggleState) {
+        g_uiApi->SetToggleState(g_page, kReverseProgressionKey, g_reverseProgressionEnabled.load(), true, "");
         g_uiApi->SetToggleState(g_page,
                                 "enable_corpse_feeding",
                                 g_corpseFeedingEnabled.load(),
@@ -3307,6 +3313,28 @@ void OnBloodPotionExtractionChanged(void*, HagUI_Value value) {
     HAG_INFO("enable_blood_potion_extraction -> {}", value.b);
 }
 
+void ApplyVampireProgressionTask(void*) {
+    vampire_stage::ApplyProgression(g_reverseProgressionEnabled.load());
+}
+
+bool QueueVampireProgression() {
+    if (g_loaderApi->QueueMainThreadTask(&ApplyVampireProgressionTask, nullptr)) return true;
+    HAG_WARN("Vampire progression change could not be queued");
+    return false;
+}
+
+void OnReverseProgressionChanged(void*, HagUI_Value value) {
+    if (value.type != HAGUI_VT_BOOL) return;
+    const bool previous = g_reverseProgressionEnabled.exchange(value.b);
+    if (value.b == previous) return;
+    if (!QueueVampireProgression()) {
+        g_reverseProgressionEnabled.store(previous);
+        PushConfigToUI();
+        return;
+    }
+    ConfigSetBool(kReverseProgressionKey, value.b);
+}
+
 void OnAnimationModeChanged(void*, HagUI_Value value) {
     int next = 0;
     if (value.type == HAGUI_VT_INT) {
@@ -3540,6 +3568,12 @@ void Init(HagUI_PageHandle* page) {
                               &VampireActionLabel,
                               &OnVampireActionClicked,
                               nullptr);
+    g_uiApi->AddToggle(page,
+                       kReverseProgressionKey,
+                       "Reverse Progression",
+                       g_reverseProgressionEnabled.load(),
+                       &OnReverseProgressionChanged,
+                       nullptr);
     g_uiApi->AddCounter(page,
                         "vampire_rank",
                         "Vampire rank",
@@ -3584,10 +3618,11 @@ void Init(HagUI_PageHandle* page) {
                         &OnAnimationModeChanged,
                         nullptr);
     g_uiApi->SetGridCell(page, "vampire_action", 0, 0);
-    g_uiApi->SetGridCell(page, "enable_corpse_feeding", 0, 1);
-    g_uiApi->SetGridCell(page, "enable_blood_potion_extraction", 0, 2);
-    g_uiApi->SetGridCell(page, "animation_mode", 0, 3);
-    g_uiApi->SetGridCell(page, "vampire_rank", 0, 4);
+    g_uiApi->SetGridCell(page, kReverseProgressionKey, 0, 1);
+    g_uiApi->SetGridCell(page, "enable_corpse_feeding", 0, 2);
+    g_uiApi->SetGridCell(page, "enable_blood_potion_extraction", 0, 3);
+    g_uiApi->SetGridCell(page, "animation_mode", 0, 4);
+    g_uiApi->SetGridCell(page, "vampire_rank", 0, 5);
     g_uiApi->SetGridCell(page, "feed_hotkey", 1, 0);
     g_uiApi->SetGridCell(page, "extract_blood_hotkey", 1, 1);
     g_uiApi->SetGridCell(page, "feeding_counter", 1, 2);
@@ -3599,9 +3634,7 @@ void Init(HagUI_PageHandle* page) {
 
 void OnSaveLoaded() {
     ReloadSaveConfig("SKSE save context ready");
-    if (!g_loaderApi->QueueMainThreadTask(&vampire_stage::RefreshLoadedFrost, nullptr)) {
-        HAG_WARN("Vampire frost ability refresh could not be queued after load");
-    }
+    QueueVampireProgression();
     QueueApplySurvivalFoodPolicy("save loaded");
     InstallActorDeathHook();
     RegisterFeedHotkey();
@@ -3630,7 +3663,7 @@ extern "C" __declspec(dllexport) void SkyrimMod_OnSaveLoaded() {
 }
 
 extern "C" __declspec(dllexport) void SkyrimMod_OnDataLoaded() {
-    hag::vampire_stage::OnDataLoaded();
+    hag::vampire_stage::OnDataLoaded(hag::g_reverseProgressionEnabled.load());
 }
 
 extern "C" __declspec(dllexport) constinit skse::PluginVersionData SKSEPlugin_Version = {

@@ -2,7 +2,7 @@
 
 namespace hag::vampire_stage {
 
-void OnDataLoaded();
-void RefreshLoadedFrost(void*);
+void OnDataLoaded(bool reverse);
+void ApplyProgression(bool reverse);
 
 }  // namespace hag::vampire_stage

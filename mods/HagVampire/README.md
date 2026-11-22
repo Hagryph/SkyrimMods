@@ -27,9 +27,10 @@ feeding timers, cure quest restart, and `SendVampirismStateChanged(true)`.
 
 ## Vampire stage effects
 
-Skyrim still owns the four-stage thirst clock. At data load, HagVampire replaces the
-base frost and Vampiric Drain magnitudes on the four player spells, from fed to
-starving: 50/40/30/20% frost resistance and 5/4/3/2 Drain. Fire and sunlight are unchanged.
+Skyrim still owns the four-stage thirst clock. Reverse Progression is on by default
+and saved per character. From fed to starving, it gives 50/40/30/20% frost resistance
+and 5/4/3/2 Drain. Turning it off restores the original loaded spell magnitudes.
+Fire, sunlight, and Vampire's Servant are independent of the toggle.
 
 On Skyrim SE 1.6.1170, the Reanimate archetype dispatches to RVA `0x5CC230`.
 The original checks corpse eligibility at `0x5C6CB0`, then compares the target's

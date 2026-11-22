@@ -43,7 +43,18 @@ using SpellArray = std::array<void*, 4>;
 using ReanimateCheck = bool (*)(EffectCheckData*);
 using EvaluateCondition = bool (*)(const void*, void*);
 
+struct EffectMagnitude {
+    float* value = nullptr;
+    float original = 0.0f;
+
+    void Apply(bool reverse, float reversed) const noexcept {
+        if (value) *value = reverse ? reversed : original;
+    }
+};
+
 SpellArray g_frostSpells{};
+std::array<EffectMagnitude, 4> g_frost{};
+std::array<std::array<EffectMagnitude, 3>, 4> g_drain{};
 SpellArray g_servantSpells{};
 SpellArray g_servantBaseEffects{};
 const void* g_ashPileLevelCheck = nullptr;
@@ -82,25 +93,29 @@ std::uint16_t Level(void* actor) noexcept {
     return reinterpret_cast<std::uint16_t (*)(void*)>(GameBase() + game::actor::GetLevel)(actor);
 }
 
-bool ApplyReverseFrost() noexcept {
-    SpellArray spells{}, effects{};
+EffectMagnitude CaptureMagnitude(void* effect) noexcept {
+    auto& value = Field<float>(effect, game::magic::EffectMagnitude);
+    return {&value, value};
+}
+
+bool CaptureFrost() noexcept {
+    SpellArray spells{};
+    decltype(g_frost) effects{};
     for (std::size_t i = 0; i < spells.size(); ++i) {
         spells[i] = Lookup(kFrost[i]);
         std::uint32_t count = 0;
         void** list = SpellEffects(spells[i], count);
         if (!list || count != 1 || !list[0] ||
             FormID(Field<void*>(list[0], game::magic::EffectBaseEffect)) != kFrostEffect) return false;
-        effects[i] = list[0];
-    }
-    for (std::size_t i = 0; i < effects.size(); ++i) {
-        Field<float>(effects[i], game::magic::EffectMagnitude) = kReverseFrost[i];
+        effects[i] = CaptureMagnitude(list[0]);
     }
     g_frostSpells = spells;
+    g_frost = effects;
     return true;
 }
 
-bool ApplyReverseDrain() noexcept {
-    std::array<std::array<void*, 3>, 4> effects{};
+bool CaptureDrain() noexcept {
+    decltype(g_drain) effects{};
     for (std::size_t i = 0; i < effects.size(); ++i) {
         std::uint32_t count = 0;
         void** list = SpellEffects(Lookup(kDrain[i]), count);
@@ -108,19 +123,24 @@ bool ApplyReverseDrain() noexcept {
         for (std::uint32_t j = 0; j < count; ++j) {
             if (!list[j]) continue;
             const auto id = FormID(Field<void*>(list[j], game::magic::EffectBaseEffect));
-            if (id == kDrainHealthEffect) effects[i][0] = list[j];
+            if (id == kDrainHealthEffect) effects[i][0] = CaptureMagnitude(list[j]);
             // Vanilla Dawnguard's optional Chalice/Redwater effects; leave their conditions intact.
-            else if ((id >> 24) == 2 && (id & 0xFFFFFF) == 0x01419C) effects[i][1] = list[j];
-            else if ((id >> 24) == 2 && (id & 0xFFFFFF) == 0x01419A) effects[i][2] = list[j];
+            else if (id == 0x0201419C) effects[i][1] = CaptureMagnitude(list[j]);
+            else if (id == 0x0201419A) effects[i][2] = CaptureMagnitude(list[j]);
         }
-        if (!effects[i][0]) return false;
+        if (!effects[i][0].value) return false;
     }
-    for (std::size_t i = 0; i < effects.size(); ++i) {
-        for (void* effect : effects[i]) {
-            if (effect) Field<float>(effect, game::magic::EffectMagnitude) = kReverseDrain[i];
-        }
-    }
+    g_drain = effects;
     return true;
+}
+
+void ApplyMagnitudes(bool reverse) {
+    for (std::size_t i = 0; i < kReverseFrost.size(); ++i) {
+        g_frost[i].Apply(reverse, kReverseFrost[i]);
+        for (const auto& effect : g_drain[i]) effect.Apply(reverse, kReverseDrain[i]);
+    }
+    HAG_INFO("Vampire progression applied: reverse={} frost={} drain={}",
+             reverse, g_frost[0].value != nullptr, g_drain[0][0].value != nullptr);
 }
 
 bool ResolveServantRecords() noexcept {
@@ -216,30 +236,34 @@ bool InstallServantHooks() {
     return false;
 }
 
-}  // namespace
-
-void OnDataLoaded() {
-    if (ApplyReverseFrost()) HAG_INFO("Vampire frost resistance set to 50/40/30/20 by stage");
-    else HAG_WARN("Vampire frost resistance unchanged: unexpected spell records");
-    if (ApplyReverseDrain()) HAG_INFO("Vampiric Drain set to 5/4/3/2 by stage");
-    else HAG_WARN("Vampiric Drain unchanged: unexpected spell records");
-    if (InstallServantHooks()) HAG_INFO("Vampire's Servant uses the native player-level cap");
-    else HAG_WARN("Vampire's Servant unchanged: native level checks did not install");
-}
-
-void RefreshLoadedFrost(void*) {
+void RefreshPlayerFrost() {
     void* player = Player();
     if (!player || !g_frostSpells[0]) return;
     using SpellFn = bool (*)(void*, void*);
     const auto hasSpell = reinterpret_cast<SpellFn>(GameBase() + game::actor::HasSpell);
     const auto removeSpell = reinterpret_cast<SpellFn>(GameBase() + game::actor::RemoveSpell);
     const auto addSpell = reinterpret_cast<SpellFn>(GameBase() + game::actor::AddSpell);
-    // A loaded ability can retain its serialized ActiveEffect magnitude.
+    // An active ability can retain its old magnitude after a mode change or load.
     for (void* spell : g_frostSpells) {
         if (!hasSpell(player, spell) || !removeSpell(player, spell)) continue;
         if (addSpell(player, spell)) HAG_INFO("Refreshed loaded Vampire frost ability {:#x}", FormID(spell));
         else HAG_WARN("Failed to reapply loaded Vampire frost ability {:#x}", FormID(spell));
     }
+}
+
+}  // namespace
+
+void OnDataLoaded(bool reverse) {
+    if (!CaptureFrost()) HAG_WARN("Vampire frost resistance unchanged: unexpected spell records");
+    if (!CaptureDrain()) HAG_WARN("Vampiric Drain unchanged: unexpected spell records");
+    ApplyMagnitudes(reverse);
+    if (InstallServantHooks()) HAG_INFO("Vampire's Servant uses the native player-level cap");
+    else HAG_WARN("Vampire's Servant unchanged: native level checks did not install");
+}
+
+void ApplyProgression(bool reverse) {
+    ApplyMagnitudes(reverse);
+    RefreshPlayerFrost();
 }
 
 }  // namespace hag::vampire_stage
