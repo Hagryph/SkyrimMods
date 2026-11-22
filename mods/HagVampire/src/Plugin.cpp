@@ -65,6 +65,7 @@ constexpr int kBloodStrengthLateExtract = kBloodStrengthMaxExtract - kBloodStren
 constexpr int kBloodScentMinLevel = 1;
 constexpr int kFreshBloodMinLevel = 1;
 constexpr int kStalkerLevel = 10;
+constexpr int kStalkerAwakeFeedLevelBonus = 2;
 constexpr float kStalkerPermanentHealthBonus = 20.0f;
 constexpr float kStalkerFreshBloodSpeedBonus = 5.0f;
 constexpr float kStalkerFreshBloodLifestealFraction = 0.05f;
@@ -1220,6 +1221,24 @@ bool GetReferenceCalcLevelGuarded(void* ref, bool adjustLevel, std::uint16_t* le
     }
 }
 
+bool GetActorLevelGuarded(void* actor, std::uint16_t& level) noexcept {
+    if (!actor) return false;
+    __try {
+        using GetLevelFn = std::uint16_t (*)(void*);
+        const auto getLevel = reinterpret_cast<GetLevelFn>(SkyrimBase() + game::actor::GetLevel);
+        level = getLevel(actor);
+        return level != 0;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+constexpr int AwakeFeedLevelCap(std::uint16_t playerLevel, int bloodStrengthLevel) noexcept {
+    return playerLevel + (bloodStrengthLevel >= kStalkerLevel ? kStalkerAwakeFeedLevelBonus : 0);
+}
+static_assert(AwakeFeedLevelCap(10, kStalkerLevel - 1) == 10);
+static_assert(AwakeFeedLevelCap(10, kStalkerLevel) == 12);
+
 const char* ValidateBaseFeedTarget(const TargetInfo& target) {
     if (!target.actor) return "no crosshair actor target";
     if (target.formType != kFormTypeActorCharacter) return "crosshair target is not an actor";
@@ -1298,6 +1317,19 @@ const char* ValidateSneakFeedTarget(const TargetInfo& target, void* player) {
     bool sleeping = false;
     if (!IsSleepingStateGuarded(target.actor, &sleeping)) return "crosshair actor sleep state check faulted";
     if (sleeping) return "crosshair actor is sleeping";
+
+    std::uint16_t playerLevel = 0;
+    std::uint16_t targetLevel = 0;
+    if (!GetActorLevelGuarded(player, playerLevel) || !GetActorLevelGuarded(target.actor, targetLevel)) {
+        return "could not determine awake feed level cap";
+    }
+    const int bloodStrengthLevel = CurrentBloodStrengthLevel();
+    const int levelCap = AwakeFeedLevelCap(playerLevel, bloodStrengthLevel);
+    if (targetLevel > levelCap) {
+        HAG_INFO("awake feed level cap: target={:#x} targetLevel={} playerLevel={} rank={} cap={}",
+                 target.formID, targetLevel, playerLevel, VampireRankNameForLevel(bloodStrengthLevel), levelCap);
+        return "awake target is above the feeding level cap";
+    }
 
     bool targetHasLOS = false;
     if (!HasLineOfSightGuarded(target.actor, player, &targetHasLOS)) return "target line-of-sight check faulted";

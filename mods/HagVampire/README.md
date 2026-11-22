@@ -25,6 +25,13 @@ That preserves the Papyrus path, including modded script behavior, while still l
 function handle the effects, race mapping, disease cleanup, vampire spells, `PlayerIsVampire`,
 feeding timers, cure quest restart, and `SendVampirismStateChanged(true)`.
 
+## Awake feeding
+
+Fledglings can sneak-feed on awake targets up to their own player level. Stalker
+and higher ranks can feed on awake targets up to two levels higher. The same
+limit applies when bottling blood from an awake target. Sleeping targets and
+corpses are exempt from the level check.
+
 ## Vampire stage effects
 
 Skyrim still owns the four-stage thirst clock. Reverse Progression is on by default
