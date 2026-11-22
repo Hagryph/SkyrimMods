@@ -5,6 +5,7 @@
 #include "ipc/CallExec.h"
 #include "ipc/ConsoleExec.h"
 #include "ipc/SaveLoad.h"
+#include "ipc/Settings.h"
 #include "Offsets.h"
 #include "Log.h"
 
@@ -221,13 +222,14 @@ std::string Server::Dispatch(const std::string& line) {
 
     if (cmd == "ping") return "ok pong";
     if (cmd == "base") return "ok " + Hex(offsets::Base());
+    if (cmd == "settings") return RunSettingsCommand(line);
     if (cmd == "help")
         return "ok cmds: ping | base | read <off> <type> [chain..] | readb <off> <len> [chain..] | "
                "write <off> <type> <val> [chain..] | call <off> [a0..a7] | exec <hexblob> | "
-               "console <text> | log [bytes] | saves | load <name>  "
+               "console <text> | log [bytes] | saves | load <name> | settings <list|get|set> ...  "
                "(off=RVA off 0x140000000 or abs:<VA>; type=u8/u16/u32/u64/i*/f32/f64/ptr; chain: p=*p+c each; "
-               "call/exec args are 64-bit ints; only console runs on the game main thread (all other "
-               "verbs run inline, so they work from the main menu); console returns the command's "
+               "call/exec args are 64-bit ints; console and settings run on the game main thread; "
+               "console returns the command's "
                "output and log dumps recent console text, newlines as 0x1f)";
 
     if (cmd == "read") {

@@ -9,6 +9,8 @@ constexpr std::uint32_t kDefaultMaxSetEntries = 65536;
 
 void SetSerializationInterface(skse::SerializationInterface* serialization, std::uint32_t pluginHandle);
 bool Available();
+bool HasActiveSave();
+void SetActiveSave(bool active);
 std::uint32_t PruneRuntimeFormIDSets(const char* reason);
 
 bool ContainsFormIDForModule(HMODULE module, const char* setName, std::uint32_t formID);

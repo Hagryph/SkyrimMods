@@ -41,7 +41,15 @@ void OnSKSEMessage(skse::Message* msg) {
         ModManager::Get().OnDataLoaded();
         return;
     }
+    if (msg->type == skse::kMessage_PreLoadGame) {
+        save_storage::SetActiveSave(false);
+        return;
+    }
     if (msg->type == skse::kMessage_PostLoadGame || msg->type == skse::kMessage_NewGame) {
+        // SKSE encodes the PostLoadGame success bool in the message pointer itself.
+        const bool loaded = msg->type == skse::kMessage_NewGame || msg->data != nullptr;
+        save_storage::SetActiveSave(loaded);
+        if (!loaded) return;
         HAG_INFO("save context ready -> notifying HagLoader mods (message type {})", msg->type);
         game_state::SetGameRunning(true, "SKSE save context ready");
         ModManager::Get().OnSaveLoaded();

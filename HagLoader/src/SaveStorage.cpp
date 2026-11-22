@@ -25,6 +25,7 @@ constexpr std::uint32_t kFormFlagDeleted = 1u << 5;
 skse::SerializationInterface* g_serialization = nullptr;
 std::uint32_t g_pluginHandle = 0;
 bool g_available = false;
+bool g_activeSave = false;
 std::mutex g_mutex;
 
 struct SetKey {
@@ -154,6 +155,7 @@ void SkipBytes(skse::SerializationInterface* serialization, std::uint32_t length
 }
 
 void OnRevert(skse::SerializationInterface*) {
+    g_activeSave = false;
     std::lock_guard lock(g_mutex);
     const auto setCount = g_sets.size();
     const auto valueCount = g_values.size();
@@ -458,6 +460,14 @@ void SetSerializationInterface(skse::SerializationInterface* serialization, std:
 
 bool Available() {
     return g_available;
+}
+
+bool HasActiveSave() {
+    return g_available && g_activeSave;
+}
+
+void SetActiveSave(bool active) {
+    g_activeSave = active;
 }
 
 std::uint32_t PruneRuntimeFormIDSets(const char* reason) {

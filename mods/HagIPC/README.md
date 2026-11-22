@@ -43,6 +43,21 @@ module base, so the client never needs to derive it. Each response is a single l
 | `exec <hexblob>` | run a machine-code blob (entry@0, ends `ret`, MS x64) → `ok 0x<rax>` (main thread) |
 | `console <text>` | run an in-game console command *(pending — next patch)* |
 | `help` | list commands |
+| `settings list [page]` | List editable HagUI settings as a JSON array |
+| `settings get <page> <id>` | Read an editable HagUI setting as a JSON object |
+| `settings set <page> <id> <value>` | Apply a HagUI setting and return its resulting value as a JSON object |
+
+Settings use the same callbacks as HagUI and do not require the menu to be open.
+Run them with a save loaded and Skyrim focused so the game thread can process the request.
+Quote page names or string values containing spaces. Action buttons and read-only widgets
+are not exposed. Per-save settings follow the current save and are persisted when it is saved.
+
+```text
+settings list Vampire
+settings get Vampire servant_level_cap
+settings set Vampire reverse_progression off
+settings set Vampire servant_level_cap on
+```
 
 Types: `u8 u16 u32 u64 i8 i16 i32 i64 f32 f64 ptr`.
 

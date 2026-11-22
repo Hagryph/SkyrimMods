@@ -47,6 +47,7 @@ struct Option {
     std::uint32_t formID = 0x14;                       // Model3D: which TESForm to show (0x14 = player)
     int           gridColumn = -1;                     // -1 => legacy auto-flow; otherwise 0..1
     int           gridRow = -1;                        // -1 => legacy auto-flow; otherwise >=0
+    bool IsSetting() const;
 };
 
 // Fluent page builder.
@@ -96,6 +97,8 @@ public:
 
     // Front-end reports a control moved. Routed through per-option debounce.
     void OnControlChanged(const std::string& pageTitle, const std::string& optionId, Value v);
+    // Apply a validated setting immediately without relying on a menu to pump debounce.
+    void ApplySetting(Page& page, const std::string& id, Value value);
 
     // Update a control's value / enabled (greyed) state / note without firing its onChange. A mod
     // calls this (via the C API) for dependent controls + restart hints; then Refresh() re-renders.

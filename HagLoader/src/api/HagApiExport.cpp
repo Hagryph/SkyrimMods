@@ -2,7 +2,9 @@
 #include "api/HagApi.h"
 #include "HagUIAPI.h"        // stable C ABI (../shared, on the include path)
 #include "Log.h"
+#include "SaveStorage.h"
 
+#include <cmath>
 #include <variant>
 
 // Bridges the stable cross-plugin C ABI (shared/HagUIAPI.h) onto HagUI's in-DLL
@@ -104,6 +106,79 @@ void C_SetDoublePage(HagUI_PageHandle* page, bool enabled) {
     HagUI::Get().SetDoublePage(AsPage(page), enabled);
 }
 
+int32_t InputType(const Option& opt) {
+    switch (opt.control) {
+    case Control::Toggle: return HAGUI_VT_BOOL;
+    case Control::Hotkey: return HAGUI_VT_INT;
+    case Control::Slider:
+    case Control::Stepper: return HAGUI_VT_DOUBLE;
+    default: return HAGUI_VT_STRING;
+    }
+}
+
+int32_t C_VisitSettings(const char* pageName, const char* id, HagUI_SettingCb visit, void* user) {
+    if (!visit || (id && !pageName)) return HAGUI_SETTING_INVALID;
+    const bool loaded = hag::save_storage::HasActiveSave();
+    bool foundPage = !pageName;
+    for (auto* page : HagUI::Get().PagesFor(MenuContext::InGame)) {
+        if (pageName && page->Title() != pageName) continue;
+        if (page->GetScope() == Scope::PerSave && !loaded) {
+            if (pageName) return HAGUI_SETTING_NO_SAVE;
+            continue;
+        }
+        foundPage = true;
+        for (const auto& opt : page->Options()) {
+            if (!opt.IsSetting() || (id && opt.id != id)) continue;
+            const HagUI_Setting setting{page->Title().c_str(), opt.id.c_str(), opt.label.c_str(),
+                page->GetScope() == Scope::Global ? HAGUI_SCOPE_GLOBAL : HAGUI_SCOPE_PERSAVE,
+                InputType(opt), opt.enabled, ToC(opt.value)};
+            visit(user, &setting);
+            if (id) return HAGUI_SETTING_OK;
+        }
+    }
+    return foundPage && !id ? HAGUI_SETTING_OK : HAGUI_SETTING_NOT_FOUND;
+}
+
+int32_t C_SetSetting(const char* pageName, const char* id, HagUI_Value input) {
+    if (!pageName || !id) return HAGUI_SETTING_INVALID;
+    auto& ui = HagUI::Get();
+    for (auto* page : ui.PagesFor(MenuContext::InGame)) {
+        if (page->Title() != pageName) continue;
+        if (page->GetScope() == Scope::PerSave && !hag::save_storage::HasActiveSave()) return HAGUI_SETTING_NO_SAVE;
+        for (const auto& opt : page->Options()) {
+            if (opt.id != id || !opt.IsSetting()) continue;
+            if (!opt.enabled) return HAGUI_SETTING_DISABLED;
+            if (input.type != InputType(opt)) return HAGUI_SETTING_INVALID;
+            Value value;
+            switch (input.type) {
+            case HAGUI_VT_BOOL: value = input.b; break;
+            case HAGUI_VT_INT:
+                if (input.i < 1 || input.i > 255) return HAGUI_SETTING_INVALID;
+                value = input.i;
+                break;
+            case HAGUI_VT_DOUBLE: {
+                if (!std::isfinite(input.d) || input.d < opt.min || input.d > opt.max) return HAGUI_SETTING_INVALID;
+                if (opt.step > 0.0) {
+                    const double steps = (input.d - opt.min) / opt.step;
+                    if (std::abs(steps - std::round(steps)) > 1e-6) return HAGUI_SETTING_INVALID;
+                }
+                value = input.d;
+                break;
+            }
+            case HAGUI_VT_STRING:
+                if (!input.s) return HAGUI_SETTING_INVALID;
+                value = std::string(input.s);
+                break;
+            default: return HAGUI_SETTING_INVALID;
+            }
+            ui.ApplySetting(*page, id, std::move(value));
+            return HAGUI_SETTING_OK;
+        }
+        return HAGUI_SETTING_NOT_FOUND;
+    }
+    return HAGUI_SETTING_NOT_FOUND;
+}
+
 void C_SetToggleState(HagUI_PageHandle* page, const char* id, bool value, bool enabled, const char* note) {
     if (!page) return;
     HagUI::Get().SetOptionState(AsPage(page), id ? id : "", Value(value), enabled, note ? note : "");
@@ -178,6 +253,8 @@ const HagUIAPI g_api = {
     &C_AddCounter,        // v7
     &C_SetGridCell,       // v8
     &C_SetDoublePage,     // v9
+    &C_VisitSettings,     // v10
+    &C_SetSetting,
 };
 
 }  // namespace

@@ -6,6 +6,18 @@
 
 namespace hag::api {
 
+bool Option::IsSetting() const {
+    return onChange && (control == Control::Toggle || control == Control::Hotkey ||
+                        control == Control::Slider || control == Control::Stepper || control == Control::Text);
+}
+
+namespace {
+void CommitOption(Option& option, const Value& value) {
+    option.value = value;
+    if (option.onChange) option.onChange(value);
+}
+}  // namespace
+
 // ---- Page builders -------------------------------------------------------
 
 Page& Page::Toggle(std::string id, std::string label, bool initial, ChangeFn cb) {
@@ -142,8 +154,7 @@ void HagUI::OnControlChanged(const std::string& pageTitle, const std::string& op
     if (!opt) return;
 
     if (opt->debounceMs == 0) {                 // immediate (toggles, buttons, steppers)
-        opt->value = v;
-        if (opt->onChange) opt->onChange(v);
+        CommitOption(*opt, v);
         return;
     }
     // Debounced (sliders/text): keep pushing the fire time forward while the user drags;
@@ -156,6 +167,16 @@ void HagUI::OnControlChanged(const std::string& pageTitle, const std::string& op
         }
     }
     m_pending.push_back({pageTitle, optionId, std::move(v), m_nowMs + opt->debounceMs});
+}
+
+void HagUI::ApplySetting(Page& page, const std::string& id, Value value) {
+    for (auto& option : page.m_options) {
+        if (option.id != id || !option.IsSetting() || !option.enabled) continue;
+        std::erase_if(m_pending, [&](const Pending& pending) { return pending.page == page.Title() && pending.id == id; });
+        if (option.value != value) CommitOption(option, value);
+        MarkDirty();
+        return;
+    }
 }
 
 void HagUI::SetOptionState(Page* page, const std::string& id, Value value, bool enabled, std::string note) {
@@ -201,8 +222,7 @@ void HagUI::PumpDebounce(std::uint64_t nowMs) {
             Pending p = std::move(m_pending[i]);
             m_pending.erase(m_pending.begin() + static_cast<std::ptrdiff_t>(i));
             if (Option* opt = Find(p.page, p.id)) {
-                opt->value = p.value;
-                if (opt->onChange) opt->onChange(p.value);
+                CommitOption(*opt, p.value);
             }
         } else {
             ++i;

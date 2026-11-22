@@ -36,7 +36,8 @@ extern "C" {
 // v7: added AddCounter (live, read-only text counter).
 // v8: added SetGridCell (two-column grid layout metadata; renderer owns pixel positions).
 // v9: added SetDoublePage (page-level opt-in for the two-column grid renderer).
-#define HAGUI_ABI_VERSION 9u
+// v10: added main-thread settings access independent of the menu.
+#define HAGUI_ABI_VERSION 10u
 
 // Scope: Global  = shown in the Main Menu AND in-game; persists outside any save.
 //        PerSave = in-game only; belongs to the loaded save.
@@ -73,6 +74,25 @@ typedef void (*HagUI_ChangeCb)(void* user, HagUI_Value value);
 typedef void (*HagUI_ClickCb)(void* user);
 typedef const char* (*HagUI_LabelCb)(void* user);
 typedef const char* (*HagUI_TextCb)(void* user);
+
+enum {
+    HAGUI_SETTING_OK = 0,
+    HAGUI_SETTING_NOT_FOUND,
+    HAGUI_SETTING_NO_SAVE,
+    HAGUI_SETTING_DISABLED,
+    HAGUI_SETTING_INVALID
+};
+
+typedef struct HagUI_Setting {
+    const char* page;
+    const char* id;
+    const char* label;
+    int32_t scope;
+    int32_t inputType;
+    bool enabled;
+    HagUI_Value value;
+} HagUI_Setting;
+typedef void (*HagUI_SettingCb)(void* user, const HagUI_Setting* setting);
 
 // A ProgressBar reading: fraction in [0,1] plus a short label ("80 / 100"). HagUI polls the sample
 // callback every menu tick; `text` need only stay valid for that call (host copies it immediately).
@@ -151,6 +171,12 @@ typedef struct HagUIAPI {
     // Opt a page into HagUI's predefined two-column/double-page layout. Pages default to the normal
     // single-column flow; SetGridCell metadata is ignored unless this is enabled.
     void (*SetDoublePage)(HagUI_PageHandle* page, bool enabled);
+
+    // --- v10, game main thread only ---
+    // Null page lists all available pages; null id lists all settings on a page.
+    // String pointers in the visitor are valid only during that callback.
+    int32_t (*VisitSettings)(const char* page, const char* id, HagUI_SettingCb visit, void* user);
+    int32_t (*SetSetting)(const char* page, const char* id, HagUI_Value value);
 } HagUIAPI;
 
 // Signature of the exported resolver, for reinterpret_cast<> on the consumer side.

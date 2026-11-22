@@ -16,6 +16,7 @@ add_library(HagIPC SHARED
     src/ipc/CallExec.cpp
     src/ipc/ConsoleExec.cpp
     src/ipc/SaveLoad.cpp
+    src/ipc/Settings.cpp
 )
 
 target_include_directories(HagIPC PRIVATE src "${CMAKE_CURRENT_SOURCE_DIR}/../../shared")
