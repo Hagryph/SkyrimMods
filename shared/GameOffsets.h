@@ -239,6 +239,10 @@ inline constexpr std::uint32_t AV_Variable08 = 75;
 // for modifier 2 + AV_Health + negative delta.
 inline constexpr std::uintptr_t Actor_ModActorValueInternal = 0x6B27A0;
 inline constexpr std::uintptr_t Actor_SetDeadState = 0x665230;  // Actor* RCX, bool DL; tail-calls process dead-state setter
+inline constexpr std::uintptr_t GetLevel = 0x666D00;     // Actor::GetLevel(), including leveled actors
+inline constexpr std::uintptr_t AddSpell = 0x6C12A0;     // native target of Papyrus Actor.AddSpell
+inline constexpr std::uintptr_t RemoveSpell = 0x6C17A0;  // native target of Papyrus Actor.RemoveSpell
+inline constexpr std::uintptr_t HasSpell = 0x6C4C50;     // spell branch of Papyrus Actor.HasSpell
 inline constexpr std::int32_t   AVModifier_Damage = 2;
 
 // Actor layout / process helpers.
@@ -318,6 +322,7 @@ inline constexpr std::size_t CellWorldSpace = 0x128;    // TESObjectCELL::GetRun
 namespace form {
 
 inline constexpr std::uintptr_t LookupByID = 0x1E01A0;  // TESForm* LookupByID(FormID)
+inline constexpr std::size_t    FormID     = 0x14;
 inline constexpr std::size_t    FormType   = 0x1A;      // uint8 form type
 
 }  // namespace form
@@ -375,6 +380,29 @@ inline constexpr std::size_t ReferenceEffect_Finished = 0x40;     // RE::Referen
 inline constexpr std::size_t ShaderReferenceEffect_EffectData = 0x108;  // RE::ShaderReferenceEffect::effectData
 
 }  // namespace effect
+
+namespace magic {
+
+// Verified in 1.6.1170: the Reanimate archetype dispatches through the slot
+// below from both MagicTarget and the standalone effect validation path.
+inline constexpr std::uintptr_t ReanimateCheckSlot = 0x3169B80;
+inline constexpr std::uintptr_t CheckReanimateTarget = 0x5CC230;
+inline constexpr std::uintptr_t MagicTargetToActor = 0x5C3B90;
+inline constexpr std::uintptr_t CanReanimateActor = 0x5C6CB0;
+inline constexpr std::uintptr_t EvaluateConditionItem = 0x4A05E0;
+
+// MagicItem effect iteration at 0x14C400 and Effect magnitude read at 0x143310.
+inline constexpr std::size_t MagicItemEffects = 0x58;
+inline constexpr std::size_t MagicItemEffectCount = 0x68;
+inline constexpr std::size_t EffectMagnitude = 0x00;
+inline constexpr std::size_t EffectBaseEffect = 0x10;
+inline constexpr std::size_t EffectConditions = 0x20;
+inline constexpr std::size_t ConditionItemSize = 0x38;
+inline constexpr std::size_t ConditionComparisonValue = 0x08;
+inline constexpr std::size_t ConditionFunctionID = 0x18;
+inline constexpr std::size_t ConditionFlags = 0x30;
+
+}  // namespace magic
 
 namespace crosshair {
 

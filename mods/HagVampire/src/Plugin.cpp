@@ -6,6 +6,7 @@
 #include "Log.h"
 #include "SKSE_Min.h"
 #include "SkyrimModAPI.h"
+#include "VampireStageEffects.h"
 
 #include <MinHook.h>
 
@@ -3598,6 +3599,9 @@ void Init(HagUI_PageHandle* page) {
 
 void OnSaveLoaded() {
     ReloadSaveConfig("SKSE save context ready");
+    if (!g_loaderApi->QueueMainThreadTask(&vampire_stage::RefreshLoadedFrost, nullptr)) {
+        HAG_WARN("Vampire frost ability refresh could not be queued after load");
+    }
     QueueApplySurvivalFoodPolicy("save loaded");
     InstallActorDeathHook();
     RegisterFeedHotkey();
@@ -3623,6 +3627,10 @@ extern "C" __declspec(dllexport) void SkyrimMod_Init(void* page) {
 
 extern "C" __declspec(dllexport) void SkyrimMod_OnSaveLoaded() {
     hag::OnSaveLoaded();
+}
+
+extern "C" __declspec(dllexport) void SkyrimMod_OnDataLoaded() {
+    hag::vampire_stage::OnDataLoaded();
 }
 
 extern "C" __declspec(dllexport) constinit skse::PluginVersionData SKSEPlugin_Version = {

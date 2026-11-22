@@ -9,6 +9,7 @@ find_package(minhook CONFIG REQUIRED)
 
 add_library(HagVampire SHARED
     src/Plugin.cpp
+    src/VampireStageEffects.cpp
     src/Log.cpp
 )
 
