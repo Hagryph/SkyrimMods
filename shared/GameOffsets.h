@@ -243,6 +243,10 @@ inline constexpr std::uintptr_t GetLevel = 0x666D00;     // Actor::GetLevel(), i
 inline constexpr std::uintptr_t AddSpell = 0x6C12A0;     // native target of Papyrus Actor.AddSpell
 inline constexpr std::uintptr_t RemoveSpell = 0x6C14B0;  // Actor.RemoveSpell task dispatch calls this at RVA 0x658621
 inline constexpr std::uintptr_t HasSpell = 0x6C4C50;     // spell branch of Papyrus Actor.HasSpell
+// Actor.StartCombat registration at 0x9F08B1 -> wrapper 0x9EAE60 -> task 0x2A.
+// Its dispatcher resolves both actors, then starts the source's combat against the target.
+inline constexpr std::uintptr_t StartCombatTaskManagerPtr = 0x31993A0;
+inline constexpr std::uintptr_t QueueStartCombat = 0x6564C0;  // (manager, source Actor*, target Actor*)
 inline constexpr std::int32_t   AVModifier_Damage = 2;
 
 // Actor layout / process helpers.

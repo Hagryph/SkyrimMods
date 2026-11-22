@@ -1299,7 +1299,8 @@ const char* ValidateLivingFeedCommonTarget(const TargetInfo& target) {
     return nullptr;
 }
 
-const char* ValidateSneakFeedTarget(const TargetInfo& target, void* player) {
+const char* ValidateSneakFeedTarget(const TargetInfo& target, void* player, bool& aboveLevelCap) {
+    aboveLevelCap = false;
     if (!player) return "player actor unavailable";
     if (const char* rejection = ValidateBaseFeedTarget(target)) return rejection;
     if (!IsPlayerVampire()) return "player is not a vampire";
@@ -1326,6 +1327,7 @@ const char* ValidateSneakFeedTarget(const TargetInfo& target, void* player) {
     const int bloodStrengthLevel = CurrentBloodStrengthLevel();
     const int levelCap = AwakeFeedLevelCap(playerLevel, bloodStrengthLevel);
     if (targetLevel > levelCap) {
+        aboveLevelCap = true;
         HAG_INFO("awake feed level cap: target={:#x} targetLevel={} playerLevel={} rank={} cap={}",
                  target.formID, targetLevel, playerLevel, VampireRankNameForLevel(bloodStrengthLevel), levelCap);
         return "awake target is above the feeding level cap";
@@ -1336,6 +1338,29 @@ const char* ValidateSneakFeedTarget(const TargetInfo& target, void* player) {
     if (targetHasLOS) return "target has line-of-sight to player";
 
     return nullptr;
+}
+
+bool StartCombatGuarded(void* actor, void* opponent) noexcept {
+    if (!actor || !opponent || actor == opponent) return false;
+    __try {
+        const auto base = SkyrimBase();
+        auto* manager = *reinterpret_cast<void**>(base + game::actor::StartCombatTaskManagerPtr);
+        if (!manager) return false;
+        using QueueStartCombatFn = void (*)(void*, void*, void*);
+        const auto startCombat = reinterpret_cast<QueueStartCombatFn>(base + game::actor::QueueStartCombat);
+        startCombat(manager, actor, opponent);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+void ProvokeRejectedFeedingTarget(void* player, const TargetInfo& target) {
+    if (StartCombatGuarded(target.actor, player)) {
+        HAG_INFO("awake feed level rejection provoked combat: target={:#x}", target.formID);
+    } else {
+        HAG_WARN("awake feed level rejection could not submit combat: target={:#x}", target.formID);
+    }
 }
 
 const char* ValidateSleepingFeedTarget(const TargetInfo& target, void* player, FeedRefInfo* feedRef) {
@@ -2823,10 +2848,12 @@ void RunNativeCorpseFeedTarget(void* player, const TargetInfo& target, int mode)
 }
 
 void RunNativeSneakFeedTarget(void* player, const TargetInfo& target) {
-    const char* rejection = ValidateSneakFeedTarget(target, player);
+    bool aboveLevelCap = false;
+    const char* rejection = ValidateSneakFeedTarget(target, player, aboveLevelCap);
     if (rejection) {
         HAG_INFO("native sneak-feed rejected handle={:#x} form={:#x} type={:#x}: {}",
                  target.handle, target.formID, target.formType, rejection);
+        if (aboveLevelCap) ProvokeRejectedFeedingTarget(player, target);
         return;
     }
 
@@ -3183,10 +3210,12 @@ void RunBloodPotionSleepingExtractionTarget(void* player, const TargetInfo& targ
 }
 
 void RunBloodPotionSneakExtractionTarget(void* player, const TargetInfo& target) {
-    const char* rejection = ValidateSneakFeedTarget(target, player);
+    bool aboveLevelCap = false;
+    const char* rejection = ValidateSneakFeedTarget(target, player, aboveLevelCap);
     if (rejection) {
         HAG_INFO("blood extraction sneak rejected handle={:#x} form={:#x} type={:#x}: {}",
                  target.handle, target.formID, target.formType, rejection);
+        if (aboveLevelCap) ProvokeRejectedFeedingTarget(player, target);
         return;
     }
 

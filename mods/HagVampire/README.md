@@ -31,6 +31,9 @@ Fledglings can sneak-feed on awake targets up to their own player level. Stalker
 and higher ranks can feed on awake targets up to two levels higher. The same
 limit applies when bottling blood from an awake target. Sleeping targets and
 corpses are exempt from the level check.
+An awake target above the cap rejects the attempt and starts combat with the
+player through Skyrim's native `Actor.StartCombat` task. It does not start
+a feeding package or grant rewards.
 
 ## Vampire stage effects
 
