@@ -30,7 +30,10 @@ feeding timers, cure quest restart, and `SendVampirismStateChanged(true)`.
 Skyrim still owns the four-stage thirst clock. Reverse Progression is on by default
 and saved per character. From fed to starving, it gives 50/40/30/20% frost resistance
 and 5/4/3/2 Drain. Turning it off restores the original loaded spell magnitudes.
-Fire, sunlight, and Vampire's Servant are independent of the toggle.
+Fire, sunlight, and Vampire's Servant are independent of Reverse Progression.
+
+Cap Servant Level is a separate, per-save toggle that defaults to on. On uses
+the player's level for Vampire's Servant; off restores the game's stage-based caps.
 
 On Skyrim SE 1.6.1170, the Reanimate archetype dispatches to RVA `0x5CC230`.
 The original checks corpse eligibility at `0x5C6CB0`, then compares the target's

@@ -123,8 +123,13 @@ Write-Host "deployed HagVampireBridge.pex -> $scripts"
 
 $esp = Join-Path $root 'assets\HagVampire.esp'
 if (-not (Test-Path $esp)) { throw "HagVampire.esp not found: $esp" }
-Copy-Item $esp (Join-Path $mod 'HagVampire.esp') -Force
-Write-Host "deployed HagVampire.esp -> $mod"
+$deployedEsp = Join-Path $mod 'HagVampire.esp'
+# Skyrim can hold the deployed ESP open even when a DLL-only build does not change it.
+if (-not (Test-Path -LiteralPath $deployedEsp) -or
+    (Get-FileHash -LiteralPath $esp).Hash -ne (Get-FileHash -LiteralPath $deployedEsp).Hash) {
+    Copy-Item -LiteralPath $esp -Destination $deployedEsp -Force
+    Write-Host "deployed HagVampire.esp -> $mod"
+}
 Enable-MO2PluginForEnabledMod -Mo2ModsPath $Mo2Mods -ModName 'HagVampire' -PluginName 'HagVampire.esp'
 
 $meta = Join-Path $mod 'meta.ini'

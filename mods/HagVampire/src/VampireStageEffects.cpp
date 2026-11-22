@@ -7,6 +7,7 @@
 #include <MinHook.h>
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 
 namespace hag::vampire_stage {
@@ -60,6 +61,7 @@ SpellArray g_servantBaseEffects{};
 const void* g_ashPileLevelCheck = nullptr;
 ReanimateCheck g_originalReanimate = nullptr;
 EvaluateCondition g_originalCondition = nullptr;
+std::atomic_bool g_servantLevelCap{kDefaultServantLevelCap};
 
 std::uintptr_t GameBase() noexcept {
     return reinterpret_cast<std::uintptr_t>(::GetModuleHandleW(nullptr));
@@ -171,7 +173,9 @@ bool ResolveServantRecords() noexcept {
 }
 
 bool CheckReanimate(EffectCheckData* data) {
-    if (!data || !data->caster || data->caster != Player()) return g_originalReanimate(data);
+    if (!ServantLevelCapEnabled() || !data || !data->caster || data->caster != Player()) {
+        return g_originalReanimate(data);
+    }
     bool servant = false;
     for (std::size_t i = 0; i < g_servantSpells.size(); ++i) {
         if (data->spell == g_servantSpells[i] && data->baseEffect == g_servantBaseEffects[i]) {
@@ -196,7 +200,9 @@ bool CheckReanimate(EffectCheckData* data) {
 }
 
 bool CheckAshPileCondition(const void* item, void* params) {
-    if (item != g_ashPileLevelCheck || !params) return g_originalCondition(item, params);
+    if (item != g_ashPileLevelCheck || !params || !ServantLevelCapEnabled()) {
+        return g_originalCondition(item, params);
+    }
     void* player = Player();
     if (!player || (Field<void*>(params, 0) != player && Field<void*>(params, 0x08) != player)) {
         return g_originalCondition(item, params);
@@ -257,13 +263,21 @@ void OnDataLoaded(bool reverse) {
     if (!CaptureFrost()) HAG_WARN("Vampire frost resistance unchanged: unexpected spell records");
     if (!CaptureDrain()) HAG_WARN("Vampiric Drain unchanged: unexpected spell records");
     ApplyMagnitudes(reverse);
-    if (InstallServantHooks()) HAG_INFO("Vampire's Servant uses the native player-level cap");
+    if (InstallServantHooks()) HAG_INFO("Vampire's Servant native cap hooks installed: enabled={}", ServantLevelCapEnabled());
     else HAG_WARN("Vampire's Servant unchanged: native level checks did not install");
 }
 
 void ApplyProgression(bool reverse) {
     ApplyMagnitudes(reverse);
     RefreshPlayerFrost();
+}
+
+bool ServantLevelCapEnabled() noexcept {
+    return g_servantLevelCap.load(std::memory_order_relaxed);
+}
+
+void SetServantLevelCapEnabled(bool enabled) noexcept {
+    g_servantLevelCap.store(enabled, std::memory_order_relaxed);
 }
 
 }  // namespace hag::vampire_stage

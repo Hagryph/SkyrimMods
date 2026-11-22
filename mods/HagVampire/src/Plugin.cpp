@@ -43,6 +43,7 @@ std::atomic_bool g_corpseFeedingEnabled{true};
 std::atomic_bool g_bloodPotionExtractionEnabled{true};
 constexpr char kReverseProgressionKey[] = "reverse_progression";
 constexpr bool kReverseProgressionDefault = true;
+constexpr char kServantLevelCapKey[] = "servant_level_cap";
 std::atomic_bool g_reverseProgressionEnabled{kReverseProgressionDefault};
 std::atomic_int g_animationMode{0};
 std::atomic_int g_feedHotkey{'V'};
@@ -390,16 +391,18 @@ void LoadConfig() {
     g_corpseFeedingEnabled.store(ConfigGetBool("enable_corpse_feeding", true));
     g_bloodPotionExtractionEnabled.store(ConfigGetBool("enable_blood_potion_extraction", true));
     g_reverseProgressionEnabled.store(ConfigGetBool(kReverseProgressionKey, kReverseProgressionDefault));
+    vampire_stage::SetServantLevelCapEnabled(ConfigGetBool(kServantLevelCapKey, vampire_stage::kDefaultServantLevelCap));
     g_animationMode.store(ConfigGetInt("animation_mode", 0, 0, 2));
     g_feedHotkey.store(ConfigGetInt("feed_hotkey", 'V', 1, 255));
     g_extractBloodHotkey.store(ConfigGetInt("extract_blood_hotkey", 'G', 1, 255));
     g_bloodExtract.store(ConfigGetInt("blood_extract", 0, 0, kBloodStrengthMaxExtract));
     g_permanentHealthBonusAppliedLevel.store(ConfigGetInt("permanent_health_bonus_applied_level", 0, 0, kBloodStrengthMaxLevel));
     g_lifestealHealRemainderMicro.store(ConfigGetInt("lifesteal_heal_remainder_micro", 0, 0, kLifestealHealScale - 1));
-    HAG_INFO("config loaded: enable_corpse_feeding={} enable_blood_potion_extraction={} reverse_progression={} animation_mode={} feed_hotkey={:#x} extract_blood_hotkey={:#x} blood_extract={} level={} rank={} permanentHealthBonusAppliedLevel={} lifestealRemainder={}",
+    HAG_INFO("config loaded: enable_corpse_feeding={} enable_blood_potion_extraction={} reverse_progression={} servant_level_cap={} animation_mode={} feed_hotkey={:#x} extract_blood_hotkey={:#x} blood_extract={} level={} rank={} permanentHealthBonusAppliedLevel={} lifestealRemainder={}",
              g_corpseFeedingEnabled.load(),
              g_bloodPotionExtractionEnabled.load(),
              g_reverseProgressionEnabled.load(),
+             vampire_stage::ServantLevelCapEnabled(),
              g_animationMode.load(),
              g_feedHotkey.load(),
              g_extractBloodHotkey.load(),
@@ -414,6 +417,7 @@ void PushConfigToUI() {
     if (!g_uiApi || !g_page) return;
     if (g_uiApi->SetToggleState) {
         g_uiApi->SetToggleState(g_page, kReverseProgressionKey, g_reverseProgressionEnabled.load(), true, "");
+        g_uiApi->SetToggleState(g_page, kServantLevelCapKey, vampire_stage::ServantLevelCapEnabled(), true, "");
         g_uiApi->SetToggleState(g_page,
                                 "enable_corpse_feeding",
                                 g_corpseFeedingEnabled.load(),
@@ -3335,6 +3339,13 @@ void OnReverseProgressionChanged(void*, HagUI_Value value) {
     ConfigSetBool(kReverseProgressionKey, value.b);
 }
 
+void OnServantLevelCapChanged(void*, HagUI_Value value) {
+    if (value.type != HAGUI_VT_BOOL) return;
+    vampire_stage::SetServantLevelCapEnabled(value.b);
+    ConfigSetBool(kServantLevelCapKey, value.b);
+    HAG_INFO("servant_level_cap -> {}", value.b);
+}
+
 void OnAnimationModeChanged(void*, HagUI_Value value) {
     int next = 0;
     if (value.type == HAGUI_VT_INT) {
@@ -3574,6 +3585,12 @@ void Init(HagUI_PageHandle* page) {
                        g_reverseProgressionEnabled.load(),
                        &OnReverseProgressionChanged,
                        nullptr);
+    g_uiApi->AddToggle(page,
+                       kServantLevelCapKey,
+                       "Cap Servant Level",
+                       vampire_stage::ServantLevelCapEnabled(),
+                       &OnServantLevelCapChanged,
+                       nullptr);
     g_uiApi->AddCounter(page,
                         "vampire_rank",
                         "Vampire rank",
@@ -3619,13 +3636,14 @@ void Init(HagUI_PageHandle* page) {
                         nullptr);
     g_uiApi->SetGridCell(page, "vampire_action", 0, 0);
     g_uiApi->SetGridCell(page, kReverseProgressionKey, 0, 1);
-    g_uiApi->SetGridCell(page, "enable_corpse_feeding", 0, 2);
-    g_uiApi->SetGridCell(page, "enable_blood_potion_extraction", 0, 3);
-    g_uiApi->SetGridCell(page, "animation_mode", 0, 4);
-    g_uiApi->SetGridCell(page, "vampire_rank", 0, 5);
+    g_uiApi->SetGridCell(page, kServantLevelCapKey, 0, 2);
+    g_uiApi->SetGridCell(page, "enable_corpse_feeding", 0, 3);
+    g_uiApi->SetGridCell(page, "enable_blood_potion_extraction", 0, 4);
+    g_uiApi->SetGridCell(page, "animation_mode", 0, 5);
     g_uiApi->SetGridCell(page, "feed_hotkey", 1, 0);
     g_uiApi->SetGridCell(page, "extract_blood_hotkey", 1, 1);
-    g_uiApi->SetGridCell(page, "feeding_counter", 1, 2);
+    g_uiApi->SetGridCell(page, "vampire_rank", 1, 2);
+    g_uiApi->SetGridCell(page, "feeding_counter", 1, 3);
     PushConfigToUI();
     g_uiApi->Refresh();
 
